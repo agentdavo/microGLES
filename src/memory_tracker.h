@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 #include <stddef.h>
+#include <stdlib.h>
 
 /* Initialize the memory tracker
  * Returns 1 on success, 0 on failure.
@@ -18,16 +19,18 @@ int InitMemoryTracker(void);
 void ShutdownMemoryTracker(void);
 
 /* Override malloc, calloc, realloc, and free with tracking */
-void* MT_Malloc(size_t size, const char *file, int line);
-void* MT_Calloc(size_t num, size_t size, const char *file, int line);
-void* MT_Realloc(void *ptr, size_t size, const char *file, int line);
-void  MT_Free(void *ptr, const char *file, int line);
+void *MT_Malloc(size_t size, const char *file, int line);
+void *MT_Calloc(size_t num, size_t size, const char *file, int line);
+void *MT_Realloc(void *ptr, size_t size, const char *file, int line);
+void MT_Free(void *ptr, const char *file, int line);
 
 /* Macros to automatically capture file and line number */
+#ifndef MEMORY_TRACKER_IMPLEMENTATION
 #define malloc(size) MT_Malloc(size, __FILE__, __LINE__)
 #define calloc(num, size) MT_Calloc(num, size, __FILE__, __LINE__)
 #define realloc(ptr, size) MT_Realloc(ptr, size, __FILE__, __LINE__)
 #define free(ptr) MT_Free(ptr, __FILE__, __LINE__)
+#endif
 
 /* Function to get current memory usage */
 size_t GetCurrentMemoryUsage(void);

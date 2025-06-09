@@ -7,3 +7,4 @@ When modifying code in this folder:
    cmake --build build
    ```
 3. Update README.md in this folder if the public API or build steps change
+4. Benchmark sources under `benchmark/` follow the same rules.

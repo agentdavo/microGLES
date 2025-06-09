@@ -1,4 +1,4 @@
-# OpenGL ES 1.1 Renderer
+#OpenGL ES 1.1 Renderer
 
 Welcome to the microGLES OpenGL ES 1.1 Renderer project! This project provides a robust implementation of framebuffer objects (FBOs), renderbuffers, textures, matrix utilities, and comprehensive memory tracking to facilitate efficient and reliable rendering operations. The renderer is designed with performance and maintainability in mind, incorporating optimized data structures, thread safety, and detailed logging.
 
@@ -33,6 +33,12 @@ Welcome to the microGLES OpenGL ES 1.1 Renderer project! This project provides a
 - **Memory Tracking:** Detect and report memory leaks with detailed allocation information.
 - **Logging System:** Comprehensive logging with multiple severity levels for easy debugging.
 - **Thread Safety:** Ensure safe operations in multi-threaded environments using mutexes.
+- **Benchmark Suite:** Measure performance using tests like triangle strips,
+  textured quads, framebuffer operations, and a spinning gears demo.
+- **Extension Querying:** Use `renderer_get_extensions()` to obtain the list of supported OpenGL ES extensions.
+- **Extension Pack Stubs:** Basic implementations of the OpenGL ES 1.1 Extension Pack functions log a "not yet supported" message.
+- **Fixed-Point API:** The header `gl_fixed_point.h` declares `GL_OES_fixed_point`
+  entry points for devices that rely on fixed-point math.
 
 ## Directory Structure
 
@@ -60,7 +66,8 @@ OpenGLES_Renderer/
 │   └── renderer.log
 ├── build/
 │   └── (Build artifacts)
-└── README.md
+├── README.md
+└── PROGRESS.md
 ```
 
 ## File Descriptions
@@ -186,10 +193,36 @@ OpenGLES_Renderer/
    - Link against the OpenGL ES library (`-lGLESv1_CM`), pthreads (`-lpthread`), and the math library (`-lm`).
    - Ensure all necessary source files are included in the compilation command.
 
-3. **Run the Application:**
+3. **Build with CMake (Recommended):**
 
    ```bash
+   cmake -S . -B build
+   cmake --build build
+   ./build/bin/renderer
+   ```
+
+   To build and run the benchmark suite:
+
+   ```bash
+  cmake --build build --target benchmark
+  ./build/bin/benchmark
+  ```
+
+   To build and run the conformance tests:
+
+   ```bash
+   cmake --build build --target conformance
+   ./build/bin/conformance
+   ```
+
+4. **Run the Application:**
+
+   ```bash
+#If you used the gcc example
    ./renderer
+
+#If you built using CMake
+   ./build/bin/renderer
    ```
 
 ## Usage
@@ -202,82 +235,90 @@ The renderer provides a set of functions to manage OpenGL ES objects and perform
 
    ```c
    if (!InitLogger("renderer.log", LOG_LEVEL_DEBUG)) {
-       fprintf(stderr, "Failed to initialize logger.\n");
-       return -1;
-   }
+  fprintf(stderr, "Failed to initialize logger.\n");
+  return -1;
+}
 
-   if (!InitMemoryTracker()) {
-       LOG_FATAL("Failed to initialize Memory Tracker.");
-       return -1;
-   }
+if (!InitMemoryTracker()) {
+  LOG_FATAL("Failed to initialize Memory Tracker.");
+  return -1;
+}
 
-   InitGLState(&gl_state);
-   ```
+InitGLState(&gl_state);
 
-2. **Creating and Binding Renderbuffers:**
+const GLubyte *ext = renderer_get_extensions();
+LOG_INFO("Supported extensions: %s", ext);
+```
 
-   ```c
-   GLuint rb;
-   glGenRenderbuffersOES(1, &rb);
-   glBindRenderbufferOES(GL_RENDERBUFFER_OES, rb);
-   glRenderbufferStorageOES(GL_RENDERBUFFER_OES, GL_RGBA4_OES, 256, 256);
-   ```
+    2. *
+    *Creating and Binding Renderbuffers : **
 
-3. **Creating and Binding Framebuffers:**
+   ```c GLuint rb;
+glGenRenderbuffersOES(1, &rb);
+glBindRenderbufferOES(GL_RENDERBUFFER_OES, rb);
+glRenderbufferStorageOES(GL_RENDERBUFFER_OES, GL_RGBA4_OES, 256, 256);
+```
 
-   ```c
-   GLuint fb;
-   glGenFramebuffersOES(1, &fb);
-   glBindFramebufferOES(GL_FRAMEBUFFER_OES, fb);
-   glFramebufferRenderbufferOES(GL_FRAMEBUFFER_OES, GL_COLOR_ATTACHMENT0_OES, GL_RENDERBUFFER_OES, rb);
-   GLenum status = glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES);
-   if (status == GL_FRAMEBUFFER_COMPLETE_OES) {
-       LOG_INFO("Framebuffer %u is complete.", fb);
-   } else {
-       LOG_ERROR("Framebuffer %u is incomplete. Status: 0x%X", fb, status);
-   }
-   ```
+    3. *
+    *Creating and Binding Framebuffers : **
 
-4. **Creating and Managing Textures:**
+   ```c GLuint fb;
+glGenFramebuffersOES(1, &fb);
+glBindFramebufferOES(GL_FRAMEBUFFER_OES, fb);
+glFramebufferRenderbufferOES(GL_FRAMEBUFFER_OES, GL_COLOR_ATTACHMENT0_OES,
+                             GL_RENDERBUFFER_OES, rb);
+GLenum status = glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES);
+if (status == GL_FRAMEBUFFER_COMPLETE_OES) {
+  LOG_INFO("Framebuffer %u is complete.", fb);
+} else {
+  LOG_ERROR("Framebuffer %u is incomplete. Status: 0x%X", fb, status);
+}
+```
 
-   ```c
-   TextureOES* tex = CreateTextureOES(GL_TEXTURE_2D_OES, GL_RGBA4_OES, 256, 256, GL_TRUE);
-   if (tex) {
-       TexImage2DOES(tex, 0, GL_RGBA4_OES, 256, 256, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-       BindTextureOES(GL_TEXTURE_2D_OES, tex);
-   }
-   ```
+    4. **Creating and Managing Textures
+    : **
 
-5. **Setting Up Transformation Matrices:**
+   ```c TextureOES *tex =
+          CreateTextureOES(GL_TEXTURE_2D_OES, GL_RGBA4_OES, 256, 256, GL_TRUE);
+if (tex) {
+  TexImage2DOES(tex, 0, GL_RGBA4_OES, 256, 256, GL_RGBA, GL_UNSIGNED_BYTE,
+                NULL);
+  BindTextureOES(GL_TEXTURE_2D_OES, tex);
+}
+```
 
-   ```c
-   Matrix4 model, view, projection, mvp;
-   Matrix4_InitIdentity(&model);
-   Matrix4_Translate(&model, 1.0f, 2.0f, -3.0f);
-   Matrix4_Rotate(&model, 45.0f, 0.0f, 1.0f, 0.0f);
+    5. *
+    *Setting Up Transformation Matrices : **
 
-   Matrix4_InitIdentity(&view);
-   Matrix4_Translate(&view, 0.0f, 0.0f, -10.0f);
+   ```c Matrix4 model,
+    view, projection, mvp;
+Matrix4_InitIdentity(&model);
+Matrix4_Translate(&model, 1.0f, 2.0f, -3.0f);
+Matrix4_Rotate(&model, 45.0f, 0.0f, 1.0f, 0.0f);
 
-   Matrix4_Perspective(&projection, 60.0f, 16.0f/9.0f, 0.1f, 100.0f);
+Matrix4_InitIdentity(&view);
+Matrix4_Translate(&view, 0.0f, 0.0f, -10.0f);
 
-   Matrix4_Multiply(&mvp, &view, &model);
-   Matrix4_Multiply(&mvp, &projection, &mvp);
+Matrix4_Perspective(&projection, 60.0f, 16.0f / 9.0f, 0.1f, 100.0f);
 
-   Matrix4_Print(&mvp);
-   ```
+Matrix4_Multiply(&mvp, &view, &model);
+Matrix4_Multiply(&mvp, &projection, &mvp);
 
-6. **Cleanup:**
+Matrix4_Print(&mvp);
+```
 
-   Perform cleanup operations before exiting the application to ensure all resources are properly released.
+    6. *
+    *Cleanup : **
 
-   ```c
-   CleanupGLState(&gl_state);
-   ShutdownMemoryTracker(); // Reports any memory leaks
-   PrintMemoryUsage(); // Should show zero allocations if all are freed
+               Perform cleanup operations before exiting the application to
+                   ensure all resources are properly released.
 
-   /* Cleanup Logger */
-   CleanupLogger();
+   ```c CleanupGLState(&gl_state);
+ShutdownMemoryTracker(); // Reports any memory leaks
+PrintMemoryUsage();      // Should show zero allocations if all are freed
+
+/* Cleanup Logger */
+CleanupLogger();
    ```
 
 ## Contributing

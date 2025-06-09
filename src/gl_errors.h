@@ -1,18 +1,18 @@
 #ifndef GL_ERRORS_H
 #define GL_ERRORS_H
 
-#include "gl_types.h"  // Assuming this includes your OpenGL types
+#include <GLES/gl.h>
 
 // Enum representing all the possible OpenGL ES errors
 typedef enum {
-    GL_NO_ERROR = 0,
-    GL_INVALID_ENUM,
-    GL_INVALID_VALUE,
-    GL_INVALID_OPERATION,
-    GL_STACK_OVERFLOW,
-    GL_STACK_UNDERFLOW,
-    GL_OUT_OF_MEMORY,
-    GL_INVALID_FRAMEBUFFER_OPERATION
+  GL_NO_ERROR = 0,
+  GL_INVALID_ENUM,
+  GL_INVALID_VALUE,
+  GL_INVALID_OPERATION,
+  GL_STACK_OVERFLOW,
+  GL_STACK_UNDERFLOW,
+  GL_OUT_OF_MEMORY,
+  GL_INVALID_FRAMEBUFFER_OPERATION
 } GLErrorCode;
 
 // Sets the current OpenGL error

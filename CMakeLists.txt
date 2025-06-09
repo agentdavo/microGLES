@@ -14,11 +14,12 @@ set(SOURCE_FILES
     src/gl_state.c
     src/gl_texture.c
     src/gl_utils.c
+    src/gl_extensions.c
     src/matrix_utils.c
     src/memory_tracker.c
     src/logger.c
-    src/main.c
 )
+set(RENDERER_MAIN src/main.c)
 
 # Define header files (for IDE visibility, optional)
 set(HEADER_FILES
@@ -29,21 +30,28 @@ set(HEADER_FILES
     src/matrix_utils.h
     src/memory_tracker.h
     src/logger.h
+    src/gl_extensions.h
 )
 
 # Create executable
-add_executable(renderer ${SOURCE_FILES} ${HEADER_FILES})
+add_library(renderer_lib STATIC ${SOURCE_FILES} ${HEADER_FILES})
+
+add_executable(renderer ${RENDERER_MAIN})
 
 # Include directories
-target_include_directories(renderer PRIVATE
+target_include_directories(renderer_lib PUBLIC
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/include
 )
 
-# Find OpenGL ES 1.1 (GLESv1_CM)
-find_library(GLESv1_CM_LIBRARY NAMES GLESv1_CM GLES_CM)
-if(NOT GLESv1_CM_LIBRARY)
-    message(FATAL_ERROR "OpenGL ES 1.1 library (GLESv1_CM) not found")
+# Locate GLES and EGL libraries if available. The headers are provided in
+# the `include/` directory so we avoid picking up desktop variants.
+find_library(GLESv1_CM_LIBRARY GLESv1_CM)
+find_library(EGL_LIBRARY EGL)
+if(NOT GLESv1_CM_LIBRARY OR NOT EGL_LIBRARY)
+    message(WARNING "GLESv1_CM or EGL not found. Building without system libs.")
+    set(GLESv1_CM_LIBRARY "")
+    set(EGL_LIBRARY "")
 endif()
 
 # Find pthread
@@ -52,21 +60,23 @@ find_package(Threads REQUIRED)
 
 # Link libraries
 target_link_libraries(renderer PRIVATE
+    renderer_lib
     ${GLESv1_CM_LIBRARY}
+    ${EGL_LIBRARY}
     Threads::Threads
     m # Math library
 )
 
 # Set output directories
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set_target_properties(renderer PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+)
 
 # Optional: Enable warnings and optimizations
-target_compile_options(renderer PRIVATE
-    -Wall -Wextra -Wpedantic # Enable warnings
-    -O2                      # Enable optimization
-)
+target_compile_options(renderer_lib PRIVATE -Wall -Wextra -Wpedantic -O2)
+target_compile_options(renderer PRIVATE -Wall -Wextra -Wpedantic -O2)
 
 # Optional: Create logs directory if it doesn't exist
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/logs)
@@ -81,3 +91,6 @@ add_custom_target(run
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Running the renderer application"
 )
+
+add_subdirectory(benchmark)
+add_subdirectory(conformance)

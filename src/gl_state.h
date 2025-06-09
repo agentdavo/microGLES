@@ -3,6 +3,7 @@
 #ifndef GL_STATE_H
 #define GL_STATE_H
 
+#include "gl_framebuffer_object.h" /* For FramebufferOES and RenderbufferOES */
 #include <GLES/gl.h>
 #include <GLES/glext.h>
 
@@ -22,27 +23,29 @@ struct TextureOES;
 
 /* GLState structure to manage OpenGL ES state */
 typedef struct {
-    GLuint next_renderbuffer_id;      // Next available renderbuffer ID
-    struct RenderbufferOES* renderbuffers[MAX_RENDERBUFFERS]; // Array of renderbuffers
-    GLint renderbuffer_count;         // Number of active renderbuffers
-    struct RenderbufferOES* bound_renderbuffer; // Currently bound renderbuffer
+  GLuint next_renderbuffer_id; // Next available renderbuffer ID
+  struct RenderbufferOES
+      *renderbuffers[MAX_RENDERBUFFERS];      // Array of renderbuffers
+  GLint renderbuffer_count;                   // Number of active renderbuffers
+  struct RenderbufferOES *bound_renderbuffer; // Currently bound renderbuffer
 
-    GLuint next_framebuffer_id;       // Next available framebuffer ID
-    struct FramebufferOES* framebuffers[MAX_FRAMEBUFFERS]; // Array of framebuffers
-    GLint framebuffer_count;          // Number of active framebuffers
-    struct FramebufferOES* bound_framebuffer; // Currently bound framebuffer
-    struct FramebufferOES default_framebuffer; // Default framebuffer (ID 0)
+  GLuint next_framebuffer_id; // Next available framebuffer ID
+  struct FramebufferOES
+      *framebuffers[MAX_FRAMEBUFFERS];       // Array of framebuffers
+  GLint framebuffer_count;                   // Number of active framebuffers
+  struct FramebufferOES *bound_framebuffer;  // Currently bound framebuffer
+  struct FramebufferOES default_framebuffer; // Default framebuffer (ID 0)
 
-    GLuint texture_count;             // Number of active textures
-    struct TextureOES* textures[MAX_TEXTURES]; // Array of textures
+  GLuint texture_count;                      // Number of active textures
+  struct TextureOES *textures[MAX_TEXTURES]; // Array of textures
 } GLState;
 
 /* Global GLState instance */
 extern GLState gl_state;
 
 /* Function prototypes */
-void InitGLState(GLState* state);
-void CleanupGLState(GLState* state);
+void InitGLState(GLState *state);
+void CleanupGLState(GLState *state);
 
 #ifdef __cplusplus
 }
