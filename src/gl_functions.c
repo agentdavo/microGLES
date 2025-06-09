@@ -1,9 +1,9 @@
-```c
-// functions.c
-#include "gl_types.h"
+// gl_functions.c
 #include "gl_errors.h"
-#include "matrix_utils.h"
+#include "gl_state.h"
 #include "logger.h"
+#include "matrix_utils.h"
+#include <GLES/gl.h>
 
 // Assume GLState is a global or accessible structure
 extern GLState gl_state;
@@ -1534,23 +1534,13 @@ GL_API void GL_APIENTRY glShadeModel (GLenum mode) {
     LOG_DEBUG("Set ShadeModel: mode=0x%X.", mode);
 }
 
-// renderer.c
-#include "gl_types.h"
-#include "gl_errors.h"
-#include "matrix_utils.h"
-#include "logger.h"
-#include "memory_tracker.h"
-
-// Assume GLState is a global or accessible structure
-extern GLState gl_state;
-
 // Implementation of glStencilFunc
-GL_API void GL_APIENTRY glStencilFunc (GLenum func, GLint ref, GLuint mask) {
-    glStencilFunc(func, ref, mask);
-    gl_state.stencil_func = func;
-    gl_state.stencil_ref = ref;
-    gl_state.stencil_mask = mask;
-    LOG_DEBUG("Set StencilFunc: func=0x%X, ref=%d, mask=0x%X.", func, ref, mask);
+GL_API void GL_APIENTRY glStencilFunc(GLenum func, GLint ref, GLuint mask) {
+  glStencilFunc(func, ref, mask);
+  gl_state.stencil_func = func;
+  gl_state.stencil_ref = ref;
+  gl_state.stencil_mask = mask;
+  LOG_DEBUG("Set StencilFunc: func=0x%X, ref=%d, mask=0x%X.", func, ref, mask);
 }
 
 // Implementation of glStencilMask
