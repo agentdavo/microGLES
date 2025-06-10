@@ -644,6 +644,17 @@ void quat_to_mat4(const Quaternion *q, mat4 *mat) {
   mat->data[10] = 1.0f - 2.0f * (q->x * q->x + q->y * q->y);
 }
 
+void mat4_transform_vec4(const mat4 *mat, const GLfloat in[4], GLfloat out[4]) {
+  out[0] = mat->data[0] * in[0] + mat->data[4] * in[1] + mat->data[8] * in[2] +
+           mat->data[12] * in[3];
+  out[1] = mat->data[1] * in[0] + mat->data[5] * in[1] + mat->data[9] * in[2] +
+           mat->data[13] * in[3];
+  out[2] = mat->data[2] * in[0] + mat->data[6] * in[1] + mat->data[10] * in[2] +
+           mat->data[14] * in[3];
+  out[3] = mat->data[3] * in[0] + mat->data[7] * in[1] + mat->data[11] * in[2] +
+           mat->data[15] * in[3];
+}
+
 /* ---------------------- */
 /* Unit Testing (Optional) */
 /* ---------------------- */

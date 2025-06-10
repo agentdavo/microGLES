@@ -8,6 +8,12 @@ extern "C" {
 int test_framebuffer_complete(void);
 int test_texture_creation(void);
 int test_framebuffer_colors(void);
+int test_enable_disable(void);
+int test_viewport(void);
+int test_matrix_stack(void);
+int test_clear_state(void);
+int test_buffer_objects(void);
+int test_texture_setup(void);
 
 #ifdef __cplusplus
 }

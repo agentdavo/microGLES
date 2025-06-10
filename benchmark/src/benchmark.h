@@ -12,6 +12,7 @@ extern "C" {
 typedef struct BenchmarkResult {
   double fps;
   double cpu_time_ms;
+  double pixels_per_second;
   size_t current_memory;
   size_t peak_memory;
 } BenchmarkResult;
@@ -23,6 +24,8 @@ void run_textured_quad(BenchmarkResult *result);
 void run_lit_cube(int lighting, BenchmarkResult *result);
 void run_fbo_benchmark(BenchmarkResult *result);
 void run_spinning_gears(BenchmarkResult *result);
+void run_spinning_cubes(BenchmarkResult *result);
+void run_multitexture_demo(BenchmarkResult *result);
 
 #ifdef __cplusplus
 }

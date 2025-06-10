@@ -77,6 +77,7 @@ void mat4_frustum(mat4 *mat, GLfloat left, GLfloat right, GLfloat bottom,
 void mat4_orthographic(mat4 *mat, GLfloat left, GLfloat right, GLfloat bottom,
                        GLfloat top, GLfloat nearVal, GLfloat farVal);
 void mat4_perspective_divide(mat4 *mat);
+void mat4_transform_vec4(const mat4 *mat, const GLfloat in[4], GLfloat out[4]);
 
 /* Quaternion Utility Functions */
 void quat_normalize(Quaternion *q);
