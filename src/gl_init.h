@@ -3,7 +3,9 @@
 
 #include "gl_errors.h"
 #include "gl_state.h"
+#include "framebuffer.h"
 #include <GLES/gl.h>
+#include <stdint.h>
 
 // Initializes the OpenGL ES context and sets up the rendering environment
 void GL_init(void);
@@ -19,5 +21,11 @@ void GL_resetState(void);
 
 // Default configuration for matrix stack and depth settings
 void GL_defaultMatrixSetup(void);
+
+// Initialize GL and create a software framebuffer
+Framebuffer *GL_init_with_framebuffer(uint32_t width, uint32_t height);
+
+// Destroy the framebuffer and clean up GL state
+void GL_cleanup_with_framebuffer(Framebuffer *fb);
 
 #endif // GL_INIT_H
