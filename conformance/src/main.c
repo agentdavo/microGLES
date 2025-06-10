@@ -1,4 +1,5 @@
 #include "gl_state.h"
+#include "gl_init.h"
 #include "logger.h"
 #include "memory_tracker.h"
 #include "tests.h"
@@ -15,6 +16,11 @@ int main()
 		return -1;
 	}
 	InitGLState(&gl_state);
+	Framebuffer *fb = GL_init_with_framebuffer(64, 64);
+	if (!fb) {
+		LOG_FATAL("Failed to create framebuffer");
+		return -1;
+	}
 
 	int pass = 1;
 	if (!test_framebuffer_complete()) {
@@ -66,6 +72,7 @@ int main()
 		pass = 0;
 	}
 
+	GL_cleanup_with_framebuffer(fb);
 	CleanupGLState(&gl_state);
 	ShutdownMemoryTracker();
 	PrintMemoryUsage();
