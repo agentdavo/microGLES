@@ -28,21 +28,21 @@ const GLubyte *renderer_get_extensions(void);
 
 /* Stub implementations for GL_OES_draw_texture */
 void glDrawTexsOES(GLshort x, GLshort y, GLshort z, GLshort width,
-                   GLshort height);
+		   GLshort height);
 void glDrawTexiOES(GLint x, GLint y, GLint z, GLint width, GLint height);
 void glDrawTexxOES(GLfixed x, GLfixed y, GLfixed z, GLfixed width,
-                   GLfixed height);
+		   GLfixed height);
 void glDrawTexsvOES(const GLshort *coords);
 void glDrawTexivOES(const GLint *coords);
 void glDrawTexxvOES(const GLfixed *coords);
 void glDrawTexfOES(GLfloat x, GLfloat y, GLfloat z, GLfloat width,
-                   GLfloat height);
+		   GLfloat height);
 void glDrawTexfvOES(const GLfloat *coords);
 
 /* Blend and TexGen extension stubs */
 void glBlendEquationOES(GLenum mode);
 void glBlendFuncSeparateOES(GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha,
-                            GLenum dstAlpha);
+			    GLenum dstAlpha);
 void glBlendEquationSeparateOES(GLenum modeRGB, GLenum modeAlpha);
 void glTexGenfOES(GLenum coord, GLenum pname, GLfloat param);
 void glTexGenfvOES(GLenum coord, GLenum pname, const GLfloat *params);
@@ -53,9 +53,9 @@ void glGetTexGenivOES(GLenum coord, GLenum pname, GLint *params);
 void glCurrentPaletteMatrixOES(GLuint matrixpaletteindex);
 void glLoadPaletteFromModelViewMatrixOES(void);
 void glMatrixIndexPointerOES(GLint size, GLenum type, GLsizei stride,
-                             const void *pointer);
+			     const void *pointer);
 void glWeightPointerOES(GLint size, GLenum type, GLsizei stride,
-                        const void *pointer);
+			const void *pointer);
 void glPointSizePointerOES(GLenum type, GLsizei stride, const void *pointer);
 const void *getPointSizePointerOES(GLenum *type, GLsizei *stride);
 
@@ -69,7 +69,7 @@ void glDepthRangexOES(GLfixed n, GLfixed f);
 void glFogxOES(GLenum pname, GLfixed param);
 void glFogxvOES(GLenum pname, const GLfixed *param);
 void glFrustumxOES(GLfixed l, GLfixed r, GLfixed b, GLfixed t, GLfixed n,
-                   GLfixed f);
+		   GLfixed f);
 void glGetClipPlanexOES(GLenum plane, GLfixed *equation);
 void glGetFixedvOES(GLenum pname, GLfixed *params);
 void glGetLightxvOES(GLenum light, GLenum pname, GLfixed *params);
@@ -86,10 +86,10 @@ void glMaterialxOES(GLenum face, GLenum pname, GLfixed param);
 void glMaterialxvOES(GLenum face, GLenum pname, const GLfixed *param);
 void glMultMatrixxOES(const GLfixed *m);
 void glMultiTexCoord4xOES(GLenum texture, GLfixed s, GLfixed t, GLfixed r,
-                          GLfixed q);
+			  GLfixed q);
 void glNormal3xOES(GLfixed nx, GLfixed ny, GLfixed nz);
 void glOrthoxOES(GLfixed l, GLfixed r, GLfixed b, GLfixed t, GLfixed n,
-                 GLfixed f);
+		 GLfixed f);
 void glPointParameterxOES(GLenum pname, GLfixed param);
 void glPointParameterxvOES(GLenum pname, const GLfixed *params);
 void glPointSizexOES(GLfixed size);
@@ -102,6 +102,29 @@ void glTexEnvxvOES(GLenum target, GLenum pname, const GLfixed *params);
 void glTexParameterxOES(GLenum target, GLenum pname, GLfixed param);
 void glTexParameterxvOES(GLenum target, GLenum pname, const GLfixed *params);
 void glTranslatexOES(GLfixed x, GLfixed y, GLfixed z);
+
+/* Additional OES utility wrappers */
+void glClearDepthfOES(GLclampf depth);
+void glDepthRangefOES(GLclampf n, GLclampf f);
+void glFrustumfOES(GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n,
+		   GLfloat f);
+void glOrthofOES(GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n,
+		 GLfloat f);
+void glClipPlanefOES(GLenum plane, const GLfloat *equation);
+void glGetClipPlanefOES(GLenum plane, GLfloat *equation);
+void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image);
+void glEGLImageTargetRenderbufferStorageOES(GLenum target, GLeglImageOES image);
+void glBindVertexArrayOES(GLuint array);
+void glDeleteVertexArraysOES(GLsizei n, const GLuint *arrays);
+void glGenVertexArraysOES(GLsizei n, GLuint *arrays);
+GLboolean glIsVertexArrayOES(GLuint array);
+void glGetBufferPointervOES(GLenum target, GLenum pname, void **params);
+void *glMapBufferOES(GLenum target, GLenum access);
+GLboolean glUnmapBufferOES(GLenum target);
+GLbitfield glQueryMatrixxOES(GLfixed *mantissa, GLint *exponent);
+void glTexGenxOES(GLenum coord, GLenum pname, GLfixed param);
+void glTexGenxvOES(GLenum coord, GLenum pname, const GLfixed *params);
+void glGetTexGenxvOES(GLenum coord, GLenum pname, GLfixed *params);
 
 #ifdef __cplusplus
 }

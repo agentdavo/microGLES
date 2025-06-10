@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.10)
 project(OpenGLES_Renderer VERSION 1.0 LANGUAGES C)
 
 # Set C standard
-set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # Define source files
@@ -17,6 +17,7 @@ set(SOURCE_FILES
     src/gl_functions.c
     src/gl_extensions.c
     src/gl_init.c
+    src/framebuffer.c
     src/matrix_utils.c
     src/memory_tracker.c
     src/logger.c
@@ -30,6 +31,7 @@ set(HEADER_FILES
     src/gl_texture.h
     src/gl_utils.h
     src/matrix_utils.h
+    src/framebuffer.h
     src/memory_tracker.h
     src/logger.h
     src/gl_extensions.h

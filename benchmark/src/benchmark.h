@@ -26,6 +26,7 @@ void run_fbo_benchmark(BenchmarkResult *result);
 void run_spinning_gears(BenchmarkResult *result);
 void run_spinning_cubes(BenchmarkResult *result);
 void run_multitexture_demo(BenchmarkResult *result);
+void run_alpha_blend_demo(BenchmarkResult *result);
 
 #ifdef __cplusplus
 }

@@ -14,70 +14,75 @@ extern "C" {
 
 /* Attachment types */
 typedef enum {
-  ATTACHMENT_NONE,
-  ATTACHMENT_RENDERBUFFER,
-  ATTACHMENT_TEXTURE
+	ATTACHMENT_NONE,
+	ATTACHMENT_RENDERBUFFER,
+	ATTACHMENT_TEXTURE
 } AttachmentType;
 
 /* Renderbuffer structure */
 typedef struct RenderbufferOES {
-  GLuint id;
-  GLenum internalformat;
-  GLsizei width;
-  GLsizei height;
-  GLint red_size;
-  GLint green_size;
-  GLint blue_size;
-  GLint alpha_size;
-  GLint depth_size;
-  GLint stencil_size;
+	GLuint id;
+	GLenum internalformat;
+	GLsizei width;
+	GLsizei height;
+	union {
+		struct {
+			GLint red_size;
+			GLint green_size;
+			GLint blue_size;
+			GLint alpha_size;
+		};
+		GLint color_size[4];
+	};
+	GLint depth_size;
+	GLint stencil_size;
 } RenderbufferOES;
 
 /* Framebuffer attachment union */
 typedef union {
-  RenderbufferOES *renderbuffer;
-  TextureOES *texture;
+	RenderbufferOES *renderbuffer;
+	TextureOES *texture;
 } FramebufferAttachment;
 
 /* Framebuffer attachment structure */
 typedef struct {
-  AttachmentType type;
-  FramebufferAttachment attachment;
+	AttachmentType type;
+	FramebufferAttachment attachment;
 } FramebufferAttachmentOES;
 
 /* Framebuffer structure */
 typedef struct FramebufferOES {
-  GLuint id;
-  FramebufferAttachmentOES color_attachment;
-  FramebufferAttachmentOES depth_attachment;
-  FramebufferAttachmentOES stencil_attachment;
+	GLuint id;
+	FramebufferAttachmentOES color_attachment;
+	FramebufferAttachmentOES depth_attachment;
+	FramebufferAttachmentOES stencil_attachment;
 } FramebufferOES;
 
 /* Function prototypes */
 GLboolean GL_APIENTRY glIsRenderbufferOES(GLuint renderbuffer);
 void GL_APIENTRY glBindRenderbufferOES(GLenum target, GLuint renderbuffer);
 void GL_APIENTRY glDeleteRenderbuffersOES(GLsizei n,
-                                          const GLuint *renderbuffers);
+					  const GLuint *renderbuffers);
 void GL_APIENTRY glGenRenderbuffersOES(GLsizei n, GLuint *renderbuffers);
 void GL_APIENTRY glRenderbufferStorageOES(GLenum target, GLenum internalformat,
-                                          GLsizei width, GLsizei height);
+					  GLsizei width, GLsizei height);
 void GL_APIENTRY glGetRenderbufferParameterivOES(GLenum target, GLenum pname,
-                                                 GLint *params);
+						 GLint *params);
 GLboolean GL_APIENTRY glIsFramebufferOES(GLuint framebuffer);
 void GL_APIENTRY glBindFramebufferOES(GLenum target, GLuint framebuffer);
 void GL_APIENTRY glDeleteFramebuffersOES(GLsizei n, const GLuint *framebuffers);
 void GL_APIENTRY glGenFramebuffersOES(GLsizei n, GLuint *framebuffers);
 GLenum GL_APIENTRY glCheckFramebufferStatusOES(GLenum target);
 void GL_APIENTRY glFramebufferRenderbufferOES(GLenum target, GLenum attachment,
-                                              GLenum renderbuffertarget,
-                                              GLuint renderbuffer);
+					      GLenum renderbuffertarget,
+					      GLuint renderbuffer);
 void GL_APIENTRY glFramebufferTexture2DOES(GLenum target, GLenum attachment,
-                                           GLenum textarget, GLuint texture,
-                                           GLint level);
+					   GLenum textarget, GLuint texture,
+					   GLint level);
 void GL_APIENTRY glGetFramebufferAttachmentParameterivOES(GLenum target,
-                                                          GLenum attachment,
-                                                          GLenum pname,
-                                                          GLint *params);
+							  GLenum attachment,
+							  GLenum pname,
+							  GLint *params);
 void GL_APIENTRY glGenerateMipmapOES(GLenum target);
 
 #ifdef __cplusplus

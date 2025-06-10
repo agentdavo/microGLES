@@ -1,131 +1,44 @@
-#OpenGL ES 1.1 Implementation Progress
+# OpenGL ES 1.1 Implementation Progress
 
-This document tracks which core OpenGL ES 1.1 entry points have been implemented
-            in the software renderer
-                .The list is derived from the official Khronos reference pages.
+This file provides a snapshot of the renderer's API coverage. The list
+below summarizes groups of entry points that are currently implemented.
 
-        ##Legend -
-        [x] Implemented -
-        [] Not yet implemented / stub
+## Core API
+- Buffer objects (`glGenBuffers`, `glBindBuffer`, `glBufferData`,
+  `glBufferSubData`, `glDeleteBuffers`)
+- Framebuffer and renderbuffer objects (OES variants)
+- Texture management (`glGenTextures`, `glBindTexture`, `glTexImage2D`,
+  `glTexSubImage2D`, `glDeleteTextures`, etc.)
+- Matrix stack operations (`glMatrixMode`, `glLoadIdentity`,
+  `glMultMatrixf`, `glPushMatrix`, `glPopMatrix`)
+- Drawing commands (`glDrawArrays`, `glDrawElements`)
+- State queries (`glGet*`, `glIsEnabled`, `glIsTexture`, etc.)
+- Viewport and scissor control (`glViewport`, `glScissor`)
+- Lighting and material routines (`glLight`, `glMaterial`)
+- Miscellaneous functions such as `glClear`, `glEnable`, `glDisable`,
+  `glBlendFunc`, etc.
 
-            ##Functions
+## Extensions
+The renderer advertises the following OpenGL ES 1.1 extensions and
+provides stub or full implementations for their entry points:
 
-        - [x] glActiveTexture - [x] glAlphaFunc
+- GL_OES_draw_texture
+- GL_OES_matrix_get
+- GL_OES_point_size_array
+- GL_OES_point_sprite
+- GL_OES_framebuffer_object
+- GL_OES_EGL_image
+- GL_OES_EGL_image_external
+- GL_OES_required_internalformat
+- GL_OES_fixed_point
+- GL_OES_texture_env_crossbar
+- GL_OES_texture_mirrored_repeat
+- GL_OES_texture_cube_map
+- GL_OES_blend_subtract
+- GL_OES_blend_func_separate
+- GL_OES_blend_equation_separate
+- GL_OES_stencil_wrap
+- GL_OES_extended_matrix_palette
 
-        - [x] glBindBuffer - [x] glBindTexture - [x] glBlendFunc -
-        [x] glBufferData - [x] glBufferSubData
-
-        - [x] glClear - [x] glClearColor - [x] glClearDepth -
-        [x] glClearStencil - [x] glClientActiveTexture -
-        [x] glClipPlane - [x] glColor - [x] glColorMask - [x] glColorPointer -
-        [x] glCompressedTexImage2D - [x] glCompressedTexSubImage2D -
-        [x] glCopyTexImage2D - [x] glCopyTexSubImage2D -
-        [x] glCullFace
-
-        ## #D -
-        [x] glDeleteBuffers - [x] glDeleteTextures - [x] glDepthFunc -
-        [x] glDepthMask - [x] glDepthRange - [x] glDisable -
-        [x] glDisableClientState - [x] glDrawArrays -
-        [x] glDrawElements
-
-        ## #E -
-        [x] glEnable -
-        [x] glEnableClientState
-
-        ## #F -
-        [x] glFinish - [x] glFlush - [x] glFog - [x] glFrontFace -
-        [x] glFrustum
-
-        ## #G -
-        [x] glGenBuffers - [x] glGenTextures - [x] glGet -
-        [x] glGetBufferParameteriv - [x] glGetClipPlane - [x] glGetError -
-        [x] glGetLight - [x] glGetMaterial - [x] glGetPointerv -
-        [x] glGetString - [x] glGetTexEnv -
-        [x] glGetTexParameter
-
-        ## #H -
-        [x] glHint
-
-        ## #I -
-        [x] glIsBuffer - [x] glIsEnabled -
-        [x] glIsTexture
-
-        ## #L -
-        [x] glLight - [x] glLightModel - [x] glLineWidth - [x] glLoadIdentity -
-        [x] glLoadMatrix -
-        [x] glLogicOp
-
-        ## #M -
-        [x] glMaterial - [x] glMatrixMode - [x] glMultMatrix -
-        [x] glMultiTexCoord
-
-        ## #N -
-        [x] glNormal -
-        [x] glNormalPointer
-
-        ## #O -
-        [x] glOrtho
-
-        ## #P -
-        [x] glPixelStorei - [x] glPointParameter - [x] glPointSize -
-        [x] glPointSizePointerOES
-
-        ##Fixed -
-        Point Variants
-
-            The renderer also provides fixed -
-        point versions of several functions.
-
-        - [x] glAlphaFuncx - [x] glClearColorx - [x] glClearDepthx -
-        [x] glClipPlanex - [x] glColor4x - [x] glDepthRangex - [x] glFogx -
-        [x] glFogxv - [x] glFrustumx - [x] glGetClipPlanex - [x] glGetFixedv -
-        [x] glLightx - [x] glMaterialx - [x] glMultMatrixx - [x] glNormal3x -
-        [x] glOrthox - [x] glPointParameterx - [x] glPointParameterxv -
-        [x] glPointSizex - [x] glPolygonOffsetx - [x] glRotatex -
-        [x] glSampleCoveragex - [x] glScalex - [x] glTexEnvx - [x] glTexEnvxv -
-        [x] glTexParameterx - [x] glTexParameterxv - [x] glTranslatex -
-        [x] glPolygonOffset - [x] glPopMatrix -
-        [x] glPushMatrix
-
-        ## #R -
-        [x] glReadPixels -
-        [x] glRotate
-
-        ## #S -
-        [x] glSampleCoverage - [x] glScale - [x] glScissor - [x] glShadeModel -
-        [x] glStencilFunc - [x] glStencilMask -
-        [x] glStencilOp
-
-        ## #T -
-        [x] glTexCoordPointer - [x] glTexEnv - [x] glTexImage2D -
-        [x] glTexParameter - [x] glTexSubImage2D -
-        [x] glTranslate
-
-        ## #V -
-        [x] glVertexPointer -
-        [x] glViewport
-
-        ##Extensions
-
-            The following extension entry points are stubbed or
-    implemented
-            .They correspond to the extension strings advertised
-                by `renderer_get_extensions`.
-
-        - [x] glIsRenderbufferOES - [x] glBindRenderbufferOES -
-        [x] glDeleteRenderbuffersOES - [x] glGenRenderbuffersOES -
-        [x] glRenderbufferStorageOES - [x] glGetRenderbufferParameterivOES -
-        [x] glIsFramebufferOES - [x] glBindFramebufferOES -
-        [x] glDeleteFramebuffersOES - [x] glGenFramebuffersOES -
-        [x] glCheckFramebufferStatusOES - [x] glFramebufferTexture2DOES -
-        [x] glFramebufferRenderbufferOES -
-        [x] glGetFramebufferAttachmentParameterivOES - [x] glGenerateMipmapOES -
-        [x] glDrawTexsOES - [x] glDrawTexiOES - [x] glDrawTexxOES -
-        [x] glDrawTexsvOES - [x] glDrawTexivOES - [x] glDrawTexxvOES -
-        [x] glDrawTexfOES - [x] glDrawTexfvOES - [x] glBlendEquationOES -
-        [x] glBlendFuncSeparateOES - [x] glBlendEquationSeparateOES -
-        [x] glTexGenfOES - [x] glTexGenfvOES - [x] glTexGeniOES -
-        [x] glTexGenivOES - [x] glGetTexGenfvOES - [x] glGetTexGenivOES -
-        [x] glCurrentPaletteMatrixOES -
-        [x] glLoadPaletteFromModelViewMatrixOES - [x] glMatrixIndexPointerOES -
-        [x] glWeightPointerOES - [x] glPointSizePointerOES
+This document is updated whenever new groups of entry points are
+implemented or existing stubs are filled in.

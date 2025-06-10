@@ -113,19 +113,37 @@ void mat4_copy(mat4 *dest, const mat4 *src) {
 void mat4_multiply(mat4 *result, const mat4 *a, const mat4 *b) {
   const GLfloat *ap = a->data;
   const GLfloat *bp = b->data;
-  for (int i = 0; i < 4; ++i) {
-    const GLfloat ai0 = ap[i];
-    const GLfloat ai1 = ap[i + 4];
-    const GLfloat ai2 = ap[i + 8];
-    const GLfloat ai3 = ap[i + 12];
 
-    result->data[i] = ai0 * bp[0] + ai1 * bp[1] + ai2 * bp[2] + ai3 * bp[3];
-    result->data[i + 4] = ai0 * bp[4] + ai1 * bp[5] + ai2 * bp[6] + ai3 * bp[7];
-    result->data[i + 8] =
-        ai0 * bp[8] + ai1 * bp[9] + ai2 * bp[10] + ai3 * bp[11];
-    result->data[i + 12] =
-        ai0 * bp[12] + ai1 * bp[13] + ai2 * bp[14] + ai3 * bp[15];
-  }
+  /* Unrolled matrix multiplication for better compiler vectorization */
+  const GLfloat a0 = ap[0], a4 = ap[4], a8 = ap[8], a12 = ap[12];
+  const GLfloat a1 = ap[1], a5 = ap[5], a9 = ap[9], a13 = ap[13];
+  const GLfloat a2 = ap[2], a6 = ap[6], a10 = ap[10], a14 = ap[14];
+  const GLfloat a3 = ap[3], a7 = ap[7], a11 = ap[11], a15 = ap[15];
+
+  const GLfloat b0 = bp[0], b4 = bp[4], b8 = bp[8], b12 = bp[12];
+  const GLfloat b1 = bp[1], b5 = bp[5], b9 = bp[9], b13 = bp[13];
+  const GLfloat b2 = bp[2], b6 = bp[6], b10 = bp[10], b14 = bp[14];
+  const GLfloat b3 = bp[3], b7 = bp[7], b11 = bp[11], b15 = bp[15];
+
+  result->data[0] = a0 * b0 + a4 * b1 + a8 * b2 + a12 * b3;
+  result->data[1] = a1 * b0 + a5 * b1 + a9 * b2 + a13 * b3;
+  result->data[2] = a2 * b0 + a6 * b1 + a10 * b2 + a14 * b3;
+  result->data[3] = a3 * b0 + a7 * b1 + a11 * b2 + a15 * b3;
+
+  result->data[4] = a0 * b4 + a4 * b5 + a8 * b6 + a12 * b7;
+  result->data[5] = a1 * b4 + a5 * b5 + a9 * b6 + a13 * b7;
+  result->data[6] = a2 * b4 + a6 * b5 + a10 * b6 + a14 * b7;
+  result->data[7] = a3 * b4 + a7 * b5 + a11 * b6 + a15 * b7;
+
+  result->data[8] = a0 * b8 + a4 * b9 + a8 * b10 + a12 * b11;
+  result->data[9] = a1 * b8 + a5 * b9 + a9 * b10 + a13 * b11;
+  result->data[10] = a2 * b8 + a6 * b9 + a10 * b10 + a14 * b11;
+  result->data[11] = a3 * b8 + a7 * b9 + a11 * b10 + a15 * b11;
+
+  result->data[12] = a0 * b12 + a4 * b13 + a8 * b14 + a12 * b15;
+  result->data[13] = a1 * b12 + a5 * b13 + a9 * b14 + a13 * b15;
+  result->data[14] = a2 * b12 + a6 * b13 + a10 * b14 + a14 * b15;
+  result->data[15] = a3 * b12 + a7 * b13 + a11 * b14 + a15 * b15;
 }
 
 /**
