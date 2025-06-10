@@ -33,6 +33,7 @@ Welcome to the microGLES OpenGL ES 1.1 Renderer project! This project provides a
 - **Memory Tracking:** Detect and report memory leaks with detailed allocation information.
 - **Logging System:** Comprehensive logging with multiple severity levels for easy debugging.
 - **Thread Safety:** Ensure safe operations in multi-threaded environments using mutexes.
+- **Software Framebuffer:** Simple RGBA framebuffer for bare-metal targets with BMP output support.
 - **Benchmark Suite:** Measure performance using tests like triangle strips,
   textured quads, framebuffer operations, a spinning gears demo,
   a fill-rate test with multiple textured cubes and fog,
@@ -157,7 +158,7 @@ OpenGLES_Renderer/
 
 ### Prerequisites
 
-- **C Compiler:** Ensure you have a C compiler that supports C99 or later standards.
+- **C Compiler:** Ensure you have a C compiler that supports the C11 standard (GNU extensions enabled).
 - **OpenGL ES 1.1 Headers and Libraries:** Required for compiling OpenGL ES functionalities.
 - **pthread Library:** For thread safety in the memory tracker.
 - **Math Library:** For mathematical operations (`-lm` flag).

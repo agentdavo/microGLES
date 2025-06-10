@@ -14,6 +14,9 @@ int test_matrix_stack(void);
 int test_clear_state(void);
 int test_buffer_objects(void);
 int test_texture_setup(void);
+int test_blend_func(void);
+int test_scissor_state(void);
+int test_framebuffer_module(void);
 
 #ifdef __cplusplus
 }

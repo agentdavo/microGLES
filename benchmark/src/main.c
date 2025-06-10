@@ -26,6 +26,7 @@ int main() {
   run_spinning_gears(&result);
   run_spinning_cubes(&result);
   run_multitexture_demo(&result);
+  run_alpha_blend_demo(&result);
 
   CleanupGLState(&gl_state);
   ShutdownMemoryTracker();
