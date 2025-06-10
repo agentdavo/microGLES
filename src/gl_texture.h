@@ -23,6 +23,10 @@ typedef struct TextureOES {
   GLsizei height;             // Texture height
   GLboolean mipmap_supported; // True if mipmaps are supported
   GLint current_level;        // Current mipmap level
+  GLint wrap_s;
+  GLint wrap_t;
+  GLint min_filter;
+  GLint mag_filter;
 } TextureOES;
 
 /* Function prototypes */

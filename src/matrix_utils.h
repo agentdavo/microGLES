@@ -21,24 +21,24 @@ extern "C" {
 #endif
 
 /* Define a 4x4 matrix structure with 16-byte alignment */
-typedef struct {
-  ALIGN16 GLfloat data[16];
+typedef struct ALIGN16 {
+  GLfloat data[16];
 } mat4;
 
 /* Define a 3D vector structure with 16-byte alignment */
-typedef struct {
-  ALIGN16 GLfloat x;
-  ALIGN16 GLfloat y;
-  ALIGN16 GLfloat z;
-  ALIGN16 GLfloat w; /* Padding for alignment if needed */
+typedef struct ALIGN16 {
+  GLfloat x;
+  GLfloat y;
+  GLfloat z;
+  GLfloat w; /* Padding for alignment if needed */
 } vec3;
 
 /* Define a quaternion structure with 16-byte alignment */
-typedef struct {
-  ALIGN16 GLfloat w;
-  ALIGN16 GLfloat x;
-  ALIGN16 GLfloat y;
-  ALIGN16 GLfloat z;
+typedef struct ALIGN16 {
+  GLfloat w;
+  GLfloat x;
+  GLfloat y;
+  GLfloat z;
 } Quaternion;
 
 /* Vector Utility Functions */
@@ -77,6 +77,7 @@ void mat4_frustum(mat4 *mat, GLfloat left, GLfloat right, GLfloat bottom,
 void mat4_orthographic(mat4 *mat, GLfloat left, GLfloat right, GLfloat bottom,
                        GLfloat top, GLfloat nearVal, GLfloat farVal);
 void mat4_perspective_divide(mat4 *mat);
+void mat4_transform_vec4(const mat4 *mat, const GLfloat in[4], GLfloat out[4]);
 
 /* Quaternion Utility Functions */
 void quat_normalize(Quaternion *q);

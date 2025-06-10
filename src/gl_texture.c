@@ -18,6 +18,10 @@ TextureOES *CreateTextureOES(GLenum target, GLenum internalformat,
   tex->height = height;
   tex->mipmap_supported = mipmap;
   tex->current_level = 0;
+  tex->wrap_s = GL_REPEAT;
+  tex->wrap_t = GL_REPEAT;
+  tex->min_filter = GL_NEAREST_MIPMAP_LINEAR;
+  tex->mag_filter = GL_LINEAR;
   return tex;
 }
 

@@ -3,25 +3,13 @@
 
 #include <GLES/gl.h>
 
-// Enum representing all the possible OpenGL ES errors
-typedef enum {
-  GL_NO_ERROR = 0,
-  GL_INVALID_ENUM,
-  GL_INVALID_VALUE,
-  GL_INVALID_OPERATION,
-  GL_STACK_OVERFLOW,
-  GL_STACK_UNDERFLOW,
-  GL_OUT_OF_MEMORY,
-  GL_INVALID_FRAMEBUFFER_OPERATION
-} GLErrorCode;
+/* Set the current OpenGL error. */
+void glSetError(GLenum error);
 
-// Sets the current OpenGL error
-void glSetError(GLErrorCode error);
+/* Retrieve and clear the current OpenGL error. */
+GLenum glGetError(void);
 
-// Retrieves the current OpenGL error and clears it after returning
-GLErrorCode glGetError(void);
-
-// Checks if any OpenGL error is present
+/* Query whether an error has been recorded. */
 GLboolean hasGLError(void);
 
 #endif // GL_ERRORS_H

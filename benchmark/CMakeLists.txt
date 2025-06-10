@@ -8,7 +8,8 @@ set(BENCH_SOURCES
     src/lit_cube.c
     src/fbo_benchmark.c
     src/spinning_gears.c
-    src/stubs.c
+    src/spinning_cubes.c
+    src/multitexture_demo.c
 )
 
 add_executable(benchmark ${BENCH_SOURCES})
