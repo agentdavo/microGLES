@@ -1,9 +1,9 @@
 #ifndef GL_INIT_H
 #define GL_INIT_H
 
-#include "gl_types.h"
-#include "gl_state.h"
 #include "gl_errors.h"
+#include "gl_state.h"
+#include <GLES/gl.h>
 
 // Initializes the OpenGL ES context and sets up the rendering environment
 void GL_init(void);

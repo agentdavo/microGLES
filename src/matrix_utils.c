@@ -3,8 +3,6 @@
 #include "matrix_utils.h"
 #include "logger.h" // Ensure logger is initialized before using
 #include <math.h>
-#include <pthread.h>
-#include <string.h>
 
 /* Define Pi for angle conversions */
 #ifndef M_PI
@@ -113,42 +111,21 @@ void mat4_copy(mat4 *dest, const mat4 *src) {
  * @brief Multiplies two matrices: result = a * b.
  */
 void mat4_multiply(mat4 *result, const mat4 *a, const mat4 *b) {
-  /* Unrolled matrix multiplication for performance */
-  result->data[0] = a->data[0] * b->data[0] + a->data[4] * b->data[1] +
-                    a->data[8] * b->data[2] + a->data[12] * b->data[3];
-  result->data[1] = a->data[1] * b->data[0] + a->data[5] * b->data[1] +
-                    a->data[9] * b->data[2] + a->data[13] * b->data[3];
-  result->data[2] = a->data[2] * b->data[0] + a->data[6] * b->data[1] +
-                    a->data[10] * b->data[2] + a->data[14] * b->data[3];
-  result->data[3] = a->data[3] * b->data[0] + a->data[7] * b->data[1] +
-                    a->data[11] * b->data[2] + a->data[15] * b->data[3];
+  const GLfloat *ap = a->data;
+  const GLfloat *bp = b->data;
+  for (int i = 0; i < 4; ++i) {
+    const GLfloat ai0 = ap[i];
+    const GLfloat ai1 = ap[i + 4];
+    const GLfloat ai2 = ap[i + 8];
+    const GLfloat ai3 = ap[i + 12];
 
-  result->data[4] = a->data[0] * b->data[4] + a->data[4] * b->data[5] +
-                    a->data[8] * b->data[6] + a->data[12] * b->data[7];
-  result->data[5] = a->data[1] * b->data[4] + a->data[5] * b->data[5] +
-                    a->data[9] * b->data[6] + a->data[13] * b->data[7];
-  result->data[6] = a->data[2] * b->data[4] + a->data[6] * b->data[5] +
-                    a->data[10] * b->data[6] + a->data[14] * b->data[7];
-  result->data[7] = a->data[3] * b->data[4] + a->data[7] * b->data[5] +
-                    a->data[11] * b->data[6] + a->data[15] * b->data[7];
-
-  result->data[8] = a->data[0] * b->data[8] + a->data[4] * b->data[9] +
-                    a->data[8] * b->data[10] + a->data[12] * b->data[11];
-  result->data[9] = a->data[1] * b->data[8] + a->data[5] * b->data[9] +
-                    a->data[9] * b->data[10] + a->data[13] * b->data[11];
-  result->data[10] = a->data[2] * b->data[8] + a->data[6] * b->data[9] +
-                     a->data[10] * b->data[10] + a->data[14] * b->data[11];
-  result->data[11] = a->data[3] * b->data[8] + a->data[7] * b->data[9] +
-                     a->data[11] * b->data[10] + a->data[15] * b->data[11];
-
-  result->data[12] = a->data[0] * b->data[12] + a->data[4] * b->data[13] +
-                     a->data[8] * b->data[14] + a->data[12] * b->data[15];
-  result->data[13] = a->data[1] * b->data[12] + a->data[5] * b->data[13] +
-                     a->data[9] * b->data[14] + a->data[13] * b->data[15];
-  result->data[14] = a->data[2] * b->data[12] + a->data[6] * b->data[13] +
-                     a->data[10] * b->data[14] + a->data[14] * b->data[15];
-  result->data[15] = a->data[3] * b->data[12] + a->data[7] * b->data[13] +
-                     a->data[11] * b->data[14] + a->data[15] * b->data[15];
+    result->data[i] = ai0 * bp[0] + ai1 * bp[1] + ai2 * bp[2] + ai3 * bp[3];
+    result->data[i + 4] = ai0 * bp[4] + ai1 * bp[5] + ai2 * bp[6] + ai3 * bp[7];
+    result->data[i + 8] =
+        ai0 * bp[8] + ai1 * bp[9] + ai2 * bp[10] + ai3 * bp[11];
+    result->data[i + 12] =
+        ai0 * bp[12] + ai1 * bp[13] + ai2 * bp[14] + ai3 * bp[15];
+  }
 }
 
 /**
@@ -642,6 +619,17 @@ void quat_to_mat4(const Quaternion *q, mat4 *mat) {
   mat->data[8] = 2.0f * (q->x * q->z + q->y * q->w);
   mat->data[9] = 2.0f * (q->y * q->z - q->x * q->w);
   mat->data[10] = 1.0f - 2.0f * (q->x * q->x + q->y * q->y);
+}
+
+void mat4_transform_vec4(const mat4 *mat, const GLfloat in[4], GLfloat out[4]) {
+  out[0] = mat->data[0] * in[0] + mat->data[4] * in[1] + mat->data[8] * in[2] +
+           mat->data[12] * in[3];
+  out[1] = mat->data[1] * in[0] + mat->data[5] * in[1] + mat->data[9] * in[2] +
+           mat->data[13] * in[3];
+  out[2] = mat->data[2] * in[0] + mat->data[6] * in[1] + mat->data[10] * in[2] +
+           mat->data[14] * in[3];
+  out[3] = mat->data[3] * in[0] + mat->data[7] * in[1] + mat->data[11] * in[2] +
+           mat->data[15] * in[3];
 }
 
 /* ---------------------- */

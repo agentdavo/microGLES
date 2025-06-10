@@ -34,11 +34,14 @@ Welcome to the microGLES OpenGL ES 1.1 Renderer project! This project provides a
 - **Logging System:** Comprehensive logging with multiple severity levels for easy debugging.
 - **Thread Safety:** Ensure safe operations in multi-threaded environments using mutexes.
 - **Benchmark Suite:** Measure performance using tests like triangle strips,
-  textured quads, framebuffer operations, and a spinning gears demo.
+  textured quads, framebuffer operations, a spinning gears demo,
+  a fill-rate test with multiple textured cubes and fog,
+  and a multitexture combiner demo.
 - **Extension Querying:** Use `renderer_get_extensions()` to obtain the list of supported OpenGL ES extensions.
 - **Extension Pack Stubs:** Basic implementations of the OpenGL ES 1.1 Extension Pack functions log a "not yet supported" message.
-- **Fixed-Point API:** The header `gl_fixed_point.h` declares `GL_OES_fixed_point`
-  entry points for devices that rely on fixed-point math.
+- **Fixed-Point API:** Extension entry points for the `GL_OES_fixed_point`
+  functionality are declared in `gl_extensions.h` for devices that rely on
+  fixed-point math.
 
 ## Directory Structure
 
@@ -305,6 +308,34 @@ Matrix4_Multiply(&mvp, &view, &model);
 Matrix4_Multiply(&mvp, &projection, &mvp);
 
 Matrix4_Print(&mvp);
+```
+
+### Basic Rendering Example
+
+The snippet below demonstrates a minimal render loop using the most common
+OpenGL ES 1.1 commands:
+
+```c
+void render_frame(void) {
+    glViewport(0, 0, 240, 160);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glEnableClientState(GL_VERTEX_ARRAY);
+    static const GLfloat verts[6] = {
+        -0.5f, -0.5f,
+         0.5f, -0.5f,
+         0.0f,  0.5f
+    };
+    glVertexPointer(2, GL_FLOAT, 0, verts);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glFlush();
+}
 ```
 
     6. *

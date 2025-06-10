@@ -24,6 +24,8 @@ int main() {
   run_lit_cube(0, &result);
   run_fbo_benchmark(&result);
   run_spinning_gears(&result);
+  run_spinning_cubes(&result);
+  run_multitexture_demo(&result);
 
   CleanupGLState(&gl_state);
   ShutdownMemoryTracker();

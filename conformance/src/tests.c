@@ -1,8 +1,11 @@
 #include "tests.h"
 #include "gl_framebuffer_object.h"
+#include "gl_state.h"
 #include "gl_texture.h"
 #include "gl_utils.h"
 #include "logger.h"
+#include "matrix_utils.h"
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -109,4 +112,109 @@ int test_framebuffer_colors(void) {
   }
   tracked_free(buf, w * h * 3);
   return pass;
+}
+
+int test_enable_disable(void) {
+  glEnable(GL_CULL_FACE);
+  if (!glIsEnabled(GL_CULL_FACE)) {
+    LOG_ERROR("glEnable failed");
+    return 0;
+  }
+  glDisable(GL_CULL_FACE);
+  if (glIsEnabled(GL_CULL_FACE)) {
+    LOG_ERROR("glDisable failed");
+    return 0;
+  }
+  return 1;
+}
+
+int test_viewport(void) {
+  glViewport(2, 3, 100, 200);
+  GLint vp[4];
+  glGetIntegerv(GL_VIEWPORT, vp);
+  if (vp[0] != 2 || vp[1] != 3 || vp[2] != 100 || vp[3] != 200) {
+    LOG_ERROR("glViewport mismatch: %d %d %d %d", vp[0], vp[1], vp[2], vp[3]);
+    return 0;
+  }
+  return 1;
+}
+
+int test_matrix_stack(void) {
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
+  glTranslatef(1.0f, 2.0f, 3.0f);
+  glPushMatrix();
+  glRotatef(45.0f, 0.0f, 1.0f, 0.0f);
+  glPopMatrix();
+  GLfloat mat[16];
+  glGetFloatv(GL_MODELVIEW_MATRIX, mat);
+  if (glGetError() != GL_NO_ERROR) {
+    LOG_ERROR("Matrix stack operations generated error");
+    return 0;
+  }
+  return 1;
+}
+
+int test_clear_state(void) {
+  glClearColor(0.1f, 0.2f, 0.3f, 0.4f);
+  glClearDepthf(0.5f);
+  glClearStencil(2);
+  if (fabsf(gl_state.clear_color[0] - 0.1f) > 0.001f ||
+      fabsf(gl_state.clear_color[1] - 0.2f) > 0.001f ||
+      fabsf(gl_state.clear_color[2] - 0.3f) > 0.001f ||
+      fabsf(gl_state.clear_color[3] - 0.4f) > 0.001f) {
+    LOG_ERROR("ClearColor state mismatch");
+    return 0;
+  }
+  if (fabsf(gl_state.clear_depth - 0.5f) > 0.001f ||
+      gl_state.clear_stencil != 2) {
+    LOG_ERROR("ClearDepth or ClearStencil mismatch");
+    return 0;
+  }
+  return 1;
+}
+
+int test_buffer_objects(void) {
+  GLuint buf;
+  glGenBuffers(1, &buf);
+  glBindBuffer(GL_ARRAY_BUFFER, buf);
+  int data = 1234;
+  glBufferData(GL_ARRAY_BUFFER, sizeof(int), &data, GL_STATIC_DRAW);
+  if (!glIsBuffer(buf)) {
+    LOG_ERROR("Generated buffer is not recognized");
+    return 0;
+  }
+  GLint size = 0;
+  glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+  if (size != (GLint)sizeof(int)) {
+    LOG_ERROR("Buffer size mismatch: %d", size);
+    return 0;
+  }
+  glDeleteBuffers(1, &buf);
+  return 1;
+}
+
+int test_texture_setup(void) {
+  GLuint tex;
+  glGenTextures(1, &tex);
+  glBindTexture(GL_TEXTURE_2D, tex);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 8, 8, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+               NULL);
+  if (!glIsTexture(tex) || gl_state.bound_texture != tex) {
+    LOG_ERROR("Texture creation or binding failed");
+    return 0;
+  }
+  TextureOES *obj = NULL;
+  for (GLuint i = 0; i < gl_state.texture_count; ++i) {
+    if (gl_state.textures[i]->id == tex) {
+      obj = gl_state.textures[i];
+      break;
+    }
+  }
+  if (!obj || obj->width != 8 || obj->height != 8) {
+    LOG_ERROR("TexImage2D did not set dimensions");
+    return 0;
+  }
+  glDeleteTextures(1, &tex);
+  return 1;
 }

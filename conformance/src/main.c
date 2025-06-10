@@ -28,6 +28,30 @@ int main() {
     LOG_ERROR("Framebuffer color write test failed");
     pass = 0;
   }
+  if (!test_enable_disable()) {
+    LOG_ERROR("Enable/Disable test failed");
+    pass = 0;
+  }
+  if (!test_viewport()) {
+    LOG_ERROR("Viewport test failed");
+    pass = 0;
+  }
+  if (!test_matrix_stack()) {
+    LOG_ERROR("Matrix stack test failed");
+    pass = 0;
+  }
+  if (!test_clear_state()) {
+    LOG_ERROR("Clear state test failed");
+    pass = 0;
+  }
+  if (!test_buffer_objects()) {
+    LOG_ERROR("Buffer object test failed");
+    pass = 0;
+  }
+  if (!test_texture_setup()) {
+    LOG_ERROR("Texture setup test failed");
+    pass = 0;
+  }
 
   CleanupGLState(&gl_state);
   ShutdownMemoryTracker();

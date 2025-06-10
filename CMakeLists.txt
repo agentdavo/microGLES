@@ -14,7 +14,9 @@ set(SOURCE_FILES
     src/gl_state.c
     src/gl_texture.c
     src/gl_utils.c
+    src/gl_functions.c
     src/gl_extensions.c
+    src/gl_init.c
     src/matrix_utils.c
     src/memory_tracker.c
     src/logger.c
@@ -31,6 +33,7 @@ set(HEADER_FILES
     src/memory_tracker.h
     src/logger.h
     src/gl_extensions.h
+    src/gl_init.h
 )
 
 # Create executable
