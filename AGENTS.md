@@ -1,23 +1,23 @@
 When modifying code in this folder:
 
-1. Format all `.c` and `.h` files using `clang-format -i` before committing.
-2. Ensure the project still builds using CMake:
-   ```bash
-   cmake -S . -B build
-   cmake --build build
-   ```
-3. Update README.md in this folder if the public API or build steps change
-4. Benchmark sources under `benchmark/` follow the same rules.
-5. The `benchmark/` directory contains performance demos exercising common
-   OpenGL ES 1.1 rendering paths. When adding new benchmarks, update
-   `BENCHMARK.md` with the measured results.
-6. The `conformance/` directory provides functional tests that validate the
-   renderer against the OpenGL ES 1.1 specification. Any new feature should be
-   accompanied by a conformance test and the results recorded in
-   `CONFORMANCE.md`.
-7. Follow an iterative, block-by-block implementation process. After each
-   block of functionality is added, immediately run the conformance suite to
-   verify correct behaviour. This keeps the system reliable and adaptable to
-   different hardware.
-8. Source files must be formatted with `clang-format -i` using the
-   configuration at the repository root (`.clang-format`).
+- **SHOULD** test C11 features with the toolchain to ensure compatibility and verify support for `alignas`, `_Generic`, `_Atomic`, and `__builtin_expect`.
+- **MUST** prioritise OpenGL ES 1.1 compliance.
+- **SHOULD** rely on the existing `gl_memory_tracker` and `gl_thread` modules instead of direct standard library allocation or threading calls.
+- **MUST** verify builds with CMake:
+  ```bash
+  cmake -S . -B build -DCMAKE_C_FLAGS="-std=gnu11 -O3 -ftree-vectorize"
+  cmake --build build
+  ```
+- **SHOULD** test debug and sanitizer builds:
+  ```bash
+  cmake -S . -B build_debug -DCMAKE_C_FLAGS="-std=gnu11 -Og -g -fsanitize=undefined,address"
+  cmake --build build_debug
+  ```
+- Run the benchmark and conformance tests to verify runtime behaviour:
+  `./build/bin/benchmark` and `./build/bin/conformance`.
+- Use tools like `valgrind` or `gdb` to diagnose crashes or memory errors
+  when tests fail.
+- Update README.md if the public API or build steps change.
+- Source files must be formatted via the `format` target before committing:
+  `cmake --build build --target format`.
+- Benchmarks and conformance tests follow the same rules.
