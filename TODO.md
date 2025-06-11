@@ -34,3 +34,11 @@
 - Moved polygon offset to depth/stencil module
 - Relocated fixed-point wrappers next to their float variants
 - Pruned public headers for gl_api_* files and cleaned CMake lists
+\n## 2025-06-16 - Extension modularisation
+- Split gl_extensions.c into dedicated files under src/extensions.
+- Added extension registry utility and updated CMake.
+
+## 2025-06-17 - Complete extension split
+- Added OES_EGL_image, OES_EGL_image_external, OES_required_internalformat and
+  OES_blend_equation_separate modules.
+- Updated build files accordingly.
