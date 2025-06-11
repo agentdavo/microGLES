@@ -1,0 +1,173 @@
+#include "gl_state.h"
+#include "gl_errors.h"
+#include <GLES/gl.h>
+#include <string.h>
+#include "matrix_utils.h"
+
+static mat4 *current_matrix_ptr(void)
+{
+	switch (gl_state.matrix_mode) {
+	case GL_MODELVIEW:
+		return &gl_state.modelview_matrix;
+	case GL_PROJECTION:
+		return &gl_state.projection_matrix;
+	case GL_TEXTURE:
+		return &gl_state.texture_matrix;
+	default:
+		return NULL;
+	}
+}
+
+static mat4 *stack_for_mode(GLenum mode, GLint **depth_out, GLint *max_depth)
+{
+	switch (mode) {
+	case GL_MODELVIEW:
+		*depth_out = &gl_state.modelview_depth;
+		*max_depth = MODELVIEW_STACK_MAX;
+		return gl_state.modelview_stack;
+	case GL_PROJECTION:
+		*depth_out = &gl_state.projection_depth;
+		*max_depth = PROJECTION_STACK_MAX;
+		return gl_state.projection_stack;
+	case GL_TEXTURE:
+		*depth_out = &gl_state.texture_depth;
+		*max_depth = TEXTURE_STACK_MAX;
+		return gl_state.texture_stack;
+	default:
+		return NULL;
+	}
+}
+
+GL_API void GL_APIENTRY glMatrixMode(GLenum mode)
+{
+	switch (mode) {
+	case GL_MODELVIEW:
+	case GL_PROJECTION:
+	case GL_TEXTURE:
+		gl_state.matrix_mode = mode;
+		break;
+	default:
+		glSetError(GL_INVALID_ENUM);
+		break;
+	}
+}
+
+GL_API void GL_APIENTRY glPushMatrix(void)
+{
+	GLint *depth;
+	GLint max_depth;
+	mat4 *stack = stack_for_mode(gl_state.matrix_mode, &depth, &max_depth);
+	if (!stack)
+		return;
+	if (*depth >= max_depth) {
+		glSetError(GL_STACK_OVERFLOW);
+		return;
+	}
+	mat4_copy(&stack[*depth], current_matrix_ptr());
+	(*depth)++;
+}
+
+GL_API void GL_APIENTRY glPopMatrix(void)
+{
+	GLint *depth;
+	GLint max_depth;
+	mat4 *stack = stack_for_mode(gl_state.matrix_mode, &depth, &max_depth);
+	if (!stack)
+		return;
+	if (*depth <= 1) {
+		glSetError(GL_STACK_UNDERFLOW);
+		return;
+	}
+	(*depth)--;
+	mat4_copy(current_matrix_ptr(), &stack[*depth - 1]);
+}
+
+GL_API void GL_APIENTRY glLoadIdentity(void)
+{
+	switch (gl_state.matrix_mode) {
+	case GL_MODELVIEW:
+		mat4_identity(&gl_state.modelview_matrix);
+		break;
+	case GL_PROJECTION:
+		mat4_identity(&gl_state.projection_matrix);
+		break;
+	case GL_TEXTURE:
+		mat4_identity(&gl_state.texture_matrix);
+		break;
+	default:
+		break;
+	}
+}
+
+GL_API void GL_APIENTRY glLoadMatrixf(const GLfloat *m)
+{
+	if (!m)
+		return;
+	mat4 mat;
+	memcpy(mat.data, m, sizeof(GLfloat) * 16);
+	mat4_copy(current_matrix_ptr(), &mat);
+}
+
+GL_API void GL_APIENTRY glMultMatrixf(const GLfloat *m)
+{
+	if (!m)
+		return;
+	mat4 mat, result;
+	memcpy(mat.data, m, sizeof(GLfloat) * 16);
+	mat4_multiply(&result, current_matrix_ptr(), &mat);
+	mat4_copy(current_matrix_ptr(), &result);
+}
+
+GL_API void GL_APIENTRY glTranslatef(GLfloat x, GLfloat y, GLfloat z)
+{
+	mat4 trans, result;
+	mat4_identity(&trans);
+	mat4_translate(&trans, x, y, z);
+	mat4_multiply(&result, current_matrix_ptr(), &trans);
+	mat4_copy(current_matrix_ptr(), &result);
+}
+
+GL_API void GL_APIENTRY glRotatef(GLfloat angle, GLfloat x, GLfloat y,
+				  GLfloat z)
+{
+	mat4 rot, result;
+	mat4_identity(&rot);
+	mat4_rotate_axis(&rot, angle, x, y, z);
+	mat4_multiply(&result, current_matrix_ptr(), &rot);
+	mat4_copy(current_matrix_ptr(), &result);
+}
+
+GL_API void GL_APIENTRY glScalef(GLfloat x, GLfloat y, GLfloat z)
+{
+	mat4 scale, result;
+	mat4_identity(&scale);
+	mat4_scale(&scale, x, y, z);
+	mat4_multiply(&result, current_matrix_ptr(), &scale);
+	mat4_copy(current_matrix_ptr(), &result);
+}
+
+GL_API void GL_APIENTRY glFrustumf(GLfloat l, GLfloat r, GLfloat b, GLfloat t,
+				   GLfloat n, GLfloat f)
+{
+	if (n <= 0.0f || f <= 0.0f || l == r || b == t || n == f) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	mat4 frust, result;
+	mat4_frustum(&frust, l, r, b, t, n, f);
+	mat4_multiply(&result, current_matrix_ptr(), &frust);
+	mat4_copy(current_matrix_ptr(), &result);
+}
+
+GL_API void GL_APIENTRY glOrthof(GLfloat l, GLfloat r, GLfloat b, GLfloat t,
+				 GLfloat n, GLfloat f)
+{
+	if (n == f || l == r || b == t) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	mat4 ortho, result;
+	mat4_orthographic(&ortho, l, r, b, t, n, f);
+	mat4_multiply(&result, current_matrix_ptr(), &ortho);
+	mat4_copy(current_matrix_ptr(), &result);
+}
