@@ -5,8 +5,19 @@
 #include "../gl_thread.h"
 #include <string.h>
 #include <math.h>
+#include "../matrix_utils.h"
 
-void pipeline_transform_vertex(Vertex *dst, const Vertex *src, const mat4 *mvp)
+/*
+ * Vertices flow through the pipeline in several coordinate spaces:
+ * - object space: incoming attribute values
+ * - eye space:   after modelview transform
+ * - clip space:  after projection
+ * - window space: after viewport scaling in the raster stage
+ * This file performs object->clip transformations and lighting.
+ */
+
+void pipeline_transform_vertex(Vertex *dst, const Vertex *src, const mat4 *mvp,
+			       const mat4 *normal_mat)
 {
 	GLfloat in[4] = { src->x, src->y, src->z, src->w };
 	GLfloat out[4];
@@ -15,6 +26,17 @@ void pipeline_transform_vertex(Vertex *dst, const Vertex *src, const mat4 *mvp)
 	dst->y = out[1];
 	dst->z = out[2];
 	dst->w = out[3];
+	for (int i = 0; i < 3; ++i)
+		dst->normal[i] = src->normal[i];
+	if (normal_mat) {
+		GLfloat nin[4] = { src->normal[0], src->normal[1],
+				   src->normal[2], 0.0f };
+		GLfloat nout[4];
+		mat4_transform_vec4(normal_mat, nin, nout);
+		dst->normal[0] = nout[0];
+		dst->normal[1] = nout[1];
+		dst->normal[2] = nout[2];
+	}
 	for (int i = 0; i < 4; ++i)
 		dst->color[i] = src->color[i];
 	for (int i = 0; i < 4; ++i)
@@ -22,54 +44,84 @@ void pipeline_transform_vertex(Vertex *dst, const Vertex *src, const mat4 *mvp)
 }
 
 static _Thread_local mat4 tl_mvp;
+static _Thread_local mat4 tl_normal;
 static _Thread_local unsigned seen_mv, seen_proj;
-static _Thread_local LightState tl_light;
-static _Thread_local unsigned seen_light;
+static _Thread_local unsigned seen_normal;
+static _Thread_local LightState tl_lights[8];
+static _Thread_local unsigned seen_light[8];
 static _Thread_local MaterialState tl_mat;
 static _Thread_local unsigned seen_mat;
 
 static void apply_lighting(Vertex *v)
 {
-	RenderContext *ctx = context_get();
-	unsigned lv = atomic_load(&ctx->lights[0].version);
-	if (lv != seen_light) {
-		memcpy(&tl_light, &ctx->lights[0], sizeof(LightState));
-		seen_light = lv;
+	RenderContext *ctx = GetCurrentContext();
+	for (int i = 0; i < 8; ++i) {
+		unsigned lv = atomic_load(&ctx->lights[i].version);
+		if (lv != seen_light[i]) {
+			memcpy(&tl_lights[i], &ctx->lights[i],
+			       sizeof(LightState));
+			seen_light[i] = lv;
+		}
 	}
 	unsigned mv = atomic_load(&ctx->material.version);
 	if (mv != seen_mat) {
 		memcpy(&tl_mat, &ctx->material, sizeof(MaterialState));
 		seen_mat = mv;
 	}
-	if (!tl_light.enabled)
-		return;
-	float nx = ctx->current_normal[0];
-	float ny = ctx->current_normal[1];
-	float nz = ctx->current_normal[2];
-	float lx = -tl_light.position[0];
-	float ly = -tl_light.position[1];
-	float lz = -tl_light.position[2];
-	float len = sqrtf(lx * lx + ly * ly + lz * lz);
-	if (len > 0.0f) {
-		lx /= len;
-		ly /= len;
-		lz /= len;
+	float r = tl_mat.emission[0];
+	float g = tl_mat.emission[1];
+	float b = tl_mat.emission[2];
+	float nx = v->normal[0];
+	float ny = v->normal[1];
+	float nz = v->normal[2];
+	vec3_normalize(&nx, &ny, &nz);
+	for (int li = 0; li < 8; ++li) {
+		LightState *lt = &tl_lights[li];
+		if (!lt->enabled)
+			continue;
+		float lx = -lt->position[0];
+		float ly = -lt->position[1];
+		float lz = -lt->position[2];
+		float dist = sqrtf(lx * lx + ly * ly + lz * lz);
+		if (dist > 0.0f) {
+			lx /= dist;
+			ly /= dist;
+			lz /= dist;
+		}
+		float att = 1.0f / (lt->constant_attenuation +
+				    lt->linear_attenuation * dist +
+				    lt->quadratic_attenuation * dist * dist);
+		float dot = nx * lx + ny * ly + nz * lz;
+		if (dot < 0.0f)
+			dot = 0.0f;
+		float hx = lx;
+		float hy = ly;
+		float hz = lz + 1.0f;
+		vec3_normalize(&hx, &hy, &hz);
+		float spec_dot = nx * hx + ny * hy + nz * hz;
+		if (spec_dot < 0.0f)
+			spec_dot = 0.0f;
+		float spec = powf(spec_dot, tl_mat.shininess);
+		r += tl_mat.ambient[0] * lt->ambient[0] * att +
+		     tl_mat.diffuse[0] * lt->diffuse[0] * dot * att +
+		     tl_mat.specular[0] * lt->specular[0] * spec * att;
+		g += tl_mat.ambient[1] * lt->ambient[1] * att +
+		     tl_mat.diffuse[1] * lt->diffuse[1] * dot * att +
+		     tl_mat.specular[1] * lt->specular[1] * spec * att;
+		b += tl_mat.ambient[2] * lt->ambient[2] * att +
+		     tl_mat.diffuse[2] * lt->diffuse[2] * dot * att +
+		     tl_mat.specular[2] * lt->specular[2] * spec * att;
 	}
-	float dot = nx * lx + ny * ly + nz * lz;
-	if (dot < 0.0f)
-		dot = 0.0f;
-	for (int i = 0; i < 3; ++i) {
-		float ambient = tl_mat.ambient[i] * tl_light.ambient[i];
-		float diffuse = tl_mat.diffuse[i] * tl_light.diffuse[i] * dot;
-		v->color[i] = ambient + diffuse;
-	}
+	v->color[0] = r;
+	v->color[1] = g;
+	v->color[2] = b;
 	v->color[3] = tl_mat.diffuse[3];
 }
 
 void process_vertex_job(void *task_data)
 {
 	VertexJob *job = (VertexJob *)task_data;
-	RenderContext *ctx = context_get();
+	RenderContext *ctx = GetCurrentContext();
 	unsigned mv = atomic_load(&ctx->version_modelview);
 	unsigned pr = atomic_load(&ctx->version_projection);
 	if (mv != seen_mv || pr != seen_proj) {
@@ -80,10 +132,17 @@ void process_vertex_job(void *task_data)
 		seen_mv = mv;
 		seen_proj = pr;
 	}
+	if (mv != seen_normal) {
+		tl_normal = ctx->modelview_matrix;
+		if (!mat4_inverse(&tl_normal))
+			mat4_identity(&tl_normal);
+		mat4_transpose(&tl_normal);
+		seen_normal = mv;
+	}
 	Vertex v0, v1, v2;
-	pipeline_transform_vertex(&v0, &job->in[0], &tl_mvp);
-	pipeline_transform_vertex(&v1, &job->in[1], &tl_mvp);
-	pipeline_transform_vertex(&v2, &job->in[2], &tl_mvp);
+	pipeline_transform_vertex(&v0, &job->in[0], &tl_mvp, &tl_normal);
+	pipeline_transform_vertex(&v1, &job->in[1], &tl_mvp, &tl_normal);
+	pipeline_transform_vertex(&v2, &job->in[2], &tl_mvp, &tl_normal);
 	apply_lighting(&v0);
 	apply_lighting(&v1);
 	apply_lighting(&v2);

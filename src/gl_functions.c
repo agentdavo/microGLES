@@ -59,11 +59,6 @@ GL_API void GL_APIENTRY glActiveTexture(GLenum texture)
 	gl_state.active_texture = texture;
 	context_active_texture(texture);
 }
-GL_API void GL_APIENTRY glAlphaFunc(GLenum func, GLfloat ref)
-{
-	gl_state.alpha_func = func;
-	gl_state.alpha_ref = ref;
-}
 GL_API void GL_APIENTRY glBindBuffer(GLenum target, GLuint buffer)
 {
 	switch (target) {
@@ -107,13 +102,6 @@ GL_API void GL_APIENTRY glBindTexture(GLenum target, GLuint texture)
 	else
 		gl_state.bound_texture = texture;
 	context_bind_texture(gl_state.active_texture - GL_TEXTURE0, texture);
-}
-GL_API void GL_APIENTRY glBlendFunc(GLenum sfactor, GLenum dfactor)
-{
-	gl_state.blend_sfactor = sfactor;
-	gl_state.blend_dfactor = dfactor;
-	gl_state.blend_sfactor_alpha = sfactor;
-	gl_state.blend_dfactor_alpha = dfactor;
 }
 GL_API void GL_APIENTRY glBufferData(GLenum target, GLsizeiptr size,
 				     const void *data, GLenum usage)
@@ -181,7 +169,9 @@ GL_API void GL_APIENTRY glClear(GLbitfield mask)
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	Framebuffer *fb = GL_get_default_framebuffer();
+	Framebuffer *fb = NULL;
+	if (gl_state.bound_framebuffer)
+		fb = gl_state.bound_framebuffer->fb;
 	if (fb) {
 		uint32_t color =
 			((uint32_t)(gl_state.clear_color[3] * 255.0f) << 24) |
@@ -369,9 +359,11 @@ GL_API void GL_APIENTRY glDisable(GLenum cap)
 	switch (cap) {
 	case GL_ALPHA_TEST:
 		gl_state.alpha_test_enabled = GL_FALSE;
+		GetCurrentContext()->alpha_test.enabled = GL_FALSE;
 		break;
 	case GL_BLEND:
 		gl_state.blend_enabled = GL_FALSE;
+		GetCurrentContext()->blend_enabled = GL_FALSE;
 		break;
 	case GL_COLOR_LOGIC_OP:
 		gl_state.color_logic_op_enabled = GL_FALSE;
@@ -390,7 +382,7 @@ GL_API void GL_APIENTRY glDisable(GLenum cap)
 		break;
 	case GL_FOG:
 		gl_state.fog_enabled = GL_FALSE;
-		context_get()->fog.enabled = GL_FALSE;
+		GetCurrentContext()->fog.enabled = GL_FALSE;
 		break;
 	case GL_LIGHTING:
 		gl_state.lighting_enabled = GL_FALSE;
@@ -430,7 +422,7 @@ GL_API void GL_APIENTRY glDisable(GLenum cap)
 		break;
 	case GL_STENCIL_TEST:
 		gl_state.stencil_test_enabled = GL_FALSE;
-		context_get()->stencil_test_enabled = GL_FALSE;
+		GetCurrentContext()->stencil_test_enabled = GL_FALSE;
 		break;
 	case GL_TEXTURE_2D:
 		gl_state.texture_2d_enabled = GL_FALSE;
@@ -486,104 +478,16 @@ GL_API void GL_APIENTRY glDisableClientState(GLenum array)
 		break;
 	}
 }
-GL_API void GL_APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count)
-{
-	switch (mode) {
-	case GL_POINTS:
-	case GL_LINE_STRIP:
-	case GL_LINE_LOOP:
-	case GL_LINES:
-	case GL_TRIANGLE_STRIP:
-	case GL_TRIANGLE_FAN:
-	case GL_TRIANGLES:
-		break;
-	default:
-		glSetError(GL_INVALID_ENUM);
-		return;
-	}
-
-	if (first < 0 || count < 0) {
-		glSetError(GL_INVALID_VALUE);
-		return;
-	}
-	/* Software rasterizer not implemented */
-}
-GL_API void GL_APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type,
-				       const void *indices)
-{
-	switch (mode) {
-	case GL_POINTS:
-	case GL_LINE_STRIP:
-	case GL_LINE_LOOP:
-	case GL_LINES:
-	case GL_TRIANGLE_STRIP:
-	case GL_TRIANGLE_FAN:
-	case GL_TRIANGLES:
-		break;
-	default:
-		glSetError(GL_INVALID_ENUM);
-		return;
-	}
-
-	if (count < 0) {
-		glSetError(GL_INVALID_VALUE);
-		return;
-	}
-
-	if (type != GL_UNSIGNED_BYTE && type != GL_UNSIGNED_SHORT) {
-		glSetError(GL_INVALID_ENUM);
-		return;
-	}
-
-	if (!indices && gl_state.element_array_buffer_binding == 0) {
-		glSetError(GL_INVALID_VALUE);
-		return;
-	}
-
-	const GLubyte *u8_indices = NULL;
-	const GLushort *u16_indices = NULL;
-	if (gl_state.element_array_buffer_binding != 0) {
-		BufferObject *obj =
-			find_buffer(gl_state.element_array_buffer_binding);
-		if (!obj || !obj->data) {
-			glSetError(GL_INVALID_OPERATION);
-			return;
-		}
-		size_t offset = (size_t)indices;
-		size_t elem_size = type == GL_UNSIGNED_BYTE ? sizeof(GLubyte) :
-							      sizeof(GLushort);
-		if (offset + elem_size * (size_t)count > (size_t)obj->size) {
-			glSetError(GL_INVALID_OPERATION);
-			return;
-		}
-		if (type == GL_UNSIGNED_BYTE)
-			u8_indices = (const GLubyte *)obj->data + offset;
-		else
-			u16_indices =
-				(const GLushort *)((const GLubyte *)obj->data +
-						   offset);
-	} else {
-		if (type == GL_UNSIGNED_BYTE)
-			u8_indices = (const GLubyte *)indices;
-		else
-			u16_indices = (const GLushort *)indices;
-	}
-
-	for (GLsizei i = 0; i < count; ++i) {
-		GLuint idx = (type == GL_UNSIGNED_BYTE) ?
-				     (GLuint)u8_indices[i] :
-				     (GLuint)u16_indices[i];
-		glDrawArrays(mode, (GLint)idx, 1);
-	}
-}
 GL_API void GL_APIENTRY glEnable(GLenum cap)
 {
 	switch (cap) {
 	case GL_ALPHA_TEST:
 		gl_state.alpha_test_enabled = GL_TRUE;
+		GetCurrentContext()->alpha_test.enabled = GL_TRUE;
 		break;
 	case GL_BLEND:
 		gl_state.blend_enabled = GL_TRUE;
+		GetCurrentContext()->blend_enabled = GL_TRUE;
 		break;
 	case GL_COLOR_LOGIC_OP:
 		gl_state.color_logic_op_enabled = GL_TRUE;
@@ -602,7 +506,7 @@ GL_API void GL_APIENTRY glEnable(GLenum cap)
 		break;
 	case GL_FOG:
 		gl_state.fog_enabled = GL_TRUE;
-		context_get()->fog.enabled = GL_TRUE;
+		GetCurrentContext()->fog.enabled = GL_TRUE;
 		break;
 	case GL_LIGHTING:
 		gl_state.lighting_enabled = GL_TRUE;
@@ -642,7 +546,7 @@ GL_API void GL_APIENTRY glEnable(GLenum cap)
 		break;
 	case GL_STENCIL_TEST:
 		gl_state.stencil_test_enabled = GL_TRUE;
-		context_get()->stencil_test_enabled = GL_TRUE;
+		GetCurrentContext()->stencil_test_enabled = GL_TRUE;
 		break;
 	case GL_TEXTURE_2D:
 		gl_state.texture_2d_enabled = GL_TRUE;
@@ -1546,6 +1450,7 @@ GL_API void GL_APIENTRY glLightf(GLenum light, GLenum pname, GLfloat param)
 		glSetError(GL_INVALID_ENUM);
 		break;
 	}
+	context_set_light(light, pname, &param);
 }
 
 GL_API void GL_APIENTRY glLightfv(GLenum light, GLenum pname,
@@ -1596,6 +1501,7 @@ GL_API void GL_APIENTRY glLightfv(GLenum light, GLenum pname,
 		glSetError(GL_INVALID_ENUM);
 		break;
 	}
+	context_set_light(light, pname, params);
 }
 GL_API void GL_APIENTRY glLightModelf(GLenum pname, GLfloat param)
 {
@@ -1732,15 +1638,23 @@ GL_API void GL_APIENTRY glMaterialfv(GLenum face, GLenum pname,
 		switch (pname) {
 		case GL_AMBIENT:
 			memcpy(mat[i].ambient, params, sizeof(GLfloat) * 4);
+			if (i == 0)
+				context_set_material(GL_AMBIENT, params);
 			break;
 		case GL_DIFFUSE:
 			memcpy(mat[i].diffuse, params, sizeof(GLfloat) * 4);
+			if (i == 0)
+				context_set_material(GL_DIFFUSE, params);
 			break;
 		case GL_SPECULAR:
 			memcpy(mat[i].specular, params, sizeof(GLfloat) * 4);
+			if (i == 0)
+				context_set_material(GL_SPECULAR, params);
 			break;
 		case GL_EMISSION:
 			memcpy(mat[i].emission, params, sizeof(GLfloat) * 4);
+			if (i == 0)
+				context_set_material(GL_EMISSION, params);
 			break;
 		case GL_SHININESS:
 			if (params[0] < 0.0f || params[0] > 128.0f) {
@@ -1748,10 +1662,16 @@ GL_API void GL_APIENTRY glMaterialfv(GLenum face, GLenum pname,
 				return;
 			}
 			mat[i].shininess = params[0];
+			if (i == 0)
+				context_set_material(GL_SHININESS, params);
 			break;
 		case GL_AMBIENT_AND_DIFFUSE:
 			memcpy(mat[i].ambient, params, sizeof(GLfloat) * 4);
 			memcpy(mat[i].diffuse, params, sizeof(GLfloat) * 4);
+			if (i == 0) {
+				context_set_material(GL_AMBIENT, params);
+				context_set_material(GL_DIFFUSE, params);
+			}
 			break;
 		default:
 			glSetError(GL_INVALID_ENUM);
@@ -1979,7 +1899,25 @@ GL_API void GL_APIENTRY glReadPixels(GLint x, GLint y, GLsizei width,
 		glSetError(GL_INVALID_ENUM);
 		return;
 	}
-	memset(pixels, 0, (size_t)width * height * 4);
+	Framebuffer *fb = NULL;
+	if (gl_state.bound_framebuffer)
+		fb = gl_state.bound_framebuffer->fb;
+	if (!fb) {
+		memset(pixels, 0, (size_t)width * height * 4);
+		return;
+	}
+	for (GLint j = 0; j < height; ++j) {
+		for (GLint i = 0; i < width; ++i) {
+			uint32_t c = framebuffer_get_pixel(
+				fb, (uint32_t)(x + i), (uint32_t)(y + j));
+			uint8_t *dst =
+				(uint8_t *)pixels + (size_t)(j * width + i) * 4;
+			dst[0] = c & 0xFF;
+			dst[1] = (c >> 8) & 0xFF;
+			dst[2] = (c >> 16) & 0xFF;
+			dst[3] = (c >> 24) & 0xFF;
+		}
+	}
 }
 GL_API void GL_APIENTRY glRotatef(GLfloat angle, GLfloat x, GLfloat y,
 				  GLfloat z)
@@ -2173,6 +2111,7 @@ GL_API void GL_APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param)
 		glSetError(GL_INVALID_ENUM);
 		break;
 	}
+	context_set_texture_env(unit, pname, &param);
 }
 GL_API void GL_APIENTRY glTexEnvfv(GLenum target, GLenum pname,
 				   const GLfloat *params)
@@ -2190,6 +2129,7 @@ GL_API void GL_APIENTRY glTexEnvfv(GLenum target, GLenum pname,
 	case GL_TEXTURE_ENV_COLOR:
 		memcpy(gl_state.tex_env_color[unit], params,
 		       sizeof(GLfloat) * 4);
+		context_set_texture_env(unit, pname, params);
 		break;
 	case GL_TEXTURE_ENV_MODE:
 	case GL_COMBINE_RGB:

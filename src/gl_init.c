@@ -124,6 +124,8 @@ Framebuffer *GL_init_with_framebuffer(uint32_t width, uint32_t height)
 	framebuffer_clear(fb, 0x00000000u, 1.0f, 0);
 	LOG_INFO("Initialized renderer with framebuffer %ux%u", width, height);
 	g_default_fb = fb;
+	gl_state.default_framebuffer.fb = fb;
+	gl_state.bound_framebuffer = &gl_state.default_framebuffer;
 	return fb;
 }
 
@@ -134,6 +136,8 @@ void GL_cleanup_with_framebuffer(Framebuffer *fb)
 		LOG_INFO("Destroyed framebuffer");
 	}
 	g_default_fb = NULL;
+	gl_state.default_framebuffer.fb = NULL;
+	gl_state.bound_framebuffer = NULL;
 	GL_cleanup();
 }
 

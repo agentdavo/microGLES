@@ -25,7 +25,14 @@ typedef struct {
 typedef struct {
 	GLfloat ambient[4];
 	GLfloat diffuse[4];
+	GLfloat specular[4];
 	GLfloat position[4];
+	GLfloat spot_direction[3];
+	GLfloat spot_exponent;
+	GLfloat spot_cutoff;
+	GLfloat constant_attenuation;
+	GLfloat linear_attenuation;
+	GLfloat quadratic_attenuation;
 	GLboolean enabled;
 	atomic_uint version;
 } LightState;
@@ -44,6 +51,13 @@ typedef struct {
 	GLenum dst_factor;
 	atomic_uint version;
 } BlendState;
+
+typedef struct {
+	GLboolean enabled;
+	GLenum func;
+	GLfloat ref;
+	atomic_uint version;
+} AlphaTestState;
 
 #define MAX_TEXTURES 1024
 
@@ -70,13 +84,16 @@ typedef struct {
 	GLuint next_texture_id;
 	GLenum active_texture;
 	BlendState blend;
-	LightState lights[1];
+	GLboolean blend_enabled;
+	AlphaTestState alpha_test;
+	LightState lights[8];
 	MaterialState material;
 	FogState fog;
 } RenderContext;
 
 void context_init(void);
 RenderContext *context_get(void);
+RenderContext *GetCurrentContext(void);
 void context_update_modelview_matrix(const mat4 *mat);
 void context_update_projection_matrix(const mat4 *mat);
 void context_update_texture_matrix(const mat4 *mat);
@@ -95,6 +112,7 @@ void context_tex_sub_image_2d(GLenum target, GLint level, GLint xoffset,
 void context_tex_parameterf(GLenum target, GLenum pname, GLfloat param);
 TextureOES *context_find_texture(GLuint id);
 void context_set_blend_func(GLenum sfactor, GLenum dfactor);
+void context_set_alpha_func(GLenum func, GLfloat ref);
 void context_set_light(GLenum light, GLenum pname, const GLfloat *params);
 void context_set_material(GLenum pname, const GLfloat *params);
 void context_set_fog(GLenum pname, const GLfloat *params);
