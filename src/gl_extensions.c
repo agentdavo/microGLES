@@ -1,9 +1,26 @@
-#include "gl_extensions.h"
 #include "gl_errors.h"
 #include "gl_state.h"
-#include "logger.h"
+#include "gl_types.h"
+#include "gl_utils.h"
+#include "gl_logger.h"
 #include <GLES/gl.h>
+#include <GLES/glext.h>
 #include <string.h>
+#include <math.h>
+
+/* Tokens missing from the ES headers used by TexGen */
+#ifndef GL_OBJECT_PLANE_OES
+#define GL_OBJECT_PLANE_OES 0x2501
+#endif
+#ifndef GL_EYE_PLANE_OES
+#define GL_EYE_PLANE_OES 0x2502
+#endif
+#ifndef GL_S
+#define GL_S 0x2000
+#define GL_T 0x2001
+#define GL_R 0x2002
+#define GL_Q 0x2003
+#endif
 
 static const char *EXT_STRING =
 	"GL_OES_draw_texture GL_OES_matrix_get GL_OES_point_size_array "
@@ -16,201 +33,355 @@ static const char *EXT_STRING =
 	"GL_OES_extended_matrix_palette";
 
 extern GLState gl_state;
+#ifdef __cplusplus
+extern "C" {
+#endif
+GL_API void GL_APIENTRY glBlendEquationSeparateOES(GLenum modeRGB,
+						   GLenum modeAlpha);
+GL_API void GL_APIENTRY glTexGenfvOES(GLenum coord, GLenum pname,
+				      const GLfloat *params);
+#ifdef __cplusplus
+}
+#endif
+#define MAX_PALETTE_MATRICES 32
 #define FIXED_TO_FLOAT(x) ((GLfloat)(x) / 65536.0f)
+
+static BufferObject *find_buffer(GLuint id)
+{
+	for (GLint i = 0; i < gl_state.buffer_count; ++i) {
+		if (gl_state.buffers[i]->id == id)
+			return gl_state.buffers[i];
+	}
+	return NULL;
+}
+
+static VertexArrayObject *find_vao(GLuint id)
+{
+	for (GLint i = 0; i < gl_state.vao_count; ++i) {
+		if (gl_state.vaos[i]->id == id)
+			return gl_state.vaos[i];
+	}
+	return NULL;
+}
+
+static TextureOES *find_texture(GLuint id)
+{
+	for (GLuint i = 0; i < gl_state.texture_count; ++i) {
+		if (gl_state.textures[i]->id == id)
+			return gl_state.textures[i];
+	}
+	return NULL;
+}
 
 const GLubyte *renderer_get_extensions(void)
 {
 	return (const GLubyte *)EXT_STRING;
 }
 
-void glDrawTexsOES(GLshort x, GLshort y, GLshort z, GLshort width,
-		   GLshort height)
+static void draw_tex_rect(GLfloat x, GLfloat y, GLfloat z, GLfloat width,
+			  GLfloat height)
 {
-	(void)x;
-	(void)y;
-	(void)z;
-	(void)width;
-	(void)height;
-	LOG_INFO(
-		"glDrawTexsOES called - no software implementation available.");
+	TextureOES *tex = find_texture(gl_state.bound_texture);
+	if (!tex) {
+		LOG_WARN("glDrawTex* called with no bound texture.");
+		return;
+	}
+	LOG_INFO("DrawTex: (%f,%f,%f) %fx%f crop=%d,%d,%d,%d", x, y, z, width,
+		 height, tex->crop_rect[0], tex->crop_rect[1],
+		 tex->crop_rect[2], tex->crop_rect[3]);
 }
 
-void glDrawTexiOES(GLint x, GLint y, GLint z, GLint width, GLint height)
+GL_API void GL_APIENTRY glDrawTexsOES(GLshort x, GLshort y, GLshort z,
+				      GLshort width, GLshort height)
 {
-	(void)x;
-	(void)y;
-	(void)z;
-	(void)width;
-	(void)height;
-	LOG_INFO(
-		"glDrawTexiOES called - no software implementation available.");
+	draw_tex_rect((GLfloat)x, (GLfloat)y, (GLfloat)z, (GLfloat)width,
+		      (GLfloat)height);
 }
 
-void glDrawTexxOES(GLfixed x, GLfixed y, GLfixed z, GLfixed width,
-		   GLfixed height)
+GL_API void GL_APIENTRY glDrawTexiOES(GLint x, GLint y, GLint z, GLint width,
+				      GLint height)
 {
-	(void)x;
-	(void)y;
-	(void)z;
-	(void)width;
-	(void)height;
-	LOG_INFO(
-		"glDrawTexxOES called - no software implementation available.");
+	draw_tex_rect((GLfloat)x, (GLfloat)y, (GLfloat)z, (GLfloat)width,
+		      (GLfloat)height);
 }
 
-void glDrawTexsvOES(const GLshort *coords)
+GL_API void GL_APIENTRY glDrawTexxOES(GLfixed x, GLfixed y, GLfixed z,
+				      GLfixed width, GLfixed height)
 {
-	(void)coords;
-	LOG_INFO(
-		"glDrawTexsvOES called - no software implementation available.");
+	draw_tex_rect(FIXED_TO_FLOAT(x), FIXED_TO_FLOAT(y), FIXED_TO_FLOAT(z),
+		      FIXED_TO_FLOAT(width), FIXED_TO_FLOAT(height));
 }
 
-void glDrawTexivOES(const GLint *coords)
+GL_API void GL_APIENTRY glDrawTexsvOES(const GLshort *coords)
 {
-	(void)coords;
-	LOG_INFO(
-		"glDrawTexivOES called - no software implementation available.");
+	if (!coords) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	draw_tex_rect((GLfloat)coords[0], (GLfloat)coords[1],
+		      (GLfloat)coords[2], (GLfloat)coords[3],
+		      (GLfloat)coords[4]);
 }
 
-void glDrawTexxvOES(const GLfixed *coords)
+GL_API void GL_APIENTRY glDrawTexivOES(const GLint *coords)
 {
-	(void)coords;
-	LOG_INFO(
-		"glDrawTexxvOES called - no software implementation available.");
+	if (!coords) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	draw_tex_rect((GLfloat)coords[0], (GLfloat)coords[1],
+		      (GLfloat)coords[2], (GLfloat)coords[3],
+		      (GLfloat)coords[4]);
 }
 
-void glDrawTexfOES(GLfloat x, GLfloat y, GLfloat z, GLfloat width,
-		   GLfloat height)
+GL_API void GL_APIENTRY glDrawTexxvOES(const GLfixed *coords)
 {
-	(void)x;
-	(void)y;
-	(void)z;
-	(void)width;
-	(void)height;
-	LOG_INFO(
-		"glDrawTexfOES called - no software implementation available.");
+	if (!coords) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	draw_tex_rect(FIXED_TO_FLOAT(coords[0]), FIXED_TO_FLOAT(coords[1]),
+		      FIXED_TO_FLOAT(coords[2]), FIXED_TO_FLOAT(coords[3]),
+		      FIXED_TO_FLOAT(coords[4]));
 }
 
-void glDrawTexfvOES(const GLfloat *coords)
+GL_API void GL_APIENTRY glDrawTexfOES(GLfloat x, GLfloat y, GLfloat z,
+				      GLfloat width, GLfloat height)
 {
-	(void)coords;
-	LOG_INFO(
-		"glDrawTexfvOES called - no software implementation available.");
+	draw_tex_rect(x, y, z, width, height);
+}
+
+GL_API void GL_APIENTRY glDrawTexfvOES(const GLfloat *coords)
+{
+	if (!coords) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	draw_tex_rect(coords[0], coords[1], coords[2], coords[3], coords[4]);
 }
 
 /* Blend and TexGen extension stubs */
-void glBlendEquationOES(GLenum mode)
+GL_API void GL_APIENTRY glBlendEquationOES(GLenum mode)
 {
-	(void)mode;
-	LOG_INFO("glBlendEquationOES called - not yet supported.");
+	glBlendEquationSeparateOES(mode, mode);
 }
 
-void glBlendFuncSeparateOES(GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha,
-			    GLenum dstAlpha)
+GL_API void GL_APIENTRY glBlendFuncSeparateOES(GLenum srcRGB, GLenum dstRGB,
+					       GLenum srcAlpha, GLenum dstAlpha)
 {
-	(void)srcRGB;
-	(void)dstRGB;
-	(void)srcAlpha;
-	(void)dstAlpha;
-	LOG_INFO("glBlendFuncSeparateOES called - not yet supported.");
+	gl_state.blend_sfactor = srcRGB;
+	gl_state.blend_dfactor = dstRGB;
+	gl_state.blend_sfactor_alpha = srcAlpha;
+	gl_state.blend_dfactor_alpha = dstAlpha;
+	glBlendFunc(srcRGB, dstRGB);
 }
 
-void glBlendEquationSeparateOES(GLenum modeRGB, GLenum modeAlpha)
+static GLboolean valid_blend_equation(GLenum mode)
 {
-	(void)modeRGB;
-	(void)modeAlpha;
-	LOG_INFO("glBlendEquationSeparateOES called - not yet supported.");
+	switch (mode) {
+	case GL_FUNC_ADD_OES:
+	case GL_FUNC_SUBTRACT_OES:
+	case GL_FUNC_REVERSE_SUBTRACT_OES:
+		return GL_TRUE;
+	default:
+		return GL_FALSE;
+	}
 }
 
-void glTexGenfOES(GLenum coord, GLenum pname, GLfloat param)
+GL_API void GL_APIENTRY glBlendEquationSeparateOES(GLenum modeRGB,
+						   GLenum modeAlpha)
 {
-	(void)coord;
-	(void)pname;
-	(void)param;
-	LOG_INFO("glTexGenfOES called - not yet supported.");
+	if (!valid_blend_equation(modeRGB) ||
+	    !valid_blend_equation(modeAlpha)) {
+		glSetError(GL_INVALID_ENUM);
+		return;
+	}
+	gl_state.blend_equation_rgb = modeRGB;
+	gl_state.blend_equation_alpha = modeAlpha;
 }
 
-void glTexGenfvOES(GLenum coord, GLenum pname, const GLfloat *params)
+GL_API void GL_APIENTRY glTexGenfOES(GLenum coord, GLenum pname, GLfloat param)
 {
-	(void)coord;
-	(void)pname;
-	(void)params;
-	LOG_INFO("glTexGenfvOES called - not yet supported.");
+	if (pname != GL_TEXTURE_GEN_MODE_OES) {
+		glSetError(GL_INVALID_ENUM);
+		return;
+	}
+	glTexGenfvOES(coord, pname, &param);
 }
 
-void glTexGeniOES(GLenum coord, GLenum pname, GLint param)
+GL_API void GL_APIENTRY glTexGenfvOES(GLenum coord, GLenum pname,
+				      const GLfloat *params)
 {
-	(void)coord;
-	(void)pname;
-	(void)param;
-	LOG_INFO("glTexGeniOES called - not yet supported.");
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	int idx;
+	switch (coord) {
+	case GL_S:
+		idx = 0;
+		break;
+	case GL_T:
+		idx = 1;
+		break;
+	case GL_R:
+		idx = 2;
+		break;
+	case GL_Q:
+		idx = 3;
+		break;
+	default:
+		glSetError(GL_INVALID_ENUM);
+		return;
+	}
+
+	if (pname == GL_TEXTURE_GEN_MODE_OES) {
+		gl_state.tex_gen_mode[idx] = (GLenum)params[0];
+	} else if (pname == GL_OBJECT_PLANE_OES || pname == GL_EYE_PLANE_OES) {
+		for (int i = 0; i < 4; ++i)
+			gl_state.tex_gen_plane[idx][i] = params[i];
+	} else {
+		glSetError(GL_INVALID_ENUM);
+		return;
+	}
 }
 
-void glTexGenivOES(GLenum coord, GLenum pname, const GLint *params)
+GL_API void GL_APIENTRY glTexGeniOES(GLenum coord, GLenum pname, GLint param)
 {
-	(void)coord;
-	(void)pname;
-	(void)params;
-	LOG_INFO("glTexGenivOES called - not yet supported.");
+	if (pname != GL_TEXTURE_GEN_MODE_OES) {
+		glSetError(GL_INVALID_ENUM);
+		return;
+	}
+	GLfloat fp = (GLfloat)param;
+	glTexGenfvOES(coord, pname, &fp);
 }
 
-void glGetTexGenfvOES(GLenum coord, GLenum pname, GLfloat *params)
+GL_API void GL_APIENTRY glTexGenivOES(GLenum coord, GLenum pname,
+				      const GLint *params)
 {
-	(void)coord;
-	(void)pname;
-	(void)params;
-	LOG_INFO("glGetTexGenfvOES called - not yet supported.");
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat fp[4];
+	for (int i = 0; i < 4; ++i)
+		fp[i] = (GLfloat)params[i];
+	glTexGenfvOES(coord, pname, fp);
 }
 
-void glGetTexGenivOES(GLenum coord, GLenum pname, GLint *params)
+GL_API void GL_APIENTRY glGetTexGenfvOES(GLenum coord, GLenum pname,
+					 GLfloat *params)
 {
-	(void)coord;
-	(void)pname;
-	(void)params;
-	LOG_INFO("glGetTexGenivOES called - not yet supported.");
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	int idx;
+	switch (coord) {
+	case GL_S:
+		idx = 0;
+		break;
+	case GL_T:
+		idx = 1;
+		break;
+	case GL_R:
+		idx = 2;
+		break;
+	case GL_Q:
+		idx = 3;
+		break;
+	default:
+		glSetError(GL_INVALID_ENUM);
+		return;
+	}
+
+	switch (pname) {
+	case GL_TEXTURE_GEN_MODE_OES:
+		params[0] = (GLfloat)gl_state.tex_gen_mode[idx];
+		break;
+	case GL_OBJECT_PLANE_OES:
+	case GL_EYE_PLANE_OES:
+		for (int i = 0; i < 4; ++i)
+			params[i] = gl_state.tex_gen_plane[idx][i];
+		break;
+	default:
+		glSetError(GL_INVALID_ENUM);
+		break;
+	}
 }
 
-void glCurrentPaletteMatrixOES(GLuint matrixpaletteindex)
+GL_API void GL_APIENTRY glGetTexGenivOES(GLenum coord, GLenum pname,
+					 GLint *params)
 {
-	(void)matrixpaletteindex;
-	LOG_INFO("glCurrentPaletteMatrixOES called - not yet supported.");
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat fp[4] = { 0, 0, 0, 0 };
+	glGetTexGenfvOES(coord, pname, fp);
+	for (int i = 0; i < 4; ++i)
+		params[i] = (GLint)fp[i];
 }
 
-void glLoadPaletteFromModelViewMatrixOES(void)
+GL_API void GL_APIENTRY glCurrentPaletteMatrixOES(GLuint matrixpaletteindex)
 {
-	LOG_INFO(
-		"glLoadPaletteFromModelViewMatrixOES called - not yet supported.");
+	if (matrixpaletteindex >= 32) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	gl_state.current_palette_matrix = matrixpaletteindex;
 }
 
-void glMatrixIndexPointerOES(GLint size, GLenum type, GLsizei stride,
-			     const void *pointer)
+GL_API void GL_APIENTRY glLoadPaletteFromModelViewMatrixOES(void)
 {
-	(void)size;
-	(void)type;
-	(void)stride;
-	(void)pointer;
-	LOG_INFO("glMatrixIndexPointerOES called - not yet supported.");
+	if (gl_state.current_palette_matrix < 32) {
+		gl_state.palette_matrices[gl_state.current_palette_matrix] =
+			gl_state.modelview_matrix;
+	}
 }
 
-void glWeightPointerOES(GLint size, GLenum type, GLsizei stride,
-			const void *pointer)
+GL_API void GL_APIENTRY glMatrixIndexPointerOES(GLint size, GLenum type,
+						GLsizei stride,
+						const void *pointer)
 {
-	(void)size;
-	(void)type;
-	(void)stride;
-	(void)pointer;
-	LOG_INFO("glWeightPointerOES called - not yet supported.");
+	gl_state.matrix_index_array_size = size;
+	gl_state.matrix_index_array_type = type;
+	gl_state.matrix_index_array_stride = stride;
+	gl_state.matrix_index_array_pointer = pointer;
+	if (gl_state.bound_vao) {
+		gl_state.bound_vao->matrix_index_array_size = size;
+		gl_state.bound_vao->matrix_index_array_type = type;
+		gl_state.bound_vao->matrix_index_array_stride = stride;
+		gl_state.bound_vao->matrix_index_array_pointer = pointer;
+	}
 }
 
-static GLenum g_point_size_type = GL_FLOAT;
-static GLsizei g_point_size_stride = 0;
-static const void *g_point_size_pointer = NULL;
-
-void glPointSizePointerOES(GLenum type, GLsizei stride, const void *pointer)
+GL_API void GL_APIENTRY glWeightPointerOES(GLint size, GLenum type,
+					   GLsizei stride, const void *pointer)
 {
-	g_point_size_type = type;
-	g_point_size_stride = stride;
-	g_point_size_pointer = pointer;
+	gl_state.weight_array_size = size;
+	gl_state.weight_array_type = type;
+	gl_state.weight_array_stride = stride;
+	gl_state.weight_array_pointer = pointer;
+	if (gl_state.bound_vao) {
+		gl_state.bound_vao->weight_array_size = size;
+		gl_state.bound_vao->weight_array_type = type;
+		gl_state.bound_vao->weight_array_stride = stride;
+		gl_state.bound_vao->weight_array_pointer = pointer;
+	}
+}
+
+GL_API void GL_APIENTRY glPointSizePointerOES(GLenum type, GLsizei stride,
+					      const void *pointer)
+{
+	gl_state.point_size_array_type = type;
+	gl_state.point_size_array_stride = stride;
+	gl_state.point_size_array_pointer = pointer;
+	if (gl_state.bound_vao) {
+		gl_state.bound_vao->point_size_array_type = type;
+		gl_state.bound_vao->point_size_array_stride = stride;
+		gl_state.bound_vao->point_size_array_pointer = pointer;
+	}
 	LOG_INFO("glPointSizePointerOES set pointer=%p type=0x%X stride=%d.",
 		 pointer, type, stride);
 }
@@ -219,62 +390,57 @@ void glPointSizePointerOES(GLenum type, GLsizei stride, const void *pointer)
 const void *getPointSizePointerOES(GLenum *type, GLsizei *stride)
 {
 	if (type)
-		*type = g_point_size_type;
+		*type = gl_state.point_size_array_type;
 	if (stride)
-		*stride = g_point_size_stride;
-	return g_point_size_pointer;
+		*stride = gl_state.point_size_array_stride;
+	return gl_state.point_size_array_pointer;
 }
-void glAlphaFuncxOES(GLenum func, GLfixed ref)
+GL_API void GL_APIENTRY glAlphaFuncxOES(GLenum func, GLfixed ref)
 {
-	(void)func;
-	(void)ref;
-	LOG_INFO("glAlphaFuncxOES called - not yet supported.");
+	glAlphaFuncx(func, ref);
 }
 
-void glClearColorxOES(GLfixed red, GLfixed green, GLfixed blue, GLfixed alpha)
+GL_API void GL_APIENTRY glClearColorxOES(GLfixed red, GLfixed green,
+					 GLfixed blue, GLfixed alpha)
 {
-	(void)red;
-	(void)green;
-	(void)blue;
-	(void)alpha;
-	LOG_INFO("glClearColorxOES called - not yet supported.");
+	glClearColorx(red, green, blue, alpha);
 }
 
-void glClearDepthxOES(GLfixed depth)
+GL_API void GL_APIENTRY glClearDepthxOES(GLfixed depth)
 {
-	(void)depth;
-	LOG_INFO("glClearDepthxOES called - not yet supported.");
+	glClearDepthx(depth);
 }
 
-void glClipPlanexOES(GLenum plane, const GLfixed *equation)
+GL_API void GL_APIENTRY glClipPlanexOES(GLenum plane, const GLfixed *equation)
 {
-	(void)plane;
-	(void)equation;
-	LOG_INFO("glClipPlanexOES called - not yet supported.");
+	if (!equation) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat eq[4] = { FIXED_TO_FLOAT(equation[0]),
+			  FIXED_TO_FLOAT(equation[1]),
+			  FIXED_TO_FLOAT(equation[2]),
+			  FIXED_TO_FLOAT(equation[3]) };
+	glClipPlanef(plane, eq);
 }
 
-void glColor4xOES(GLfixed red, GLfixed green, GLfixed blue, GLfixed alpha)
+GL_API void GL_APIENTRY glColor4xOES(GLfixed red, GLfixed green, GLfixed blue,
+				     GLfixed alpha)
 {
-	(void)red;
-	(void)green;
-	(void)blue;
-	(void)alpha;
-	LOG_INFO("glColor4xOES called - not yet supported.");
+	glColor4x(red, green, blue, alpha);
 }
 
-void glDepthRangexOES(GLfixed n, GLfixed f)
+GL_API void GL_APIENTRY glDepthRangexOES(GLfixed n, GLfixed f)
 {
-	(void)n;
-	(void)f;
-	LOG_INFO("glDepthRangexOES called - not yet supported.");
+	glDepthRangex(n, f);
 }
 
-void glFogxOES(GLenum pname, GLfixed param)
+GL_API void GL_APIENTRY glFogxOES(GLenum pname, GLfixed param)
 {
 	glFogf(pname, FIXED_TO_FLOAT(param));
 }
 
-void glFogxvOES(GLenum pname, const GLfixed *param)
+GL_API void GL_APIENTRY glFogxvOES(GLenum pname, const GLfixed *param)
 {
 	if (!param) {
 		glSetError(GL_INVALID_VALUE);
@@ -288,79 +454,122 @@ void glFogxvOES(GLenum pname, const GLfixed *param)
 	glFogfv(pname, vals);
 }
 
-void glFrustumxOES(GLfixed l, GLfixed r, GLfixed b, GLfixed t, GLfixed n,
-		   GLfixed f)
+GL_API void GL_APIENTRY glFrustumxOES(GLfixed l, GLfixed r, GLfixed b,
+				      GLfixed t, GLfixed n, GLfixed f)
 {
-	glFrustumf(FIXED_TO_FLOAT(l), FIXED_TO_FLOAT(r), FIXED_TO_FLOAT(b),
-		   FIXED_TO_FLOAT(t), FIXED_TO_FLOAT(n), FIXED_TO_FLOAT(f));
+	glFrustumx(l, r, b, t, n, f);
 }
 
-void glGetClipPlanexOES(GLenum plane, GLfixed *equation)
+GL_API void GL_APIENTRY glGetClipPlanexOES(GLenum plane, GLfixed *equation)
 {
-	(void)plane;
-	(void)equation;
-	LOG_INFO("glGetClipPlanexOES called - not yet supported.");
+	if (!equation) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat eq[4] = { 0, 0, 0, 0 };
+	glGetClipPlanef(plane, eq);
+	equation[0] = (GLfixed)(eq[0] * 65536.0f);
+	equation[1] = (GLfixed)(eq[1] * 65536.0f);
+	equation[2] = (GLfixed)(eq[2] * 65536.0f);
+	equation[3] = (GLfixed)(eq[3] * 65536.0f);
 }
 
-void glGetFixedvOES(GLenum pname, GLfixed *params)
+GL_API void GL_APIENTRY glGetFixedvOES(GLenum pname, GLfixed *params)
 {
-	(void)pname;
-	(void)params;
-	LOG_INFO("glGetFixedvOES called - not yet supported.");
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat tmp[4] = { 0, 0, 0, 0 };
+	glGetFloatv(pname, tmp);
+	for (int i = 0; i < 4; ++i)
+		params[i] = (GLfixed)(tmp[i] * 65536.0f);
 }
 
-void glGetLightxvOES(GLenum light, GLenum pname, GLfixed *params)
+GL_API void GL_APIENTRY glGetLightxvOES(GLenum light, GLenum pname,
+					GLfixed *params)
 {
-	(void)light;
-	(void)pname;
-	(void)params;
-	LOG_INFO("glGetLightxvOES called - not yet supported.");
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat tmp[4] = { 0, 0, 0, 0 };
+	glGetLightfv(light, pname, tmp);
+	params[0] = (GLfixed)(tmp[0] * 65536.0f);
+	params[1] = (GLfixed)(tmp[1] * 65536.0f);
+	params[2] = (GLfixed)(tmp[2] * 65536.0f);
+	params[3] = (GLfixed)(tmp[3] * 65536.0f);
 }
 
-void glGetMaterialxvOES(GLenum face, GLenum pname, GLfixed *params)
+GL_API void GL_APIENTRY glGetMaterialxvOES(GLenum face, GLenum pname,
+					   GLfixed *params)
 {
-	(void)face;
-	(void)pname;
-	(void)params;
-	LOG_INFO("glGetMaterialxvOES called - not yet supported.");
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat tmp[4] = { 0, 0, 0, 0 };
+	glGetMaterialfv(face, pname, tmp);
+	params[0] = (GLfixed)(tmp[0] * 65536.0f);
+	params[1] = (GLfixed)(tmp[1] * 65536.0f);
+	params[2] = (GLfixed)(tmp[2] * 65536.0f);
+	params[3] = (GLfixed)(tmp[3] * 65536.0f);
 }
 
-void glGetTexEnvxvOES(GLenum target, GLenum pname, GLfixed *params)
+GL_API void GL_APIENTRY glGetTexEnvxvOES(GLenum target, GLenum pname,
+					 GLfixed *params)
 {
-	(void)target;
-	(void)pname;
-	(void)params;
-	LOG_INFO("glGetTexEnvxvOES called - not yet supported.");
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat tmp[4] = { 0, 0, 0, 0 };
+	glGetTexEnvfv(target, pname, tmp);
+	params[0] = (GLfixed)(tmp[0] * 65536.0f);
+	params[1] = (GLfixed)(tmp[1] * 65536.0f);
+	params[2] = (GLfixed)(tmp[2] * 65536.0f);
+	params[3] = (GLfixed)(tmp[3] * 65536.0f);
 }
 
-void glGetTexParameterxvOES(GLenum target, GLenum pname, GLfixed *params)
+GL_API void GL_APIENTRY glGetTexParameterxvOES(GLenum target, GLenum pname,
+					       GLfixed *params)
 {
-	(void)target;
-	(void)pname;
-	(void)params;
-	LOG_INFO("glGetTexParameterxvOES called - not yet supported.");
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat tmp[4] = { 0, 0, 0, 0 };
+	glGetTexParameterfv(target, pname, tmp);
+	params[0] = (GLfixed)(tmp[0] * 65536.0f);
+	params[1] = (GLfixed)(tmp[1] * 65536.0f);
+	params[2] = (GLfixed)(tmp[2] * 65536.0f);
+	params[3] = (GLfixed)(tmp[3] * 65536.0f);
 }
 
-void glLightModelxOES(GLenum pname, GLfixed param)
+GL_API void GL_APIENTRY glLightModelxOES(GLenum pname, GLfixed param)
 {
-	(void)pname;
-	(void)param;
-	LOG_INFO("glLightModelxOES called - not yet supported.");
+	glLightModelf(pname, FIXED_TO_FLOAT(param));
 }
 
-void glLightModelxvOES(GLenum pname, const GLfixed *param)
+GL_API void GL_APIENTRY glLightModelxvOES(GLenum pname, const GLfixed *param)
 {
-	(void)pname;
-	(void)param;
-	LOG_INFO("glLightModelxvOES called - not yet supported.");
+	if (!param) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat vals[4] = { FIXED_TO_FLOAT(param[0]), FIXED_TO_FLOAT(param[1]),
+			    FIXED_TO_FLOAT(param[2]),
+			    FIXED_TO_FLOAT(param[3]) };
+	glLightModelfv(pname, vals);
 }
 
-void glLightxOES(GLenum light, GLenum pname, GLfixed param)
+GL_API void GL_APIENTRY glLightxOES(GLenum light, GLenum pname, GLfixed param)
 {
 	glLightf(light, pname, FIXED_TO_FLOAT(param));
 }
 
-void glLightxvOES(GLenum light, GLenum pname, const GLfixed *params)
+GL_API void GL_APIENTRY glLightxvOES(GLenum light, GLenum pname,
+				     const GLfixed *params)
 {
 	if (!params) {
 		glSetError(GL_INVALID_VALUE);
@@ -374,275 +583,423 @@ void glLightxvOES(GLenum light, GLenum pname, const GLfixed *params)
 	glLightfv(light, pname, vals);
 }
 
-void glLineWidthxOES(GLfixed width)
+GL_API void GL_APIENTRY glLineWidthxOES(GLfixed width)
 {
-	(void)width;
-	LOG_INFO("glLineWidthxOES called - not yet supported.");
+	glLineWidth(FIXED_TO_FLOAT(width));
 }
 
-void glLoadMatrixxOES(const GLfixed *m)
+GL_API void GL_APIENTRY glLoadMatrixxOES(const GLfixed *m)
 {
-	(void)m;
-	LOG_INFO("glLoadMatrixxOES called - not yet supported.");
+	if (!m) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat mf[16];
+	for (int i = 0; i < 16; ++i)
+		mf[i] = FIXED_TO_FLOAT(m[i]);
+	glLoadMatrixf(mf);
 }
 
-void glMaterialxOES(GLenum face, GLenum pname, GLfixed param)
+GL_API void GL_APIENTRY glMaterialxOES(GLenum face, GLenum pname, GLfixed param)
 {
-	(void)face;
-	(void)pname;
-	(void)param;
-	LOG_INFO("glMaterialxOES called - not yet supported.");
+	glMaterialf(face, pname, FIXED_TO_FLOAT(param));
 }
 
-void glMaterialxvOES(GLenum face, GLenum pname, const GLfixed *param)
+GL_API void GL_APIENTRY glMaterialxvOES(GLenum face, GLenum pname,
+					const GLfixed *param)
 {
-	(void)face;
-	(void)pname;
-	(void)param;
-	LOG_INFO("glMaterialxvOES called - not yet supported.");
+	if (!param) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat vals[4] = { FIXED_TO_FLOAT(param[0]), FIXED_TO_FLOAT(param[1]),
+			    FIXED_TO_FLOAT(param[2]),
+			    FIXED_TO_FLOAT(param[3]) };
+	glMaterialfv(face, pname, vals);
 }
 
-void glMultMatrixxOES(const GLfixed *m)
+GL_API void GL_APIENTRY glMultMatrixxOES(const GLfixed *m)
 {
-	(void)m;
-	LOG_INFO("glMultMatrixxOES called - not yet supported.");
+	if (!m) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat mf[16];
+	for (int i = 0; i < 16; ++i)
+		mf[i] = FIXED_TO_FLOAT(m[i]);
+	glMultMatrixf(mf);
 }
 
-void glMultiTexCoord4xOES(GLenum texture, GLfixed s, GLfixed t, GLfixed r,
-			  GLfixed q)
+GL_API void GL_APIENTRY glMultiTexCoord4xOES(GLenum texture, GLfixed s,
+					     GLfixed t, GLfixed r, GLfixed q)
 {
-	(void)texture;
-	(void)s;
-	(void)t;
-	(void)r;
-	(void)q;
-	LOG_INFO("glMultiTexCoord4xOES called - not yet supported.");
+	glMultiTexCoord4f(texture, FIXED_TO_FLOAT(s), FIXED_TO_FLOAT(t),
+			  FIXED_TO_FLOAT(r), FIXED_TO_FLOAT(q));
 }
 
-void glNormal3xOES(GLfixed nx, GLfixed ny, GLfixed nz)
+GL_API void GL_APIENTRY glNormal3xOES(GLfixed nx, GLfixed ny, GLfixed nz)
 {
-	(void)nx;
-	(void)ny;
-	(void)nz;
-	LOG_INFO("glNormal3xOES called - not yet supported.");
+	glNormal3f(FIXED_TO_FLOAT(nx), FIXED_TO_FLOAT(ny), FIXED_TO_FLOAT(nz));
 }
 
-void glOrthoxOES(GLfixed l, GLfixed r, GLfixed b, GLfixed t, GLfixed n,
-		 GLfixed f)
+GL_API void GL_APIENTRY glOrthoxOES(GLfixed l, GLfixed r, GLfixed b, GLfixed t,
+				    GLfixed n, GLfixed f)
 {
-	(void)l;
-	(void)r;
-	(void)b;
-	(void)t;
-	(void)n;
-	(void)f;
-	LOG_INFO("glOrthoxOES called - not yet supported.");
+	glOrthox(l, r, b, t, n, f);
 }
 
-void glPointParameterxOES(GLenum pname, GLfixed param)
+GL_API void GL_APIENTRY glPointParameterxOES(GLenum pname, GLfixed param)
 {
-	(void)pname;
-	(void)param;
-	LOG_INFO("glPointParameterxOES called - not yet supported.");
+	glPointParameterf(pname, FIXED_TO_FLOAT(param));
 }
 
-void glPointParameterxvOES(GLenum pname, const GLfixed *params)
+GL_API void GL_APIENTRY glPointParameterxvOES(GLenum pname,
+					      const GLfixed *params)
 {
-	(void)pname;
-	(void)params;
-	LOG_INFO("glPointParameterxvOES called - not yet supported.");
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	glPointParameterf(pname, FIXED_TO_FLOAT(params[0]));
 }
 
-void glPointSizexOES(GLfixed size)
+GL_API void GL_APIENTRY glPointParameterfOES(GLenum pname, GLfloat param)
 {
-	(void)size;
-	LOG_INFO("glPointSizexOES called - not yet supported.");
+	glPointParameterf(pname, param);
 }
 
-void glPolygonOffsetxOES(GLfixed factor, GLfixed units)
+GL_API void GL_APIENTRY glPointParameterfvOES(GLenum pname,
+					      const GLfloat *params)
 {
-	(void)factor;
-	(void)units;
-	LOG_INFO("glPolygonOffsetxOES called - not yet supported.");
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	glPointParameterf(pname, params[0]);
 }
 
-void glRotatexOES(GLfixed angle, GLfixed x, GLfixed y, GLfixed z)
+GL_API void GL_APIENTRY glPointSizexOES(GLfixed size)
 {
-	(void)angle;
-	(void)x;
-	(void)y;
-	(void)z;
-	LOG_INFO("glRotatexOES called - not yet supported.");
+	glPointSize(FIXED_TO_FLOAT(size));
 }
 
-void glSampleCoveragexOES(GLclampx value, GLboolean invert)
+GL_API void GL_APIENTRY glPolygonOffsetxOES(GLfixed factor, GLfixed units)
 {
-	(void)value;
-	(void)invert;
-	LOG_INFO("glSampleCoveragexOES called - not yet supported.");
+	glPolygonOffset(FIXED_TO_FLOAT(factor), FIXED_TO_FLOAT(units));
 }
 
-void glScalexOES(GLfixed x, GLfixed y, GLfixed z)
+GL_API void GL_APIENTRY glRotatexOES(GLfixed angle, GLfixed x, GLfixed y,
+				     GLfixed z)
 {
-	(void)x;
-	(void)y;
-	(void)z;
-	LOG_INFO("glScalexOES called - not yet supported.");
+	glRotatex(angle, x, y, z);
 }
 
-void glTexEnvxOES(GLenum target, GLenum pname, GLfixed param)
+GL_API void GL_APIENTRY glSampleCoveragexOES(GLclampx value, GLboolean invert)
 {
-	(void)target;
-	(void)pname;
-	(void)param;
-	LOG_INFO("glTexEnvxOES called - not yet supported.");
+	glSampleCoverage(FIXED_TO_FLOAT(value), invert);
 }
 
-void glTexEnvxvOES(GLenum target, GLenum pname, const GLfixed *params)
+GL_API void GL_APIENTRY glScalexOES(GLfixed x, GLfixed y, GLfixed z)
 {
-	(void)target;
-	(void)pname;
-	(void)params;
-	LOG_INFO("glTexEnvxvOES called - not yet supported.");
+	glScalex(x, y, z);
 }
 
-void glTexParameterxOES(GLenum target, GLenum pname, GLfixed param)
+GL_API void GL_APIENTRY glTexEnvxOES(GLenum target, GLenum pname, GLfixed param)
 {
-	(void)target;
-	(void)pname;
-	(void)param;
-	LOG_INFO("glTexParameterxOES called - not yet supported.");
+	glTexEnvf(target, pname, FIXED_TO_FLOAT(param));
 }
 
-void glTexParameterxvOES(GLenum target, GLenum pname, const GLfixed *params)
+GL_API void GL_APIENTRY glTexEnvxvOES(GLenum target, GLenum pname,
+				      const GLfixed *params)
 {
-	(void)target;
-	(void)pname;
-	(void)params;
-	LOG_INFO("glTexParameterxvOES called - not yet supported.");
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat vals[4] = { FIXED_TO_FLOAT(params[0]),
+			    FIXED_TO_FLOAT(params[1]),
+			    FIXED_TO_FLOAT(params[2]),
+			    FIXED_TO_FLOAT(params[3]) };
+	glTexEnvfv(target, pname, vals);
 }
 
-void glTranslatexOES(GLfixed x, GLfixed y, GLfixed z)
+GL_API void GL_APIENTRY glTexParameterxOES(GLenum target, GLenum pname,
+					   GLfixed param)
 {
-	(void)x;
-	(void)y;
-	(void)z;
-	LOG_INFO("glTranslatexOES called - not yet supported.");
+	glTexParameterf(target, pname, FIXED_TO_FLOAT(param));
+}
+
+GL_API void GL_APIENTRY glTexParameterxvOES(GLenum target, GLenum pname,
+					    const GLfixed *params)
+{
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat vals[4] = { FIXED_TO_FLOAT(params[0]),
+			    FIXED_TO_FLOAT(params[1]),
+			    FIXED_TO_FLOAT(params[2]),
+			    FIXED_TO_FLOAT(params[3]) };
+	glTexParameterfv(target, pname, vals);
+}
+
+GL_API void GL_APIENTRY glTranslatexOES(GLfixed x, GLfixed y, GLfixed z)
+{
+	glTranslatex(x, y, z);
 }
 
 /* Additional extension wrappers and stubs */
-void glClearDepthfOES(GLclampf depth)
+GL_API void GL_APIENTRY glClearDepthfOES(GLclampf depth)
 {
 	glClearDepthf(depth);
 }
 
-void glDepthRangefOES(GLclampf n, GLclampf f)
+GL_API void GL_APIENTRY glDepthRangefOES(GLclampf n, GLclampf f)
 {
 	glDepthRangef(n, f);
 }
 
-void glFrustumfOES(GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n,
-		   GLfloat f)
+GL_API void GL_APIENTRY glFrustumfOES(GLfloat l, GLfloat r, GLfloat b,
+				      GLfloat t, GLfloat n, GLfloat f)
 {
 	glFrustumf(l, r, b, t, n, f);
 }
 
-void glOrthofOES(GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n,
-		 GLfloat f)
+GL_API void GL_APIENTRY glOrthofOES(GLfloat l, GLfloat r, GLfloat b, GLfloat t,
+				    GLfloat n, GLfloat f)
 {
 	glOrthof(l, r, b, t, n, f);
 }
 
-void glClipPlanefOES(GLenum plane, const GLfloat *equation)
+GL_API void GL_APIENTRY glClipPlanefOES(GLenum plane, const GLfloat *equation)
 {
 	glClipPlanef(plane, equation);
 }
 
-void glGetClipPlanefOES(GLenum plane, GLfloat *equation)
+GL_API void GL_APIENTRY glGetClipPlanefOES(GLenum plane, GLfloat *equation)
 {
 	glGetClipPlanef(plane, equation);
 }
 
-void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image)
+GL_API void GL_APIENTRY glClipPlanefIMG(GLenum p, const GLfloat *eqn)
 {
-	(void)target;
-	(void)image;
-	LOG_INFO("glEGLImageTargetTexture2DOES called - not yet supported.");
+	glClipPlanef(p, eqn);
 }
 
-void glEGLImageTargetRenderbufferStorageOES(GLenum target, GLeglImageOES image)
+GL_API void GL_APIENTRY glClipPlanexIMG(GLenum p, const GLfixed *eqn)
 {
-	(void)target;
-	(void)image;
+	if (!eqn) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat eq[4] = { FIXED_TO_FLOAT(eqn[0]), FIXED_TO_FLOAT(eqn[1]),
+			  FIXED_TO_FLOAT(eqn[2]), FIXED_TO_FLOAT(eqn[3]) };
+	glClipPlanef(p, eq);
+}
+
+GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES(GLenum target,
+						     GLeglImageOES image)
+{
+	if (target != GL_TEXTURE_2D) {
+		glSetError(GL_INVALID_ENUM);
+		return;
+	}
+	if (!image) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
 	LOG_INFO(
-		"glEGLImageTargetRenderbufferStorageOES called - not yet supported.");
+		"glEGLImageTargetTexture2DOES called - EGLImage not supported");
+	glSetError(GL_INVALID_OPERATION);
 }
 
-void glBindVertexArrayOES(GLuint array)
+GL_API void GL_APIENTRY
+glEGLImageTargetRenderbufferStorageOES(GLenum target, GLeglImageOES image)
 {
-	(void)array;
-	LOG_INFO("glBindVertexArrayOES called - not yet supported.");
+	if (target != GL_RENDERBUFFER_OES) {
+		glSetError(GL_INVALID_ENUM);
+		return;
+	}
+	if (!image) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	LOG_INFO(
+		"glEGLImageTargetRenderbufferStorageOES called - EGLImage not supported");
+	glSetError(GL_INVALID_OPERATION);
 }
 
-void glDeleteVertexArraysOES(GLsizei n, const GLuint *arrays)
+GL_API void GL_APIENTRY glBindVertexArrayOES(GLuint array)
 {
-	(void)n;
-	(void)arrays;
-	LOG_INFO("glDeleteVertexArraysOES called - not yet supported.");
+	if (array == 0) {
+		gl_state.bound_vao = NULL;
+		return;
+	}
+
+	VertexArrayObject *vao = find_vao(array);
+	if (!vao) {
+		glSetError(GL_INVALID_OPERATION);
+		return;
+	}
+
+	gl_state.bound_vao = vao;
+
+	gl_state.vertex_array_enabled = vao->vertex_array_enabled;
+	gl_state.vertex_array_size = vao->vertex_array_size;
+	gl_state.vertex_array_type = vao->vertex_array_type;
+	gl_state.vertex_array_stride = vao->vertex_array_stride;
+	gl_state.vertex_array_pointer = vao->vertex_array_pointer;
+
+	gl_state.color_array_enabled = vao->color_array_enabled;
+	gl_state.color_array_size = vao->color_array_size;
+	gl_state.color_array_type = vao->color_array_type;
+	gl_state.color_array_stride = vao->color_array_stride;
+	gl_state.color_array_pointer = vao->color_array_pointer;
+
+	gl_state.normal_array_enabled = vao->normal_array_enabled;
+	gl_state.normal_array_type = vao->normal_array_type;
+	gl_state.normal_array_stride = vao->normal_array_stride;
+	gl_state.normal_array_pointer = vao->normal_array_pointer;
+
+	gl_state.texcoord_array_enabled = vao->texcoord_array_enabled;
+	gl_state.texcoord_array_size = vao->texcoord_array_size;
+	gl_state.texcoord_array_type = vao->texcoord_array_type;
+	gl_state.texcoord_array_stride = vao->texcoord_array_stride;
+	gl_state.texcoord_array_pointer = vao->texcoord_array_pointer;
+
+	gl_state.point_size_array_type = vao->point_size_array_type;
+	gl_state.point_size_array_stride = vao->point_size_array_stride;
+	gl_state.point_size_array_pointer = vao->point_size_array_pointer;
+
+	gl_state.matrix_index_array_size = vao->matrix_index_array_size;
+	gl_state.matrix_index_array_type = vao->matrix_index_array_type;
+	gl_state.matrix_index_array_stride = vao->matrix_index_array_stride;
+	gl_state.matrix_index_array_pointer = vao->matrix_index_array_pointer;
+
+	gl_state.weight_array_size = vao->weight_array_size;
+	gl_state.weight_array_type = vao->weight_array_type;
+	gl_state.weight_array_stride = vao->weight_array_stride;
+	gl_state.weight_array_pointer = vao->weight_array_pointer;
 }
 
-void glGenVertexArraysOES(GLsizei n, GLuint *arrays)
+GL_API void GL_APIENTRY glDeleteVertexArraysOES(GLsizei n, const GLuint *arrays)
 {
-	if (arrays)
-		memset(arrays, 0, sizeof(GLuint) * (size_t)n);
-	LOG_INFO("glGenVertexArraysOES called - not yet supported.");
+	if (!arrays || n < 0)
+		return;
+	for (GLsizei i = 0; i < n; ++i) {
+		VertexArrayObject *vao = find_vao(arrays[i]);
+		if (!vao)
+			continue;
+		if (gl_state.bound_vao == vao)
+			gl_state.bound_vao = NULL;
+		for (GLint j = 0; j < gl_state.vao_count; ++j) {
+			if (gl_state.vaos[j] == vao) {
+				memmove(&gl_state.vaos[j],
+					&gl_state.vaos[j + 1],
+					(size_t)(gl_state.vao_count - j - 1) *
+						sizeof(VertexArrayObject *));
+				break;
+			}
+		}
+		gl_state.vao_count--;
+		tracked_free(vao, sizeof(VertexArrayObject));
+	}
+}
+
+GL_API void GL_APIENTRY glGenVertexArraysOES(GLsizei n, GLuint *arrays)
+{
+	if (!arrays || n < 0)
+		return;
+	for (GLsizei i = 0; i < n; ++i) {
+		if (gl_state.vao_count >= MAX_VERTEX_ARRAYS) {
+			arrays[i] = 0;
+			continue;
+		}
+		VertexArrayObject *vao = (VertexArrayObject *)tracked_malloc(
+			sizeof(VertexArrayObject));
+		memset(vao, 0, sizeof(VertexArrayObject));
+		vao->id = gl_state.next_vertex_array_id++;
+		gl_state.vaos[gl_state.vao_count++] = vao;
+		arrays[i] = vao->id;
+	}
 }
 
 GLboolean glIsVertexArrayOES(GLuint array)
 {
-	(void)array;
-	LOG_INFO("glIsVertexArrayOES called - not yet supported.");
-	return GL_FALSE;
+	return find_vao(array) != NULL;
 }
 
-void glGetBufferPointervOES(GLenum target, GLenum pname, void **params)
+GL_API void GL_APIENTRY glGetBufferPointervOES(GLenum target, GLenum pname,
+					       void **params)
 {
-	(void)target;
-	(void)pname;
-	if (params)
+	if (!params || pname != GL_BUFFER_MAP_POINTER_OES)
+		return;
+	BufferObject *obj = NULL;
+	if (target == GL_ARRAY_BUFFER)
+		obj = find_buffer(gl_state.array_buffer_binding);
+	else if (target == GL_ELEMENT_ARRAY_BUFFER)
+		obj = find_buffer(gl_state.element_array_buffer_binding);
+	if (obj)
+		*params = obj->data;
+	else
 		*params = NULL;
-	LOG_INFO("glGetBufferPointervOES called - not yet supported.");
 }
 
 void *glMapBufferOES(GLenum target, GLenum access)
 {
-	(void)target;
+	BufferObject *obj = NULL;
+	if (target == GL_ARRAY_BUFFER)
+		obj = find_buffer(gl_state.array_buffer_binding);
+	else if (target == GL_ELEMENT_ARRAY_BUFFER)
+		obj = find_buffer(gl_state.element_array_buffer_binding);
 	(void)access;
-	LOG_INFO("glMapBufferOES called - not yet supported.");
-	return NULL;
+	if (!obj || !obj->data) {
+		glSetError(GL_INVALID_OPERATION);
+		return NULL;
+	}
+	return obj->data;
 }
 
 GLboolean glUnmapBufferOES(GLenum target)
 {
-	(void)target;
-	LOG_INFO("glUnmapBufferOES called - not yet supported.");
-	return GL_FALSE;
+	BufferObject *obj = NULL;
+	if (target == GL_ARRAY_BUFFER)
+		obj = find_buffer(gl_state.array_buffer_binding);
+	else if (target == GL_ELEMENT_ARRAY_BUFFER)
+		obj = find_buffer(gl_state.element_array_buffer_binding);
+	if (!obj) {
+		glSetError(GL_INVALID_OPERATION);
+		return GL_FALSE;
+	}
+	return GL_TRUE;
 }
 
 GLbitfield glQueryMatrixxOES(GLfixed *mantissa, GLint *exponent)
 {
-	(void)mantissa;
-	(void)exponent;
-	LOG_INFO("glQueryMatrixxOES called - not yet supported.");
-	return 0;
+	if (!mantissa || !exponent)
+		return 0;
+	GLbitfield status = 0;
+	for (int i = 0; i < 16; ++i) {
+		float val = gl_state.modelview_matrix.data[i];
+		int exp;
+		float m = frexpf(val, &exp);
+		mantissa[i] = (GLfixed)(m * 65536.0f);
+		exponent[i] = exp;
+	}
+	return status;
 }
 
-void glTexGenxOES(GLenum coord, GLenum pname, GLfixed param)
+GL_API void GL_APIENTRY glTexGenxOES(GLenum coord, GLenum pname, GLfixed param)
 {
+	if (pname != GL_TEXTURE_GEN_MODE_OES) {
+		glSetError(GL_INVALID_ENUM);
+		return;
+	}
 	glTexGenfOES(coord, pname, FIXED_TO_FLOAT(param));
 }
 
-void glTexGenxvOES(GLenum coord, GLenum pname, const GLfixed *params)
+GL_API void GL_APIENTRY glTexGenxvOES(GLenum coord, GLenum pname,
+				      const GLfixed *params)
 {
 	if (!params) {
 		glSetError(GL_INVALID_VALUE);
@@ -654,7 +1011,8 @@ void glTexGenxvOES(GLenum coord, GLenum pname, const GLfixed *params)
 	glTexGenfvOES(coord, pname, fp);
 }
 
-void glGetTexGenxvOES(GLenum coord, GLenum pname, GLfixed *params)
+GL_API void GL_APIENTRY glGetTexGenxvOES(GLenum coord, GLenum pname,
+					 GLfixed *params)
 {
 	if (!params) {
 		glSetError(GL_INVALID_VALUE);
@@ -666,4 +1024,54 @@ void glGetTexGenxvOES(GLenum coord, GLenum pname, GLfixed *params)
 	params[1] = (GLfixed)(fp[1] * 65536.0f);
 	params[2] = (GLfixed)(fp[2] * 65536.0f);
 	params[3] = (GLfixed)(fp[3] * 65536.0f);
+}
+
+GL_API void GL_APIENTRY glRenderbufferStorageMultisampleIMG(
+	GLenum target, GLsizei samples, GLenum internalformat, GLsizei width,
+	GLsizei height)
+{
+	if (samples != 0) {
+		LOG_INFO(
+			"glRenderbufferStorageMultisampleIMG: multisampling not supported, using single-sample");
+	}
+	glRenderbufferStorageOES(target, internalformat, width, height);
+}
+
+GL_API void GL_APIENTRY glFramebufferTexture2DMultisampleIMG(
+	GLenum target, GLenum attachment, GLenum textarget, GLuint texture,
+	GLint level, GLsizei samples)
+{
+	if (samples != 0) {
+		LOG_INFO(
+			"glFramebufferTexture2DMultisampleIMG: multisampling not supported, using single-sample");
+	}
+	glFramebufferTexture2DOES(target, attachment, textarget, texture,
+				  level);
+}
+
+/* EXT_multi_draw_arrays wrappers */
+GL_API void GL_APIENTRY glMultiDrawArraysEXT(GLenum mode, const GLint *first,
+					     const GLsizei *count,
+					     GLsizei primcount)
+{
+	if (!first || !count || primcount < 0) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	for (GLsizei i = 0; i < primcount; ++i)
+		glDrawArrays(mode, first[i], count[i]);
+}
+
+GL_API void GL_APIENTRY glMultiDrawElementsEXT(GLenum mode,
+					       const GLsizei *count,
+					       GLenum type,
+					       const void *const *indices,
+					       GLsizei primcount)
+{
+	if (!count || !indices || primcount < 0) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	for (GLsizei i = 0; i < primcount; ++i)
+		glDrawElements(mode, count[i], type, indices[i]);
 }

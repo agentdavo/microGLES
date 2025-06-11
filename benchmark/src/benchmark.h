@@ -4,7 +4,7 @@
 #include <GLES/gl.h>
 #include <stddef.h>
 #include <time.h>
-#include "framebuffer.h"
+#include "pipeline/gl_framebuffer.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,10 +25,13 @@ void run_triangle_strip(int vertex_count, Framebuffer *fb,
 void run_textured_quad(Framebuffer *fb, BenchmarkResult *result);
 void run_lit_cube(int lighting, Framebuffer *fb, BenchmarkResult *result);
 void run_fbo_benchmark(Framebuffer *fb, BenchmarkResult *result);
+void run_pipeline_test(Framebuffer *fb, BenchmarkResult *result);
 void run_spinning_gears(Framebuffer *fb, BenchmarkResult *result);
 void run_spinning_cubes(Framebuffer *fb, BenchmarkResult *result);
 void run_multitexture_demo(Framebuffer *fb, BenchmarkResult *result);
 void run_alpha_blend_demo(Framebuffer *fb, BenchmarkResult *result);
+void run_miletostone1(Framebuffer *fb, BenchmarkResult *result);
+void run_milestone2(Framebuffer *fb, BenchmarkResult *result);
 
 #ifdef __cplusplus
 }

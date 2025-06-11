@@ -1,6 +1,7 @@
 #include "benchmark.h"
 #include "gl_utils.h"
-#include "logger.h"
+#include "gl_logger.h"
+#include "gl_thread.h"
 #include "matrix_utils.h"
 #include <math.h>
 
@@ -42,7 +43,8 @@ void run_spinning_gears(Framebuffer *fb, BenchmarkResult *result)
 	float angle = 0.0f;
 	volatile float accum = 0.0f;
 
-	framebuffer_clear(fb, 0x00000000u, 1.0f);
+	framebuffer_clear_async(fb, 0x00000000u, 1.0f, 0);
+	thread_pool_wait();
 	clock_t start = clock();
 	for (int frame = 0; frame < 100; ++frame) {
 		angle += 2.0f;

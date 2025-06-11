@@ -3,7 +3,7 @@
 
 #include "gl_errors.h"
 #include "gl_state.h"
-#include "framebuffer.h"
+#include "pipeline/gl_framebuffer.h"
 #include <GLES/gl.h>
 #include <stdint.h>
 
@@ -27,5 +27,8 @@ Framebuffer *GL_init_with_framebuffer(uint32_t width, uint32_t height);
 
 // Destroy the framebuffer and clean up GL state
 void GL_cleanup_with_framebuffer(Framebuffer *fb);
+
+// Retrieve the framebuffer created by GL_init_with_framebuffer
+Framebuffer *GL_get_default_framebuffer(void);
 
 #endif // GL_INIT_H

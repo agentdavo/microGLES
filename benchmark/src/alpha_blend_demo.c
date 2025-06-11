@@ -1,10 +1,12 @@
 #include "benchmark.h"
 #include "gl_utils.h"
-#include "logger.h"
+#include "gl_logger.h"
+#include "gl_thread.h"
 
 void run_alpha_blend_demo(Framebuffer *fb, BenchmarkResult *result)
 {
-	framebuffer_clear(fb, 0x00000000u, 1.0f);
+	framebuffer_clear_async(fb, 0x00000000u, 1.0f, 0);
+	thread_pool_wait();
 	clock_t start = clock();
 	for (int frame = 0; frame < 100; ++frame) {
 		glEnable(GL_BLEND);

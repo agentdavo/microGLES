@@ -1,7 +1,8 @@
 #include "benchmark.h"
 #include "gl_framebuffer_object.h"
 #include "gl_utils.h"
-#include "logger.h"
+#include "gl_logger.h"
+#include "gl_thread.h"
 
 void run_fbo_benchmark(Framebuffer *fb, BenchmarkResult *result)
 {
@@ -17,7 +18,8 @@ void run_fbo_benchmark(Framebuffer *fb, BenchmarkResult *result)
 				     GL_COLOR_ATTACHMENT0_OES,
 				     GL_RENDERBUFFER_OES, rb);
 
-	framebuffer_clear(fb, 0x00000000u, 1.0f);
+	framebuffer_clear_async(fb, 0x00000000u, 1.0f, 0);
+	thread_pool_wait();
 	clock_t start = clock();
 	for (int frame = 0; frame < 100; ++frame) {
 		glClear(GL_COLOR_BUFFER_BIT);

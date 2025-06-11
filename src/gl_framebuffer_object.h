@@ -3,7 +3,7 @@
 #ifndef GL_FRAMEBUFFER_OBJECT_H
 #define GL_FRAMEBUFFER_OBJECT_H
 
-#include "gl_texture.h" /* For TextureOES */
+#include "gl_types.h" /* For TextureOES */
 #include <GLES/gl.h>
 #include <GLES/glext.h>
 #include <stddef.h>

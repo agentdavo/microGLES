@@ -1,7 +1,8 @@
 #include "benchmark.h"
 #include "gl_utils.h"
-#include "logger.h"
-#include "memory_tracker.h"
+#include "gl_logger.h"
+#include "gl_memory_tracker.h"
+#include "gl_thread.h"
 #include <string.h>
 
 void run_triangle_strip(int vertex_count, Framebuffer *fb,
@@ -11,7 +12,8 @@ void run_triangle_strip(int vertex_count, Framebuffer *fb,
 	for (int i = 0; i < vertex_count * 3; ++i) {
 		verts[i] = (GLfloat)i / (GLfloat)vertex_count;
 	}
-	framebuffer_clear(fb, 0x00000000u, 1.0f);
+	framebuffer_clear_async(fb, 0x00000000u, 1.0f, 0);
+	thread_pool_wait();
 	clock_t start = clock();
 	for (int frame = 0; frame < 100; ++frame) {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
