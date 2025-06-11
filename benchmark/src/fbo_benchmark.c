@@ -1,5 +1,5 @@
 #include "benchmark.h"
-#include "gl_framebuffer_object.h"
+#include "gl_api_fbo.h"
 #include "gl_utils.h"
 #include "gl_logger.h"
 #include "gl_thread.h"
