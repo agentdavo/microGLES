@@ -16,11 +16,17 @@ set(SOURCE_FILES
     src/gl_utils.c
     src/gl_functions.c
     src/gl_extensions.c
+    src/gl_context.c
+    src/gl_thread.c
     src/gl_init.c
-    src/framebuffer.c
+    src/pipeline/gl_framebuffer.c
+    src/pipeline/gl_vertex.c
+    src/pipeline/gl_primitive.c
+    src/pipeline/gl_raster.c
+    src/pipeline/gl_fragment.c
     src/matrix_utils.c
-    src/memory_tracker.c
-    src/logger.c
+    src/gl_memory_tracker.c
+    src/gl_logger.c
 )
 set(RENDERER_MAIN src/main.c)
 
@@ -31,10 +37,16 @@ set(HEADER_FILES
     src/gl_texture.h
     src/gl_utils.h
     src/matrix_utils.h
-    src/framebuffer.h
-    src/memory_tracker.h
-    src/logger.h
-    src/gl_extensions.h
+    src/gl_types.h
+    src/pipeline/gl_framebuffer.h
+    src/pipeline/gl_vertex.h
+    src/pipeline/gl_primitive.h
+    src/pipeline/gl_raster.h
+    src/pipeline/gl_fragment.h
+    src/gl_memory_tracker.h
+    src/gl_logger.h
+    src/gl_context.h
+    src/gl_thread.h
     src/gl_init.h
 )
 
@@ -96,6 +108,21 @@ add_custom_target(run
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Running the renderer application"
 )
+
+# Formatting target
+file(GLOB_RECURSE SOURCES
+    "src/*.h" "src/*.c"
+    "benchmark/*.h" "benchmark/*.c"
+    "conformance/*.h" "conformance/*.c")
+list(FILTER SOURCES EXCLUDE REGEX "CMakeLists.txt")
+list(FILTER SOURCES EXCLUDE REGEX "\\.md$")
+find_program(CLANG_FORMAT clang-format)
+if(CLANG_FORMAT)
+    add_custom_target(format
+        COMMAND ${CLANG_FORMAT} -i ${SOURCES}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Running clang-format on src, benchmark, and conformance")
+endif()
 
 add_subdirectory(benchmark)
 add_subdirectory(conformance)

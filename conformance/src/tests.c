@@ -3,8 +3,8 @@
 #include "gl_state.h"
 #include "gl_texture.h"
 #include "gl_utils.h"
-#include "logger.h"
-#include "framebuffer.h"
+#include "gl_logger.h"
+#include "pipeline/gl_framebuffer.h"
 #include "matrix_utils.h"
 #include <math.h>
 #include <stdio.h>
@@ -261,7 +261,7 @@ int test_framebuffer_module(void)
 	Framebuffer *fb = framebuffer_create(4, 4);
 	if (!fb)
 		return 0;
-	framebuffer_clear(fb, 0x0000FF00u, 1.0f); // green
+	framebuffer_clear(fb, 0x0000FF00u, 1.0f, 0); // green
 	framebuffer_set_pixel(fb, 1, 1, 0x00FF0000u, 0.0f); // red pixel
 	int ok = framebuffer_write_bmp(fb, "fb_test.bmp");
 	framebuffer_destroy(fb);

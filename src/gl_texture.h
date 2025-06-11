@@ -16,25 +16,27 @@ extern "C" {
 #endif
 
 typedef struct TextureOES {
-  GLuint id;                  // Texture ID
-  GLenum target;              // GL_TEXTURE_2D, etc.
-  GLenum internalformat;      // GL_RGBA4_OES, etc.
-  GLsizei width;              // Texture width
-  GLsizei height;             // Texture height
-  GLboolean mipmap_supported; // True if mipmaps are supported
-  GLint current_level;        // Current mipmap level
-  GLint wrap_s;
-  GLint wrap_t;
-  GLint min_filter;
-  GLint mag_filter;
+	GLuint id; // Texture ID
+	GLenum target; // GL_TEXTURE_2D, etc.
+	GLenum internalformat; // GL_RGBA4_OES, etc.
+	GLsizei width; // Texture width
+	GLsizei height; // Texture height
+	GLboolean mipmap_supported; // True if mipmaps are supported
+	GLint current_level; // Current mipmap level
+	GLint wrap_s;
+	GLint wrap_t;
+	GLint min_filter;
+	GLint mag_filter;
+	GLint crop_rect[4];
+	GLint required_units;
 } TextureOES;
 
 /* Function prototypes */
 TextureOES *CreateTextureOES(GLenum target, GLenum internalformat,
-                             GLsizei width, GLsizei height, GLboolean mipmap);
+			     GLsizei width, GLsizei height, GLboolean mipmap);
 void TexImage2DOES(TextureOES *tex, GLint level, GLenum internalformat,
-                   GLsizei width, GLsizei height, GLenum format, GLenum type,
-                   const void *pixels);
+		   GLsizei width, GLsizei height, GLenum format, GLenum type,
+		   const void *pixels);
 void BindTextureOES(GLenum target, TextureOES *tex);
 
 #ifdef __cplusplus

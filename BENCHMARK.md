@@ -14,6 +14,7 @@ numbers may vary depending on hardware and compiler options.
 | Lit Cube (lighting on)     | N/A |
 | Lit Cube (lighting off)    | N/A |
 | FBO operations             | N/A |
+| Pipeline Test              | N/A |
 | Spinning Gears             | N/A |
 | Spinning Cubes             | N/A |
 | Multitexture Demo          | N/A |
