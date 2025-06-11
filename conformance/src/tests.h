@@ -1,22 +1,45 @@
 #ifndef CONFORMANCE_TESTS_H
 #define CONFORMANCE_TESTS_H
 
+#include <stddef.h>
+#include <GLES/gl.h>
+#include "gl_logger.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int test_framebuffer_complete(void);
-int test_texture_creation(void);
-int test_framebuffer_colors(void);
-int test_enable_disable(void);
-int test_viewport(void);
-int test_matrix_stack(void);
-int test_clear_state(void);
-int test_buffer_objects(void);
-int test_texture_setup(void);
-int test_blend_func(void);
-int test_scissor_state(void);
-int test_framebuffer_module(void);
+struct Test {
+	const char *name;
+	int (*fn)(void);
+};
+
+#define CHECK_OK(expr)                                 \
+	do {                                           \
+		if (!(expr)) {                         \
+			LOG_ERROR("%s failed", #expr); \
+			return 0;                      \
+		}                                      \
+	} while (0)
+
+#define CHECK_GLError(code)                                                    \
+	do {                                                                   \
+		GLenum err = glGetError();                                     \
+		if (err != (code)) {                                           \
+			LOG_ERROR("GL error 0x%X expected 0x%X", err, (code)); \
+			return 0;                                              \
+		}                                                              \
+	} while (0)
+
+const struct Test *get_state_tests(size_t *count);
+const struct Test *get_matrix_tests(size_t *count);
+const struct Test *get_texture_tests(size_t *count);
+const struct Test *get_buffer_tests(size_t *count);
+const struct Test *get_draw_tests(size_t *count);
+const struct Test *get_fbo_tests(size_t *count);
+const struct Test *get_extensions_tests(size_t *count);
+const struct Test *get_autogen_tests(size_t *count);
+const struct Test *get_all_calls_tests(size_t *count);
 
 #ifdef __cplusplus
 }

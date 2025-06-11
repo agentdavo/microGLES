@@ -143,3 +143,6 @@ endif()
 
 add_subdirectory(benchmark)
 add_subdirectory(conformance)
+
+enable_testing()
+add_test(NAME conformance COMMAND renderer_conformance)

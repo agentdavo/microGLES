@@ -44,11 +44,9 @@ Run:
 
 ```
 src/
-├─ api/                      gl_api_state.c, matrix.c, draw.c, …
 ├─ extensions/               gl_ext_OES_draw_texture.c, …
-├─ pipeline/                 vertex → primitive → raster → fragment
-├─ util/                     logger, memory_tracker, math
-conformance/                 table-driven tests + golden BMPs
+├─ pipeline/                 vertex → primitive → raster → fragment → framebuffer
+conformance/                 table-driven tests + golden RGBAs
 benchmark/                   perf demos
 ```
 

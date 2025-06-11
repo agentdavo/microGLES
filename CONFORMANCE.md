@@ -1,7 +1,8 @@
 # Conformance Test Results
 
-The following table summarizes the outcome of the built-in test suite
-executed via the `conformance` target.
+The conformance suite is table‑driven and covers most of OpenGL ES 1.1.
+The following table summarizes the key tests executed via the
+`renderer_conformance` target.
 
 | Test                   | Result |
 |------------------------|--------|
@@ -17,3 +18,24 @@ executed via the `conformance` target.
 | Texture setup            | Pass |
 | Blend func               | Pass |
 | Scissor state            | Pass |
+| Mask state               | Pass |
+| Depth/Alpha/Stencil      | Pass |
+| Call glLogicOp           | Pass |
+| All entrypoints          | Pass |
+
+## Function Coverage
+
+| Function | Test |
+|----------|------|
+| `glEnable`/`glDisable` | `enable_disable` |
+| `glViewport` | `viewport` |
+| `glMatrixMode` etc. | `matrix_stack` |
+| `glClearColor`/`glClearDepthf`/`glClearStencil` | `clear_state` |
+| `glGenBuffers`/`glBufferData` | `buffer_objects` |
+| `glGenTextures`/`glTexImage2D` | `texture_creation`, `texture_setup` |
+| `glBlendFunc` | `blend_func` |
+| `glScissor` | `scissor_state` |
+| `glColorMask`/`glDepthMask` | `mask_state` |
+| `glAlphaFunc`/`glDepthFunc`/`glStencilFunc` | `depth_alpha_stencil` |
+| `glLogicOp` | `call_glLogicOp` |
+| *others* | `all_entrypoints` |

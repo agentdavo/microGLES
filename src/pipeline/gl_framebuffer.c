@@ -316,3 +316,28 @@ int framebuffer_write_bmp(const Framebuffer *fb, const char *path)
 	LOG_INFO("Wrote %s", path);
 	return 1;
 }
+
+int framebuffer_write_rgba(const Framebuffer *fb, const char *path)
+{
+	FILE *f = fopen(path, "w");
+	if (!f) {
+		LOG_ERROR("Failed to open %s", path);
+		return 0;
+	}
+	int width = (int)fb->width;
+	int height = (int)fb->height;
+	fprintf(f, "%d %d\n", width, height);
+	for (int y = 0; y < height; ++y) {
+		for (int x = 0; x < width; ++x) {
+			uint32_t pixel = atomic_load(
+				&fb->color_buffer[(size_t)y * fb->width + x]);
+			unsigned r = (pixel >> 16) & 0xFF;
+			unsigned g = (pixel >> 8) & 0xFF;
+			unsigned b = pixel & 0xFF;
+			fprintf(f, "%u %u %u 255\n", r, g, b);
+		}
+	}
+	fclose(f);
+	LOG_INFO("Wrote %s", path);
+	return 1;
+}
