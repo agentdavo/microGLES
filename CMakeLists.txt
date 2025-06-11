@@ -24,7 +24,7 @@ set(SOURCE_FILES
     src/gl_api_buffer.c
     src/gl_state.c
     src/gl_utils.c
-    src/gl_extensions.c
+    src/extensions/gl_extensions.c
     src/gl_context.c
     src/gl_thread.c
     src/gl_init.c
@@ -42,8 +42,6 @@ set(RENDERER_MAIN src/main.c)
 # Define header files (for IDE visibility, optional)
 set(HEADER_FILES
     src/gl_api_fbo.h
-    src/gl_api_pixels.h
-    src/gl_api_texture.h
     src/gl_api_vertex_array.h
     src/gl_state.h
     src/gl_utils.h
@@ -137,3 +135,6 @@ endif()
 
 add_subdirectory(benchmark)
 add_subdirectory(conformance)
+
+enable_testing()
+add_test(NAME conformance COMMAND renderer_conformance)

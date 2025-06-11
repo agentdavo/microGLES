@@ -14,7 +14,7 @@ When modifying code in this folder:
   cmake --build build_debug
   ```
 - Run the benchmark and conformance tests to verify runtime behaviour:
-  `./build/bin/benchmark` and `./build/bin/conformance`.
+  `./build/bin/benchmark` and `./build/bin/renderer_conformance`.
 - Use tools like `valgrind` or `gdb` to diagnose crashes or memory errors
   when tests fail.
 - Update README.md if the public API or build steps change.

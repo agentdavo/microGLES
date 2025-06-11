@@ -59,7 +59,7 @@ cmake -S . -B build \
       -DCMAKE_C_FLAGS="-std=gnu11 -O3 -ftree-vectorize"
 cmake --build build                 # produces bin/* executables
 ./build/bin/benchmark
-./build/bin/conformance
+./build/bin/renderer_conformance
 ````
 
 ### Debug / Sanitizer
@@ -68,7 +68,7 @@ cmake --build build                 # produces bin/* executables
 cmake -S . -B build_debug \
       -DCMAKE_C_FLAGS="-std=gnu11 -Og -g -fsanitize=undefined,address"
 cmake --build build_debug
-ASAN_OPTIONS=halt_on_error=1 ./build_debug/bin/conformance
+ASAN_OPTIONS=halt_on_error=1 ./build_debug/bin/renderer_conformance
 ```
 
 Auto-format:
@@ -112,7 +112,7 @@ int main(void)
 
     /* flush & dump */
     thread_pool_wait();
-    framebuffer_write_bmp(fb, "tri.bmp");
+    framebuffer_write_rgba(fb, "tri.rgba");
 
     /* teardown */
     framebuffer_destroy(fb);
