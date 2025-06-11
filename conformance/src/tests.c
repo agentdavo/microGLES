@@ -3,8 +3,8 @@
 #include "gl_state.h"
 #include "gl_texture.h"
 #include "gl_utils.h"
-#include "logger.h"
-#include "framebuffer.h"
+#include "gl_logger.h"
+#include "pipeline/gl_framebuffer.h"
 #include "matrix_utils.h"
 #include <math.h>
 #include <stdio.h>
