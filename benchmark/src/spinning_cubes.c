@@ -1,7 +1,8 @@
 #include "benchmark.h"
-#include "gl_texture.h"
+#include "gl_types.h"
 #include "gl_utils.h"
-#include "logger.h"
+#include "gl_logger.h"
+#include "gl_thread.h"
 #include "matrix_utils.h"
 #include <math.h>
 #include <string.h>
@@ -17,13 +18,11 @@ void run_spinning_cubes(Framebuffer *fb, BenchmarkResult *result)
 	const int face_pixels = 64 * 64; // approximate pixels per face
 	GLubyte *tex = tracked_malloc(face_pixels * 4);
 	memset(tex, 0xAA, face_pixels * 4);
-	TextureOES *t = CreateTextureOES(GL_TEXTURE_2D_OES, GL_RGBA8_OES, 64,
-					 64, GL_TRUE);
-	if (t) {
-		TexImage2DOES(t, 0, GL_RGBA8_OES, 64, 64, GL_RGBA,
-			      GL_UNSIGNED_BYTE, tex);
-		BindTextureOES(GL_TEXTURE_2D_OES, t);
-	}
+	GLuint t;
+	glGenTextures(1, &t);
+	glBindTexture(GL_TEXTURE_2D, t);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 64, 64, 0, GL_RGBA,
+		     GL_UNSIGNED_BYTE, tex);
 	glEnable(GL_FOG);
 	glFogf(GL_FOG_DENSITY, 0.5f);
 
@@ -31,7 +30,8 @@ void run_spinning_cubes(Framebuffer *fb, BenchmarkResult *result)
 	mat4_identity(&model);
 
 	double pixels_drawn = 0.0;
-	framebuffer_clear(fb, 0x00000000u, 1.0f);
+	framebuffer_clear_async(fb, 0x00000000u, 1.0f, 0);
+	thread_pool_wait();
 	clock_t start = clock();
 	for (int f = 0; f < frames; ++f) {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -47,8 +47,7 @@ void run_spinning_cubes(Framebuffer *fb, BenchmarkResult *result)
 	}
 	clock_t end = clock();
 
-	if (t)
-		tracked_free(t, sizeof(TextureOES));
+	glDeleteTextures(1, &t);
 	tracked_free(tex, face_pixels * 4);
 
 	compute_result(start, end, result);

@@ -1,9 +1,12 @@
 #include "gl_init.h"
-#include "logger.h"
+#include "gl_logger.h"
+#include "gl_context.h"
 #include "matrix_utils.h"
-#include "framebuffer.h"
+#include "pipeline/gl_framebuffer.h"
 #include <GLES/gl.h>
 #include <stdio.h>
+
+static Framebuffer *g_default_fb = NULL;
 
 // This initializes all the states for OpenGL ES and sets default values
 void GL_init(void)
@@ -109,6 +112,7 @@ void GL_defaultMatrixSetup(void)
 Framebuffer *GL_init_with_framebuffer(uint32_t width, uint32_t height)
 {
 	glSetError(GL_NO_ERROR);
+	context_init();
 	GL_resetState();
 	GL_setupViewport(0, 0, (GLsizei)width, (GLsizei)height);
 	GL_defaultMatrixSetup();
@@ -117,8 +121,9 @@ Framebuffer *GL_init_with_framebuffer(uint32_t width, uint32_t height)
 		LOG_FATAL("Failed to create framebuffer %ux%u", width, height);
 		return NULL;
 	}
-	framebuffer_clear(fb, 0x00000000u, 1.0f);
+	framebuffer_clear(fb, 0x00000000u, 1.0f, 0);
 	LOG_INFO("Initialized renderer with framebuffer %ux%u", width, height);
+	g_default_fb = fb;
 	return fb;
 }
 
@@ -128,5 +133,11 @@ void GL_cleanup_with_framebuffer(Framebuffer *fb)
 		framebuffer_destroy(fb);
 		LOG_INFO("Destroyed framebuffer");
 	}
+	g_default_fb = NULL;
 	GL_cleanup();
+}
+
+Framebuffer *GL_get_default_framebuffer(void)
+{
+	return g_default_fb;
 }

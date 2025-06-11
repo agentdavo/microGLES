@@ -1,25 +1,28 @@
 /* main.c */
 
-#include "gl_extensions.h"
+#include <GLES/gl.h>
+#include <GLES/glext.h>
 #include "gl_framebuffer_object.h"
 #include "gl_state.h"
 #include "gl_init.h"
-#include "gl_texture.h"
+#include "gl_types.h"
 #include "gl_utils.h"
-#include "logger.h"
-#include "memory_tracker.h"
+#include "gl_logger.h"
+#include "gl_memory_tracker.h"
 #include <stdio.h>
+
+extern const GLubyte *renderer_get_extensions(void);
 
 int main()
 {
 	/* Initialize Logger */
-	if (!InitLogger("renderer.log", LOG_LEVEL_DEBUG)) {
+	if (!logger_init("renderer.log", LOG_LEVEL_DEBUG)) {
 		fprintf(stderr, "Failed to initialize logger.\n");
 		return -1;
 	}
 
 	/* Initialize Memory Tracker */
-	if (!InitMemoryTracker()) {
+	if (!memory_tracker_init()) {
 		LOG_FATAL("Failed to initialize Memory Tracker.");
 		return -1;
 	}
@@ -60,29 +63,26 @@ int main()
 	}
 
 	/* Example: Create a texture */
-	TextureOES *tex = CreateTextureOES(GL_TEXTURE_2D_OES, GL_RGBA4_OES, 256,
-					   256, GL_TRUE);
-	if (tex) {
-		TexImage2DOES(tex, 0, GL_RGBA4_OES, 256, 256, GL_RGBA,
-			      GL_UNSIGNED_BYTE, NULL);
-		BindTextureOES(GL_TEXTURE_2D_OES, tex);
-		/* Free the texture to avoid memory leaks */
-		tracked_free(tex, sizeof(TextureOES));
-	}
+	GLuint tex;
+	glGenTextures(1, &tex);
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA,
+		     GL_UNSIGNED_BYTE, NULL);
+	glDeleteTextures(1, &tex);
 
 	/* Print memory stats */
-	PrintMemoryUsage();
+	memory_tracker_report();
 
 	/* Your renderer operations */
 
 	/* Cleanup */
 	GL_cleanup_with_framebuffer(display);
 	CleanupGLState(&gl_state);
-	ShutdownMemoryTracker(); // Should report any leaks
-	PrintMemoryUsage(); // Should show zero allocations if all are freed
+	memory_tracker_shutdown(); // Should report any leaks
+	memory_tracker_report(); // Should show zero allocations if all are freed
 
 	/* Cleanup Logger */
-	ShutdownLogger();
+	logger_shutdown();
 
 	return 0;
 }

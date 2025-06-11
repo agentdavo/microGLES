@@ -1,10 +1,10 @@
 #include "tests.h"
 #include "gl_framebuffer_object.h"
 #include "gl_state.h"
-#include "gl_texture.h"
+#include "gl_types.h"
 #include "gl_utils.h"
-#include "logger.h"
-#include "framebuffer.h"
+#include "gl_logger.h"
+#include "pipeline/gl_framebuffer.h"
 #include "matrix_utils.h"
 #include <math.h>
 #include <stdio.h>
@@ -33,16 +33,12 @@ int test_framebuffer_complete(void)
 
 int test_texture_creation(void)
 {
-	TextureOES *tex = CreateTextureOES(GL_TEXTURE_2D_OES, GL_RGBA4_OES, 16,
-					   16, GL_TRUE);
-	if (!tex) {
-		LOG_ERROR("CreateTextureOES failed");
-		return 0;
-	}
-	TexImage2DOES(tex, 0, GL_RGBA4_OES, 16, 16, GL_RGBA, GL_UNSIGNED_BYTE,
-		      NULL);
-	BindTextureOES(GL_TEXTURE_2D_OES, tex);
-	tracked_free(tex, sizeof(TextureOES));
+	GLuint tex;
+	glGenTextures(1, &tex);
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, GL_RGBA,
+		     GL_UNSIGNED_BYTE, NULL);
+	glDeleteTextures(1, &tex);
 	LOG_INFO("Texture creation succeeded");
 	return 1;
 }
@@ -261,7 +257,7 @@ int test_framebuffer_module(void)
 	Framebuffer *fb = framebuffer_create(4, 4);
 	if (!fb)
 		return 0;
-	framebuffer_clear(fb, 0x0000FF00u, 1.0f); // green
+	framebuffer_clear(fb, 0x0000FF00u, 1.0f, 0); // green
 	framebuffer_set_pixel(fb, 1, 1, 0x00FF0000u, 0.0f); // red pixel
 	int ok = framebuffer_write_bmp(fb, "fb_test.bmp");
 	framebuffer_destroy(fb);

@@ -42,3 +42,6 @@ provides stub or full implementations for their entry points:
 
 This document is updated whenever new groups of entry points are
 implemented or existing stubs are filled in.
+
+## Upcoming Work
+- **Texture module migration**: sampling routines will move from `gl_texture.c` to `gl_fragment.c` while management APIs are consolidated in `gl_context.c`. This split keeps fragment-specific code in the fragment stage and centralizes texture state updates in the context. Checks include running the benchmark suite with tiled rendering enabled and verifying that texture updates propagate to fragment threads.

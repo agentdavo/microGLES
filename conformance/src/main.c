@@ -1,17 +1,17 @@
 #include "gl_state.h"
 #include "gl_init.h"
-#include "logger.h"
-#include "memory_tracker.h"
+#include "gl_logger.h"
+#include "gl_memory_tracker.h"
 #include "tests.h"
 #include <stdio.h>
 
 int main()
 {
-	if (!InitLogger("conformance.log", LOG_LEVEL_INFO)) {
+	if (!logger_init("conformance.log", LOG_LEVEL_INFO)) {
 		fprintf(stderr, "Failed to init logger.\n");
 		return -1;
 	}
-	if (!InitMemoryTracker()) {
+	if (!memory_tracker_init()) {
 		LOG_FATAL("Failed to init Memory Tracker.");
 		return -1;
 	}
@@ -74,9 +74,9 @@ int main()
 
 	GL_cleanup_with_framebuffer(fb);
 	CleanupGLState(&gl_state);
-	ShutdownMemoryTracker();
-	PrintMemoryUsage();
-	ShutdownLogger();
+	memory_tracker_shutdown();
+	memory_tracker_report();
+	logger_shutdown();
 
 	if (pass) {
 		printf("All tests passed\n");

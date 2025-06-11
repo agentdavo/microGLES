@@ -1,12 +1,25 @@
 #include "gl_errors.h"
-#include "gl_extensions.h"
 #include "gl_state.h"
+#include "gl_memory_tracker.h"
+#include "gl_types.h"
 #include "gl_utils.h"
-#include "logger.h"
+#include "gl_logger.h"
+#include "gl_context.h"
 #include <GLES/gl.h>
+#include <GLES/glext.h>
 #include <string.h>
+#include "pipeline/gl_vertex.h"
+#include "pipeline/gl_primitive.h"
+#include "pipeline/gl_raster.h"
+#include "pipeline/gl_fragment.h"
+#include "pipeline/gl_framebuffer.h"
 
 extern GLState gl_state;
+extern const GLubyte *renderer_get_extensions(void);
+#ifndef GL_DEPTH_COMPONENT
+#define GL_DEPTH_COMPONENT 0x1902
+#endif
+const void *getPointSizePointerOES(GLenum *type, GLsizei *stride);
 
 #define FIXED_TO_FLOAT(x) ((GLfloat)(x) / 65536.0f)
 
@@ -39,20 +52,12 @@ static BufferObject *find_buffer(GLuint id)
 	return NULL;
 }
 
-static TextureOES *find_texture(GLuint id)
-{
-	for (GLuint i = 0; i < gl_state.texture_count; ++i) {
-		if (gl_state.textures[i]->id == id)
-			return gl_state.textures[i];
-	}
-	return NULL;
-}
-
 /* Core OpenGL ES 1.1 entry point stubs */
 
 GL_API void GL_APIENTRY glActiveTexture(GLenum texture)
 {
 	gl_state.active_texture = texture;
+	context_active_texture(texture);
 }
 GL_API void GL_APIENTRY glAlphaFunc(GLenum func, GLfloat ref)
 {
@@ -93,30 +98,22 @@ GL_API void GL_APIENTRY glBindBuffer(GLenum target, GLuint buffer)
 }
 GL_API void GL_APIENTRY glBindTexture(GLenum target, GLuint texture)
 {
-	if (target != GL_TEXTURE_2D) {
+	if (target != GL_TEXTURE_2D && target != GL_TEXTURE_EXTERNAL_OES) {
 		glSetError(GL_INVALID_ENUM);
 		return;
 	}
-	gl_state.bound_texture = texture;
-	if (texture != 0 && !find_texture(texture)) {
-		if (gl_state.texture_count >= MAX_TEXTURES) {
-			glSetError(GL_OUT_OF_MEMORY);
-			return;
-		}
-		TextureOES *tex =
-			CreateTextureOES(target, GL_RGBA, 0, 0, GL_FALSE);
-		if (!tex) {
-			glSetError(GL_OUT_OF_MEMORY);
-			return;
-		}
-		tex->id = texture;
-		gl_state.textures[gl_state.texture_count++] = tex;
-	}
+	if (target == GL_TEXTURE_EXTERNAL_OES)
+		gl_state.bound_texture_external = texture;
+	else
+		gl_state.bound_texture = texture;
+	context_bind_texture(gl_state.active_texture - GL_TEXTURE0, texture);
 }
 GL_API void GL_APIENTRY glBlendFunc(GLenum sfactor, GLenum dfactor)
 {
 	gl_state.blend_sfactor = sfactor;
 	gl_state.blend_dfactor = dfactor;
+	gl_state.blend_sfactor_alpha = sfactor;
+	gl_state.blend_dfactor_alpha = dfactor;
 }
 GL_API void GL_APIENTRY glBufferData(GLenum target, GLsizeiptr size,
 				     const void *data, GLenum usage)
@@ -173,6 +170,9 @@ GL_API void GL_APIENTRY glBufferSubData(GLenum target, GLintptr offset,
 	if (size > 0 && data)
 		memcpy((char *)obj->data + offset, data, size);
 }
+#include "gl_init.h"
+#include "gl_thread.h"
+
 GL_API void GL_APIENTRY glClear(GLbitfield mask)
 {
 	const GLbitfield valid = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
@@ -181,7 +181,16 @@ GL_API void GL_APIENTRY glClear(GLbitfield mask)
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	/* No framebuffer memory implemented; function is a no-op */
+	Framebuffer *fb = GL_get_default_framebuffer();
+	if (fb) {
+		uint32_t color =
+			((uint32_t)(gl_state.clear_color[3] * 255.0f) << 24) |
+			((uint32_t)(gl_state.clear_color[2] * 255.0f) << 16) |
+			((uint32_t)(gl_state.clear_color[1] * 255.0f) << 8) |
+			((uint32_t)(gl_state.clear_color[0] * 255.0f));
+		framebuffer_clear_async(fb, color, gl_state.clear_depth,
+					(uint8_t)gl_state.clear_stencil);
+	}
 }
 GL_API void GL_APIENTRY glClearColor(GLfloat red, GLfloat green, GLfloat blue,
 				     GLfloat alpha)
@@ -198,6 +207,7 @@ GL_API void GL_APIENTRY glClearDepthf(GLfloat d)
 GL_API void GL_APIENTRY glClearStencil(GLint s)
 {
 	gl_state.clear_stencil = s;
+	context_set_clear_stencil(s);
 }
 GL_API void GL_APIENTRY glClientActiveTexture(GLenum texture)
 {
@@ -249,6 +259,12 @@ GL_API void GL_APIENTRY glColorPointer(GLint size, GLenum type, GLsizei stride,
 	gl_state.color_array_type = type;
 	gl_state.color_array_stride = stride;
 	gl_state.color_array_pointer = ptr;
+	if (gl_state.bound_vao) {
+		gl_state.bound_vao->color_array_size = size;
+		gl_state.bound_vao->color_array_type = type;
+		gl_state.bound_vao->color_array_stride = stride;
+		gl_state.bound_vao->color_array_pointer = ptr;
+	}
 }
 GL_API void GL_APIENTRY glCompressedTexImage2D(GLenum target, GLint level,
 					       GLenum internalformat,
@@ -325,25 +341,7 @@ GL_API void GL_APIENTRY glDeleteTextures(GLsizei n, const GLuint *textures)
 {
 	if (n < 0 || !textures)
 		return;
-	for (GLsizei i = 0; i < n; ++i) {
-		TextureOES *tex = find_texture(textures[i]);
-		if (!tex)
-			continue;
-		if (gl_state.bound_texture == textures[i])
-			gl_state.bound_texture = 0;
-		for (GLuint j = 0; j < gl_state.texture_count; ++j) {
-			if (gl_state.textures[j] == tex) {
-				tracked_free(tex, sizeof(TextureOES));
-				memmove(&gl_state.textures[j],
-					&gl_state.textures[j + 1],
-					sizeof(TextureOES *) *
-						(gl_state.texture_count - j -
-						 1));
-				gl_state.texture_count--;
-				break;
-			}
-		}
-	}
+	context_delete_textures(n, textures);
 }
 GL_API void GL_APIENTRY glDepthFunc(GLenum func)
 {
@@ -392,6 +390,7 @@ GL_API void GL_APIENTRY glDisable(GLenum cap)
 		break;
 	case GL_FOG:
 		gl_state.fog_enabled = GL_FALSE;
+		context_get()->fog.enabled = GL_FALSE;
 		break;
 	case GL_LIGHTING:
 		gl_state.lighting_enabled = GL_FALSE;
@@ -431,6 +430,7 @@ GL_API void GL_APIENTRY glDisable(GLenum cap)
 		break;
 	case GL_STENCIL_TEST:
 		gl_state.stencil_test_enabled = GL_FALSE;
+		context_get()->stencil_test_enabled = GL_FALSE;
 		break;
 	case GL_TEXTURE_2D:
 		gl_state.texture_2d_enabled = GL_FALSE;
@@ -463,15 +463,23 @@ GL_API void GL_APIENTRY glDisableClientState(GLenum array)
 	switch (array) {
 	case GL_VERTEX_ARRAY:
 		gl_state.vertex_array_enabled = GL_FALSE;
+		if (gl_state.bound_vao)
+			gl_state.bound_vao->vertex_array_enabled = GL_FALSE;
 		break;
 	case GL_COLOR_ARRAY:
 		gl_state.color_array_enabled = GL_FALSE;
+		if (gl_state.bound_vao)
+			gl_state.bound_vao->color_array_enabled = GL_FALSE;
 		break;
 	case GL_NORMAL_ARRAY:
 		gl_state.normal_array_enabled = GL_FALSE;
+		if (gl_state.bound_vao)
+			gl_state.bound_vao->normal_array_enabled = GL_FALSE;
 		break;
 	case GL_TEXTURE_COORD_ARRAY:
 		gl_state.texcoord_array_enabled = GL_FALSE;
+		if (gl_state.bound_vao)
+			gl_state.bound_vao->texcoord_array_enabled = GL_FALSE;
 		break;
 	default:
 		glSetError(GL_INVALID_ENUM);
@@ -594,6 +602,7 @@ GL_API void GL_APIENTRY glEnable(GLenum cap)
 		break;
 	case GL_FOG:
 		gl_state.fog_enabled = GL_TRUE;
+		context_get()->fog.enabled = GL_TRUE;
 		break;
 	case GL_LIGHTING:
 		gl_state.lighting_enabled = GL_TRUE;
@@ -633,6 +642,7 @@ GL_API void GL_APIENTRY glEnable(GLenum cap)
 		break;
 	case GL_STENCIL_TEST:
 		gl_state.stencil_test_enabled = GL_TRUE;
+		context_get()->stencil_test_enabled = GL_TRUE;
 		break;
 	case GL_TEXTURE_2D:
 		gl_state.texture_2d_enabled = GL_TRUE;
@@ -665,15 +675,23 @@ GL_API void GL_APIENTRY glEnableClientState(GLenum array)
 	switch (array) {
 	case GL_VERTEX_ARRAY:
 		gl_state.vertex_array_enabled = GL_TRUE;
+		if (gl_state.bound_vao)
+			gl_state.bound_vao->vertex_array_enabled = GL_TRUE;
 		break;
 	case GL_COLOR_ARRAY:
 		gl_state.color_array_enabled = GL_TRUE;
+		if (gl_state.bound_vao)
+			gl_state.bound_vao->color_array_enabled = GL_TRUE;
 		break;
 	case GL_NORMAL_ARRAY:
 		gl_state.normal_array_enabled = GL_TRUE;
+		if (gl_state.bound_vao)
+			gl_state.bound_vao->normal_array_enabled = GL_TRUE;
 		break;
 	case GL_TEXTURE_COORD_ARRAY:
 		gl_state.texcoord_array_enabled = GL_TRUE;
+		if (gl_state.bound_vao)
+			gl_state.bound_vao->texcoord_array_enabled = GL_TRUE;
 		break;
 	default:
 		glSetError(GL_INVALID_ENUM);
@@ -699,15 +717,19 @@ GL_API void GL_APIENTRY glFogf(GLenum pname, GLfloat param)
 			return;
 		}
 		gl_state.fog_mode = (GLenum)param;
+		context_set_fog(GL_FOG_MODE, &param);
 		break;
 	case GL_FOG_DENSITY:
 		gl_state.fog_density = param;
+		context_set_fog(GL_FOG_DENSITY, &param);
 		break;
 	case GL_FOG_START:
 		gl_state.fog_start = param;
+		context_set_fog(GL_FOG_START, &param);
 		break;
 	case GL_FOG_END:
 		gl_state.fog_end = param;
+		context_set_fog(GL_FOG_END, &param);
 		break;
 	default:
 		glSetError(GL_INVALID_ENUM);
@@ -727,6 +749,7 @@ GL_API void GL_APIENTRY glFogfv(GLenum pname, const GLfloat *params)
 		gl_state.fog_color[1] = params[1];
 		gl_state.fog_color[2] = params[2];
 		gl_state.fog_color[3] = params[3];
+		context_set_fog(GL_FOG_COLOR, params);
 		break;
 	default:
 		glFogf(pname, params[0]);
@@ -798,21 +821,7 @@ GL_API void GL_APIENTRY glGenTextures(GLsizei n, GLuint *textures)
 	}
 	if (!textures)
 		return;
-	for (GLsizei i = 0; i < n; ++i) {
-		if (gl_state.texture_count >= MAX_TEXTURES) {
-			glSetError(GL_OUT_OF_MEMORY);
-			return;
-		}
-		TextureOES *tex = CreateTextureOES(GL_TEXTURE_2D, GL_RGBA, 0, 0,
-						   GL_FALSE);
-		if (!tex) {
-			glSetError(GL_OUT_OF_MEMORY);
-			return;
-		}
-		tex->id = gl_state.next_texture_id++;
-		gl_state.textures[gl_state.texture_count++] = tex;
-		textures[i] = tex->id;
-	}
+	context_gen_textures(n, textures);
 }
 GL_API void GL_APIENTRY glGetBooleanv(GLenum pname, GLboolean *data)
 {
@@ -955,6 +964,9 @@ GL_API void GL_APIENTRY glGetIntegerv(GLenum pname, GLint *data)
 	case GL_TEXTURE_BINDING_2D:
 		*data = gl_state.bound_texture;
 		break;
+	case GL_TEXTURE_BINDING_EXTERNAL_OES:
+		*data = gl_state.bound_texture_external;
+		break;
 	case GL_CULL_FACE_MODE:
 		*data = gl_state.cull_face_mode;
 		break;
@@ -1006,6 +1018,54 @@ GL_API void GL_APIENTRY glGetIntegerv(GLenum pname, GLint *data)
 		break;
 	case GL_LINE_WIDTH:
 		*data = (GLint)gl_state.line_width;
+		break;
+	case GL_MODELVIEW_MATRIX_FLOAT_AS_INT_BITS_OES:
+		for (int i = 0; i < 16; ++i)
+			memcpy(&data[i], &gl_state.modelview_matrix.data[i],
+			       sizeof(GLfloat));
+		break;
+	case GL_PROJECTION_MATRIX_FLOAT_AS_INT_BITS_OES:
+		for (int i = 0; i < 16; ++i)
+			memcpy(&data[i], &gl_state.projection_matrix.data[i],
+			       sizeof(GLfloat));
+		break;
+	case GL_TEXTURE_MATRIX_FLOAT_AS_INT_BITS_OES:
+		for (int i = 0; i < 16; ++i)
+			memcpy(&data[i], &gl_state.texture_matrix.data[i],
+			       sizeof(GLfloat));
+		break;
+	case GL_POINT_SIZE_ARRAY_TYPE_OES:
+		*data = gl_state.point_size_array_type;
+		break;
+	case GL_POINT_SIZE_ARRAY_STRIDE_OES:
+		*data = gl_state.point_size_array_stride;
+		break;
+	case GL_POINT_SIZE_ARRAY_BUFFER_BINDING_OES:
+		*data = gl_state.array_buffer_binding;
+		break;
+	case GL_MATRIX_INDEX_ARRAY_SIZE_OES:
+		*data = gl_state.matrix_index_array_size;
+		break;
+	case GL_MATRIX_INDEX_ARRAY_TYPE_OES:
+		*data = gl_state.matrix_index_array_type;
+		break;
+	case GL_MATRIX_INDEX_ARRAY_STRIDE_OES:
+		*data = gl_state.matrix_index_array_stride;
+		break;
+	case GL_MATRIX_INDEX_ARRAY_BUFFER_BINDING_OES:
+		*data = gl_state.array_buffer_binding;
+		break;
+	case GL_WEIGHT_ARRAY_SIZE_OES:
+		*data = gl_state.weight_array_size;
+		break;
+	case GL_WEIGHT_ARRAY_TYPE_OES:
+		*data = gl_state.weight_array_type;
+		break;
+	case GL_WEIGHT_ARRAY_STRIDE_OES:
+		*data = gl_state.weight_array_stride;
+		break;
+	case GL_WEIGHT_ARRAY_BUFFER_BINDING_OES:
+		*data = gl_state.array_buffer_binding;
 		break;
 	default:
 		/* Unhandled pname */
@@ -1115,6 +1175,12 @@ GL_API void GL_APIENTRY glGetPointerv(GLenum pname, void **params)
 		*params = (void *)getPointSizePointerOES(&type, &stride);
 		break;
 	}
+	case GL_MATRIX_INDEX_ARRAY_POINTER_OES:
+		*params = (void *)gl_state.matrix_index_array_pointer;
+		break;
+	case GL_WEIGHT_ARRAY_POINTER_OES:
+		*params = (void *)gl_state.weight_array_pointer;
+		break;
 	default:
 		glSetError(GL_INVALID_ENUM);
 		break;
@@ -1231,11 +1297,14 @@ GL_API void GL_APIENTRY glGetTexParameterfv(GLenum target, GLenum pname,
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	if (target != GL_TEXTURE_2D) {
+	if (target != GL_TEXTURE_2D && target != GL_TEXTURE_EXTERNAL_OES) {
 		glSetError(GL_INVALID_ENUM);
 		return;
 	}
-	TextureOES *tex = find_texture(gl_state.bound_texture);
+	TextureOES *tex =
+		(target == GL_TEXTURE_EXTERNAL_OES) ?
+			context_find_texture(gl_state.bound_texture_external) :
+			context_find_texture(gl_state.bound_texture);
 	if (!tex) {
 		glSetError(GL_INVALID_OPERATION);
 		return;
@@ -1253,6 +1322,13 @@ GL_API void GL_APIENTRY glGetTexParameterfv(GLenum target, GLenum pname,
 	case GL_TEXTURE_WRAP_T:
 		params[0] = (GLfloat)tex->wrap_t;
 		break;
+	case GL_TEXTURE_CROP_RECT_OES:
+		for (int i = 0; i < 4; ++i)
+			params[i] = (GLfloat)tex->crop_rect[i];
+		break;
+	case GL_REQUIRED_TEXTURE_IMAGE_UNITS_OES:
+		params[0] = (GLfloat)tex->required_units;
+		break;
 	default:
 		glSetError(GL_INVALID_ENUM);
 		break;
@@ -1266,9 +1342,59 @@ GL_API void GL_APIENTRY glGetTexParameteriv(GLenum target, GLenum pname,
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	GLfloat tmp;
-	glGetTexParameterfv(target, pname, &tmp);
-	params[0] = (GLint)tmp;
+	if (pname == GL_TEXTURE_CROP_RECT_OES) {
+		if (target != GL_TEXTURE_2D) {
+			glSetError(GL_INVALID_ENUM);
+			return;
+		}
+		TextureOES *tex = context_find_texture(gl_state.bound_texture);
+		if (!tex) {
+			glSetError(GL_INVALID_OPERATION);
+			return;
+		}
+		params[0] = tex->crop_rect[0];
+		params[1] = tex->crop_rect[1];
+		params[2] = tex->crop_rect[2];
+		params[3] = tex->crop_rect[3];
+	} else {
+		if (target != GL_TEXTURE_2D &&
+		    target != GL_TEXTURE_EXTERNAL_OES) {
+			glSetError(GL_INVALID_ENUM);
+			return;
+		}
+		TextureOES *tex =
+			(target == GL_TEXTURE_EXTERNAL_OES) ?
+				context_find_texture(
+					gl_state.bound_texture_external) :
+				context_find_texture(gl_state.bound_texture);
+		if (!tex) {
+			glSetError(GL_INVALID_OPERATION);
+			return;
+		}
+		switch (pname) {
+		case GL_TEXTURE_MIN_FILTER:
+			params[0] = tex->min_filter;
+			break;
+		case GL_TEXTURE_MAG_FILTER:
+			params[0] = tex->mag_filter;
+			break;
+		case GL_TEXTURE_WRAP_S:
+			params[0] = tex->wrap_s;
+			break;
+		case GL_TEXTURE_WRAP_T:
+			params[0] = tex->wrap_t;
+			break;
+		case GL_REQUIRED_TEXTURE_IMAGE_UNITS_OES:
+			params[0] = tex->required_units;
+			break;
+		default: {
+			GLfloat tmp;
+			glGetTexParameterfv(target, pname, &tmp);
+			params[0] = (GLint)tmp;
+			break;
+		}
+		}
+	}
 }
 GL_API void GL_APIENTRY glHint(GLenum target, GLenum mode)
 {
@@ -1371,7 +1497,7 @@ GLboolean glIsEnabled(GLenum cap)
 }
 GLboolean glIsTexture(GLuint texture)
 {
-	return find_texture(texture) != NULL;
+	return context_find_texture(texture) != NULL;
 }
 GL_API void GL_APIENTRY glLightf(GLenum light, GLenum pname, GLfloat param)
 {
@@ -1694,6 +1820,11 @@ GL_API void GL_APIENTRY glNormalPointer(GLenum type, GLsizei stride,
 	gl_state.normal_array_type = type;
 	gl_state.normal_array_stride = stride;
 	gl_state.normal_array_pointer = ptr;
+	if (gl_state.bound_vao) {
+		gl_state.bound_vao->normal_array_type = type;
+		gl_state.bound_vao->normal_array_stride = stride;
+		gl_state.bound_vao->normal_array_pointer = ptr;
+	}
 }
 GL_API void GL_APIENTRY glOrthof(GLfloat l, GLfloat r, GLfloat b, GLfloat t,
 				 GLfloat n, GLfloat f)
@@ -1929,16 +2060,19 @@ GL_API void GL_APIENTRY glStencilFunc(GLenum func, GLint ref, GLuint mask)
 	gl_state.stencil_func = func;
 	gl_state.stencil_ref = ref;
 	gl_state.stencil_value_mask = mask;
+	context_set_stencil_func(func, ref, mask);
 }
 GL_API void GL_APIENTRY glStencilMask(GLuint mask)
 {
 	gl_state.stencil_writemask = mask;
+	context_set_stencil_mask(mask);
 }
 GL_API void GL_APIENTRY glStencilOp(GLenum fail, GLenum zfail, GLenum zpass)
 {
 	gl_state.stencil_fail = fail;
 	gl_state.stencil_zfail = zfail;
 	gl_state.stencil_zpass = zpass;
+	context_set_stencil_op(fail, zfail, zpass);
 }
 GL_API void GL_APIENTRY glTexCoordPointer(GLint size, GLenum type,
 					  GLsizei stride, const void *ptr)
@@ -1947,6 +2081,12 @@ GL_API void GL_APIENTRY glTexCoordPointer(GLint size, GLenum type,
 	gl_state.texcoord_array_type = type;
 	gl_state.texcoord_array_stride = stride;
 	gl_state.texcoord_array_pointer = ptr;
+	if (gl_state.bound_vao) {
+		gl_state.bound_vao->texcoord_array_size = size;
+		gl_state.bound_vao->texcoord_array_type = type;
+		gl_state.bound_vao->texcoord_array_stride = stride;
+		gl_state.bound_vao->texcoord_array_pointer = ptr;
+	}
 }
 GL_API void GL_APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param)
 {
@@ -2114,15 +2254,49 @@ GL_API void GL_APIENTRY glTexImage2D(GLenum target, GLint level,
 		glSetError(GL_INVALID_ENUM);
 		return;
 	}
-	if ((GLenum)internalformat != GL_ALPHA &&
-	    (GLenum)internalformat != GL_RGB &&
-	    (GLenum)internalformat != GL_RGBA &&
-	    (GLenum)internalformat != GL_LUMINANCE &&
-	    (GLenum)internalformat != GL_LUMINANCE_ALPHA) {
+	GLenum base_format = 0;
+	switch ((GLenum)internalformat) {
+	case GL_ALPHA:
+	case GL_ALPHA8_OES:
+		base_format = GL_ALPHA;
+		break;
+	case GL_LUMINANCE:
+	case GL_LUMINANCE8_OES:
+		base_format = GL_LUMINANCE;
+		break;
+	case GL_LUMINANCE_ALPHA:
+	case GL_LUMINANCE4_ALPHA4_OES:
+	case GL_LUMINANCE8_ALPHA8_OES:
+		base_format = GL_LUMINANCE_ALPHA;
+		break;
+	case GL_RGB:
+	case GL_RGB565_OES:
+	case GL_RGB8_OES:
+	case GL_RGB10_EXT:
+		base_format = GL_RGB;
+		break;
+	case GL_RGBA:
+	case GL_RGBA4_OES:
+	case GL_RGB5_A1_OES:
+	case GL_RGBA8_OES:
+	case GL_RGB10_A2_EXT:
+		base_format = GL_RGBA;
+		break;
+	case GL_DEPTH_COMPONENT:
+	case GL_DEPTH_COMPONENT16_OES:
+	case GL_DEPTH_COMPONENT24_OES:
+	case GL_DEPTH_COMPONENT32_OES:
+		base_format = GL_DEPTH_COMPONENT;
+		break;
+	case GL_DEPTH_STENCIL_OES:
+	case GL_DEPTH24_STENCIL8_OES:
+		base_format = GL_DEPTH_STENCIL_OES;
+		break;
+	default:
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	if ((GLenum)internalformat != format) {
+	if (base_format != format) {
 		glSetError(GL_INVALID_OPERATION);
 		return;
 	}
@@ -2153,30 +2327,8 @@ GL_API void GL_APIENTRY glTexImage2D(GLenum target, GLint level,
 		glSetError(GL_INVALID_OPERATION);
 		return;
 	}
-
-	TextureOES *tex = NULL;
-	for (GLuint i = 0; i < gl_state.texture_count; ++i) {
-		if (gl_state.textures[i] && gl_state.textures[i]->id == id) {
-			tex = gl_state.textures[i];
-			break;
-		}
-	}
-	if (!tex) {
-		if (gl_state.texture_count >= MAX_TEXTURES) {
-			glSetError(GL_OUT_OF_MEMORY);
-			return;
-		}
-		tex = CreateTextureOES(target, internalformat, width, height,
-				       GL_FALSE);
-		if (!tex) {
-			glSetError(GL_OUT_OF_MEMORY);
-			return;
-		}
-		tex->id = id;
-		gl_state.textures[gl_state.texture_count++] = tex;
-	}
-	TexImage2DOES(tex, level, internalformat, width, height, format, type,
-		      pixels);
+	context_tex_image_2d(target, level, internalformat, width, height,
+			     format, type, pixels);
 }
 GL_API void GL_APIENTRY glTexParameterf(GLenum target, GLenum pname,
 					GLfloat param)
@@ -2191,7 +2343,28 @@ GL_API void GL_APIENTRY glTexParameterfv(GLenum target, GLenum pname,
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	glTexParameterf(target, pname, params[0]);
+	if (pname == GL_TEXTURE_CROP_RECT_OES) {
+		if (target != GL_TEXTURE_2D &&
+		    target != GL_TEXTURE_EXTERNAL_OES) {
+			glSetError(GL_INVALID_ENUM);
+			return;
+		}
+		TextureOES *tex =
+			(target == GL_TEXTURE_EXTERNAL_OES) ?
+				context_find_texture(
+					gl_state.bound_texture_external) :
+				context_find_texture(gl_state.bound_texture);
+		if (!tex) {
+			glSetError(GL_INVALID_OPERATION);
+			return;
+		}
+		tex->crop_rect[0] = (GLint)params[0];
+		tex->crop_rect[1] = (GLint)params[1];
+		tex->crop_rect[2] = (GLint)params[2];
+		tex->crop_rect[3] = (GLint)params[3];
+	} else {
+		glTexParameterf(target, pname, params[0]);
+	}
 }
 
 GL_API void GL_APIENTRY glTexParameteri(GLenum target, GLenum pname,
@@ -2201,7 +2374,7 @@ GL_API void GL_APIENTRY glTexParameteri(GLenum target, GLenum pname,
 		glSetError(GL_INVALID_ENUM);
 		return;
 	}
-	TextureOES *tex = find_texture(gl_state.bound_texture);
+	TextureOES *tex = context_find_texture(gl_state.bound_texture);
 	if (!tex) {
 		glSetError(GL_INVALID_OPERATION);
 		return;
@@ -2223,6 +2396,7 @@ GL_API void GL_APIENTRY glTexParameteri(GLenum target, GLenum pname,
 		glSetError(GL_INVALID_ENUM);
 		break;
 	}
+	atomic_fetch_add_explicit(&tex->version, 1, memory_order_relaxed);
 }
 
 GL_API void GL_APIENTRY glTexParameteriv(GLenum target, GLenum pname,
@@ -2232,7 +2406,23 @@ GL_API void GL_APIENTRY glTexParameteriv(GLenum target, GLenum pname,
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	glTexParameteri(target, pname, params[0]);
+	if (pname == GL_TEXTURE_CROP_RECT_OES) {
+		if (target != GL_TEXTURE_2D) {
+			glSetError(GL_INVALID_ENUM);
+			return;
+		}
+		TextureOES *tex = context_find_texture(gl_state.bound_texture);
+		if (!tex) {
+			glSetError(GL_INVALID_OPERATION);
+			return;
+		}
+		tex->crop_rect[0] = params[0];
+		tex->crop_rect[1] = params[1];
+		tex->crop_rect[2] = params[2];
+		tex->crop_rect[3] = params[3];
+	} else {
+		glTexParameteri(target, pname, params[0]);
+	}
 }
 GL_API void GL_APIENTRY glTexSubImage2D(GLenum target, GLint level,
 					GLint xoffset, GLint yoffset,
@@ -2249,16 +2439,12 @@ GL_API void GL_APIENTRY glTexSubImage2D(GLenum target, GLint level,
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	TextureOES *tex = find_texture(gl_state.bound_texture);
-	if (!tex) {
-		glSetError(GL_INVALID_OPERATION);
-		return;
-	}
-	if (xoffset == 0 && yoffset == 0 && width == tex->width &&
-	    height == tex->height) {
-		TexImage2DOES(tex, level, tex->internalformat, width, height,
-			      format, type, pixels);
-	}
+	if (xoffset == 0 && yoffset == 0)
+		context_tex_image_2d(target, level, format, width, height,
+				     format, type, pixels);
+	else
+		context_tex_sub_image_2d(target, level, xoffset, yoffset, width,
+					 height, format, type, pixels);
 }
 GL_API void GL_APIENTRY glTranslatef(GLfloat x, GLfloat y, GLfloat z)
 {
@@ -2289,6 +2475,12 @@ GL_API void GL_APIENTRY glVertexPointer(GLint size, GLenum type, GLsizei stride,
 	gl_state.vertex_array_type = type;
 	gl_state.vertex_array_stride = stride;
 	gl_state.vertex_array_pointer = ptr;
+	if (gl_state.bound_vao) {
+		gl_state.bound_vao->vertex_array_size = size;
+		gl_state.bound_vao->vertex_array_type = type;
+		gl_state.bound_vao->vertex_array_stride = stride;
+		gl_state.bound_vao->vertex_array_pointer = ptr;
+	}
 }
 GL_API void GL_APIENTRY glViewport(GLint x, GLint y, GLsizei width,
 				   GLsizei height)

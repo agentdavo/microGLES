@@ -11,6 +11,9 @@ set(BENCH_SOURCES
     src/spinning_cubes.c
     src/multitexture_demo.c
     src/alpha_blend_demo.c
+    src/miletostone1.c
+    src/milestone2.c
+    src/pipeline_test.c
 )
 
 add_executable(benchmark ${BENCH_SOURCES})
