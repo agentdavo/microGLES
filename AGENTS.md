@@ -1,6 +1,8 @@
 # microGLES — Contributor Rules & AI-Agent Guide  
 *(Applies to any code under `src/` and `benchmark/`)*
 
+Pending: refactor remaining GL API functions into dedicated files.
+
 ---
 
 ## 1  Golden Requirements (“**MUST**”)
