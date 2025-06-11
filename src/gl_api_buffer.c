@@ -1,7 +1,9 @@
 #include "gl_state.h"
 #include "gl_memory_tracker.h"
 #include "gl_errors.h"
+#include "gl_utils.h"
 #include <GLES/gl.h>
+#include <string.h>
 
 static BufferObject *find_buffer(GLuint id)
 {

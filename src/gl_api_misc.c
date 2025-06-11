@@ -289,39 +289,6 @@ GL_API void GL_APIENTRY glOrthox(GLfixed l, GLfixed r, GLfixed b, GLfixed t,
 		 FIXED_TO_FLOAT(t), FIXED_TO_FLOAT(n), FIXED_TO_FLOAT(f));
 }
 
-GL_API void GL_APIENTRY glPointParameterf(GLenum pname, GLfloat param)
-{
-	switch (pname) {
-	case GL_POINT_SIZE_MIN:
-		gl_state.point_size_min = param;
-		break;
-	case GL_POINT_SIZE_MAX:
-		gl_state.point_size_max = param;
-		break;
-	case GL_POINT_FADE_THRESHOLD_SIZE:
-		gl_state.point_fade_threshold_size = param;
-		break;
-	default:
-		glSetError(GL_INVALID_ENUM);
-		break;
-	}
-}
-
-GL_API void GL_APIENTRY glPointParameterfv(GLenum pname, const GLfloat *params)
-{
-	if (!params) {
-		glSetError(GL_INVALID_VALUE);
-		return;
-	}
-	glPointParameterf(pname, params[0]);
-}
-
-GL_API void GL_APIENTRY glPolygonOffset(GLfloat factor, GLfloat units)
-{
-	gl_state.polygon_offset_factor = factor;
-	gl_state.polygon_offset_units = units;
-}
-
 GL_API void GL_APIENTRY glRotatex(GLfixed angle, GLfixed x, GLfixed y,
 				  GLfixed z)
 {

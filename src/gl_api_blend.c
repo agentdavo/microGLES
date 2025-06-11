@@ -18,3 +18,8 @@ GL_API void GL_APIENTRY glBlendFunc(GLenum sfactor, GLenum dfactor)
 	gl_state.blend_dfactor_alpha = dfactor;
 	context_set_blend_func(sfactor, dfactor);
 }
+
+GL_API void GL_APIENTRY glLogicOp(GLenum opcode)
+{
+	gl_state.logic_op_mode = opcode;
+}
