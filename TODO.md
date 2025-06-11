@@ -27,3 +27,10 @@
 - Added new source files gl_api_lighting.c and gl_api_vertex_array.c for lighting and client array entry points
 - Expanded gl_api_texture.c and gl_api_pixels.c with missing API such as glTexEnv* and glClearColor
 - Updated CMakeLists.txt to list all gl_api_*.c files exactly once
+
+## 2025-06-15 - Address review checklist
+- Deleted obsolete gl_functions.c and removed from build
+- Implemented glPixelStorei, glLogicOp and point parameter APIs
+- Moved polygon offset to depth/stencil module
+- Relocated fixed-point wrappers next to their float variants
+- Pruned public headers for gl_api_* files and cleaned CMake lists

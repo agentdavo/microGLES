@@ -1,6 +1,7 @@
 #include "gl_state.h"
 #include "gl_context.h"
 #include "gl_errors.h"
+#include "gl_utils.h"
 #include <GLES/gl.h>
 #include <string.h>
 
@@ -51,6 +52,26 @@ GL_API void GL_APIENTRY glTexParameterfv(GLenum target, GLenum pname,
 					 const GLfloat *params)
 {
 	glTexParameteri(target, pname, (GLint)params[0]);
+}
+
+GL_API void GL_APIENTRY glTexParameterxOES(GLenum target, GLenum pname,
+					   GLfixed param)
+{
+	glTexParameterf(target, pname, FIXED_TO_FLOAT(param));
+}
+
+GL_API void GL_APIENTRY glTexParameterxvOES(GLenum target, GLenum pname,
+					    const GLfixed *params)
+{
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat vals[4] = { FIXED_TO_FLOAT(params[0]),
+			    FIXED_TO_FLOAT(params[1]),
+			    FIXED_TO_FLOAT(params[2]),
+			    FIXED_TO_FLOAT(params[3]) };
+	glTexParameterfv(target, pname, vals);
 }
 
 GL_API void GL_APIENTRY glTexParameteri(GLenum target, GLenum pname,
@@ -207,4 +228,23 @@ GL_API void GL_APIENTRY glTexEnviv(GLenum target, GLenum pname,
 		return;
 	}
 	glTexEnvi(target, pname, params[0]);
+}
+
+GL_API void GL_APIENTRY glTexEnvxOES(GLenum target, GLenum pname, GLfixed param)
+{
+	glTexEnvf(target, pname, FIXED_TO_FLOAT(param));
+}
+
+GL_API void GL_APIENTRY glTexEnvxvOES(GLenum target, GLenum pname,
+				      const GLfixed *params)
+{
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat vals[4] = { FIXED_TO_FLOAT(params[0]),
+			    FIXED_TO_FLOAT(params[1]),
+			    FIXED_TO_FLOAT(params[2]),
+			    FIXED_TO_FLOAT(params[3]) };
+	glTexEnvfv(target, pname, vals);
 }

@@ -108,3 +108,86 @@ GL_API void GL_APIENTRY glPointSize(GLfloat size)
 	}
 	gl_state.point_size = size;
 }
+
+GL_API void GL_APIENTRY glPointParameterf(GLenum pname, GLfloat param)
+{
+	switch (pname) {
+	case GL_POINT_SIZE_MIN:
+		gl_state.point_size_min = param;
+		break;
+	case GL_POINT_SIZE_MAX:
+		gl_state.point_size_max = param;
+		break;
+	case GL_POINT_FADE_THRESHOLD_SIZE:
+		gl_state.point_fade_threshold_size = param;
+		break;
+	default:
+		glSetError(GL_INVALID_ENUM);
+		break;
+	}
+}
+
+GL_API void GL_APIENTRY glPointParameterfv(GLenum pname, const GLfloat *params)
+{
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	glPointParameterf(pname, params[0]);
+}
+
+GL_API void GL_APIENTRY glPixelStorei(GLenum pname, GLint param)
+{
+	switch (pname) {
+	case GL_PACK_ALIGNMENT:
+		if (param == 1 || param == 2 || param == 4 || param == 8)
+			gl_state.pack_alignment = param;
+		else
+			glSetError(GL_INVALID_VALUE);
+		break;
+	case GL_UNPACK_ALIGNMENT:
+		if (param == 1 || param == 2 || param == 4 || param == 8)
+			gl_state.unpack_alignment = param;
+		else
+			glSetError(GL_INVALID_VALUE);
+		break;
+	default:
+		glSetError(GL_INVALID_ENUM);
+		break;
+	}
+}
+
+GL_API void GL_APIENTRY glPointSizexOES(GLfixed size)
+{
+	glPointSize(FIXED_TO_FLOAT(size));
+}
+
+GL_API void GL_APIENTRY glPointParameterxOES(GLenum pname, GLfixed param)
+{
+	glPointParameterf(pname, FIXED_TO_FLOAT(param));
+}
+
+GL_API void GL_APIENTRY glPointParameterxvOES(GLenum pname,
+					      const GLfixed *params)
+{
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	glPointParameterf(pname, FIXED_TO_FLOAT(params[0]));
+}
+
+GL_API void GL_APIENTRY glPointParameterfOES(GLenum pname, GLfloat param)
+{
+	glPointParameterf(pname, param);
+}
+
+GL_API void GL_APIENTRY glPointParameterfvOES(GLenum pname,
+					      const GLfloat *params)
+{
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	glPointParameterf(pname, params[0]);
+}

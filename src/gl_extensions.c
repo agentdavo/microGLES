@@ -648,46 +648,6 @@ GL_API void GL_APIENTRY glOrthoxOES(GLfixed l, GLfixed r, GLfixed b, GLfixed t,
 	glOrthox(l, r, b, t, n, f);
 }
 
-GL_API void GL_APIENTRY glPointParameterxOES(GLenum pname, GLfixed param)
-{
-	glPointParameterf(pname, FIXED_TO_FLOAT(param));
-}
-
-GL_API void GL_APIENTRY glPointParameterxvOES(GLenum pname,
-					      const GLfixed *params)
-{
-	if (!params) {
-		glSetError(GL_INVALID_VALUE);
-		return;
-	}
-	glPointParameterf(pname, FIXED_TO_FLOAT(params[0]));
-}
-
-GL_API void GL_APIENTRY glPointParameterfOES(GLenum pname, GLfloat param)
-{
-	glPointParameterf(pname, param);
-}
-
-GL_API void GL_APIENTRY glPointParameterfvOES(GLenum pname,
-					      const GLfloat *params)
-{
-	if (!params) {
-		glSetError(GL_INVALID_VALUE);
-		return;
-	}
-	glPointParameterf(pname, params[0]);
-}
-
-GL_API void GL_APIENTRY glPointSizexOES(GLfixed size)
-{
-	glPointSize(FIXED_TO_FLOAT(size));
-}
-
-GL_API void GL_APIENTRY glPolygonOffsetxOES(GLfixed factor, GLfixed units)
-{
-	glPolygonOffset(FIXED_TO_FLOAT(factor), FIXED_TO_FLOAT(units));
-}
-
 GL_API void GL_APIENTRY glRotatexOES(GLfixed angle, GLfixed x, GLfixed y,
 				     GLfixed z)
 {
@@ -702,45 +662,6 @@ GL_API void GL_APIENTRY glSampleCoveragexOES(GLclampx value, GLboolean invert)
 GL_API void GL_APIENTRY glScalexOES(GLfixed x, GLfixed y, GLfixed z)
 {
 	glScalex(x, y, z);
-}
-
-GL_API void GL_APIENTRY glTexEnvxOES(GLenum target, GLenum pname, GLfixed param)
-{
-	glTexEnvf(target, pname, FIXED_TO_FLOAT(param));
-}
-
-GL_API void GL_APIENTRY glTexEnvxvOES(GLenum target, GLenum pname,
-				      const GLfixed *params)
-{
-	if (!params) {
-		glSetError(GL_INVALID_VALUE);
-		return;
-	}
-	GLfloat vals[4] = { FIXED_TO_FLOAT(params[0]),
-			    FIXED_TO_FLOAT(params[1]),
-			    FIXED_TO_FLOAT(params[2]),
-			    FIXED_TO_FLOAT(params[3]) };
-	glTexEnvfv(target, pname, vals);
-}
-
-GL_API void GL_APIENTRY glTexParameterxOES(GLenum target, GLenum pname,
-					   GLfixed param)
-{
-	glTexParameterf(target, pname, FIXED_TO_FLOAT(param));
-}
-
-GL_API void GL_APIENTRY glTexParameterxvOES(GLenum target, GLenum pname,
-					    const GLfixed *params)
-{
-	if (!params) {
-		glSetError(GL_INVALID_VALUE);
-		return;
-	}
-	GLfloat vals[4] = { FIXED_TO_FLOAT(params[0]),
-			    FIXED_TO_FLOAT(params[1]),
-			    FIXED_TO_FLOAT(params[2]),
-			    FIXED_TO_FLOAT(params[3]) };
-	glTexParameterfv(target, pname, vals);
 }
 
 GL_API void GL_APIENTRY glTranslatexOES(GLfixed x, GLfixed y, GLfixed z)

@@ -39,6 +39,12 @@ GL_API void GL_APIENTRY glStencilMask(GLuint mask)
 	gl_state.stencil_writemask = mask;
 }
 
+GL_API void GL_APIENTRY glPolygonOffset(GLfloat factor, GLfloat units)
+{
+	gl_state.polygon_offset_factor = factor;
+	gl_state.polygon_offset_units = units;
+}
+
 GL_API void GL_APIENTRY glClearStencil(GLint s)
 {
 	gl_state.clear_stencil = s;
