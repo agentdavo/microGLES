@@ -1,5 +1,6 @@
 #include "gl_ext_common.h"
 #include "../gl_state.h"
+#include "../gl_utils.h"
 
 EXT_REGISTER("GL_OES_blend_equation_separate")
 int ext_link_dummy_OES_blend_eq_sep;
