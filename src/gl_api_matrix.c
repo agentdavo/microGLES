@@ -4,6 +4,10 @@
 #include <string.h>
 #include "matrix_utils.h"
 
+#define MODELVIEW_STACK_MAX 32
+#define PROJECTION_STACK_MAX 32
+#define TEXTURE_STACK_MAX 32
+
 static mat4 *current_matrix_ptr(void)
 {
 	switch (gl_state.matrix_mode) {
@@ -22,15 +26,15 @@ static mat4 *stack_for_mode(GLenum mode, GLint **depth_out, GLint *max_depth)
 {
 	switch (mode) {
 	case GL_MODELVIEW:
-		*depth_out = &gl_state.modelview_depth;
+		*depth_out = &gl_state.modelview_stack_depth;
 		*max_depth = MODELVIEW_STACK_MAX;
 		return gl_state.modelview_stack;
 	case GL_PROJECTION:
-		*depth_out = &gl_state.projection_depth;
+		*depth_out = &gl_state.projection_stack_depth;
 		*max_depth = PROJECTION_STACK_MAX;
 		return gl_state.projection_stack;
 	case GL_TEXTURE:
-		*depth_out = &gl_state.texture_depth;
+		*depth_out = &gl_state.texture_stack_depth;
 		*max_depth = TEXTURE_STACK_MAX;
 		return gl_state.texture_stack;
 	default:

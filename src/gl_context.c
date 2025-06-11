@@ -91,6 +91,28 @@ static void init_defaults(RenderContext *ctx)
 		ctx->lights[i].enabled = GL_FALSE;
 		atomic_init(&ctx->lights[i].version, 0);
 	}
+	ctx->texture_2d_enabled = GL_FALSE;
+	atomic_init(&ctx->version_tex_enable, 0);
+	ctx->cull_face_enabled = GL_FALSE;
+	ctx->cull_face_mode = GL_BACK;
+	ctx->front_face = GL_CCW;
+	atomic_init(&ctx->version_cull, 0);
+	ctx->scissor_test_enabled = GL_FALSE;
+	ctx->scissor_box[0] = ctx->scissor_box[1] = 0;
+	ctx->scissor_box[2] = ctx->scissor_box[3] = 0;
+	atomic_init(&ctx->version_scissor, 0);
+	ctx->color_mask[0] = ctx->color_mask[1] = ctx->color_mask[2] =
+		ctx->color_mask[3] = GL_TRUE;
+	ctx->depth_mask = GL_TRUE;
+	atomic_init(&ctx->version_mask, 0);
+	memset(&ctx->vertex_array, 0, sizeof(ArrayState));
+	atomic_init(&ctx->vertex_array.version, 0);
+	memset(&ctx->color_array, 0, sizeof(ArrayState));
+	atomic_init(&ctx->color_array.version, 0);
+	memset(&ctx->normal_array, 0, sizeof(ArrayState));
+	atomic_init(&ctx->normal_array.version, 0);
+	memset(&ctx->texcoord_array, 0, sizeof(ArrayState));
+	atomic_init(&ctx->texcoord_array.version, 0);
 	memcpy(ctx->material.ambient, ctx->current_color, sizeof(GLfloat) * 4);
 	ctx->material.diffuse[0] = 1.0f;
 	ctx->material.diffuse[1] = 1.0f;

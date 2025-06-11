@@ -2,6 +2,7 @@
 #include "gl_context.h"
 #include "gl_errors.h"
 #include "pipeline/gl_framebuffer.h"
+#include "gl_utils.h"
 #include <GLES/gl.h>
 #include <string.h>
 
@@ -81,4 +82,29 @@ GL_API void GL_APIENTRY glDepthRangef(GLfloat n, GLfloat f)
 		f = 1.0f;
 	gl_state.depth_range_near = n;
 	gl_state.depth_range_far = f;
+}
+
+GL_API void GL_APIENTRY glClearColor(GLfloat red, GLfloat green, GLfloat blue,
+				     GLfloat alpha)
+{
+	gl_state.clear_color[0] = red;
+	gl_state.clear_color[1] = green;
+	gl_state.clear_color[2] = blue;
+	gl_state.clear_color[3] = alpha;
+}
+
+GL_API void GL_APIENTRY glClearColorx(GLfixed red, GLfixed green, GLfixed blue,
+				      GLfixed alpha)
+{
+	glClearColor(FIXED_TO_FLOAT(red), FIXED_TO_FLOAT(green),
+		     FIXED_TO_FLOAT(blue), FIXED_TO_FLOAT(alpha));
+}
+
+GL_API void GL_APIENTRY glPointSize(GLfloat size)
+{
+	if (size <= 0.0f) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	gl_state.point_size = size;
 }

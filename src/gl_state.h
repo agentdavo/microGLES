@@ -245,9 +245,7 @@ typedef struct {
 	GLboolean sample_coverage_enabled;
 	GLboolean scissor_test_enabled;
 	GLboolean stencil_test_enabled;
-	GLboolean texture_2d_enabled;
 	GLboolean clip_plane_enabled[6];
-	GLboolean light_enabled[8];
 	Light lights[8];
 
 	/* Fog parameters */

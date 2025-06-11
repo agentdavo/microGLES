@@ -1,5 +1,6 @@
 #include "gl_state.h"
 #include "gl_context.h"
+#include "gl_state_helpers.h"
 #include "gl_errors.h"
 #include <GLES/gl.h>
 #include <string.h>
@@ -75,7 +76,8 @@ GL_API void GL_APIENTRY glEnable(GLenum cap)
 		GetCurrentContext()->stencil_test_enabled = GL_TRUE;
 		break;
 	case GL_TEXTURE_2D:
-		gl_state.texture_2d_enabled = GL_TRUE;
+		SET_BOOL(GetCurrentContext()->texture_2d_enabled, GL_TRUE,
+			 GetCurrentContext()->version_tex_enable);
 		break;
 	case GL_CLIP_PLANE0:
 	case GL_CLIP_PLANE1:
@@ -93,7 +95,9 @@ GL_API void GL_APIENTRY glEnable(GLenum cap)
 	case GL_LIGHT5:
 	case GL_LIGHT6:
 	case GL_LIGHT7:
-		gl_state.light_enabled[cap - GL_LIGHT0] = GL_TRUE;
+		SET_BOOL(GetCurrentContext()->lights[cap - GL_LIGHT0].enabled,
+			 GL_TRUE,
+			 GetCurrentContext()->lights[cap - GL_LIGHT0].version);
 		break;
 	default:
 		glSetError(GL_INVALID_ENUM);
@@ -172,7 +176,8 @@ GL_API void GL_APIENTRY glDisable(GLenum cap)
 		GetCurrentContext()->stencil_test_enabled = GL_FALSE;
 		break;
 	case GL_TEXTURE_2D:
-		gl_state.texture_2d_enabled = GL_FALSE;
+		SET_BOOL(GetCurrentContext()->texture_2d_enabled, GL_FALSE,
+			 GetCurrentContext()->version_tex_enable);
 		break;
 	case GL_CLIP_PLANE0:
 	case GL_CLIP_PLANE1:
@@ -190,7 +195,9 @@ GL_API void GL_APIENTRY glDisable(GLenum cap)
 	case GL_LIGHT5:
 	case GL_LIGHT6:
 	case GL_LIGHT7:
-		gl_state.light_enabled[cap - GL_LIGHT0] = GL_FALSE;
+		SET_BOOL(GetCurrentContext()->lights[cap - GL_LIGHT0].enabled,
+			 GL_FALSE,
+			 GetCurrentContext()->lights[cap - GL_LIGHT0].version);
 		break;
 	default:
 		glSetError(GL_INVALID_ENUM);
@@ -244,7 +251,7 @@ GLboolean glIsEnabled(GLenum cap)
 	case GL_STENCIL_TEST:
 		return gl_state.stencil_test_enabled;
 	case GL_TEXTURE_2D:
-		return gl_state.texture_2d_enabled;
+		return GetCurrentContext()->texture_2d_enabled;
 	case GL_CLIP_PLANE0:
 	case GL_CLIP_PLANE1:
 	case GL_CLIP_PLANE2:
@@ -260,74 +267,11 @@ GLboolean glIsEnabled(GLenum cap)
 	case GL_LIGHT5:
 	case GL_LIGHT6:
 	case GL_LIGHT7:
-		return gl_state.light_enabled[cap - GL_LIGHT0];
+		return GetCurrentContext()->lights[cap - GL_LIGHT0].enabled;
 	default:
 		glSetError(GL_INVALID_ENUM);
 		return GL_FALSE;
 	}
-}
-
-GL_API void GL_APIENTRY glEnableClientState(GLenum array)
-{
-	switch (array) {
-	case GL_VERTEX_ARRAY:
-		gl_state.vertex_array_enabled = GL_TRUE;
-		if (gl_state.bound_vao)
-			gl_state.bound_vao->vertex_array_enabled = GL_TRUE;
-		break;
-	case GL_COLOR_ARRAY:
-		gl_state.color_array_enabled = GL_TRUE;
-		if (gl_state.bound_vao)
-			gl_state.bound_vao->color_array_enabled = GL_TRUE;
-		break;
-	case GL_NORMAL_ARRAY:
-		gl_state.normal_array_enabled = GL_TRUE;
-		if (gl_state.bound_vao)
-			gl_state.bound_vao->normal_array_enabled = GL_TRUE;
-		break;
-	case GL_TEXTURE_COORD_ARRAY:
-		gl_state.texcoord_array_enabled = GL_TRUE;
-		if (gl_state.bound_vao)
-			gl_state.bound_vao->texcoord_array_enabled = GL_TRUE;
-		break;
-	default:
-		glSetError(GL_INVALID_ENUM);
-		break;
-	}
-}
-
-GL_API void GL_APIENTRY glDisableClientState(GLenum array)
-{
-	switch (array) {
-	case GL_VERTEX_ARRAY:
-		gl_state.vertex_array_enabled = GL_FALSE;
-		if (gl_state.bound_vao)
-			gl_state.bound_vao->vertex_array_enabled = GL_FALSE;
-		break;
-	case GL_COLOR_ARRAY:
-		gl_state.color_array_enabled = GL_FALSE;
-		if (gl_state.bound_vao)
-			gl_state.bound_vao->color_array_enabled = GL_FALSE;
-		break;
-	case GL_NORMAL_ARRAY:
-		gl_state.normal_array_enabled = GL_FALSE;
-		if (gl_state.bound_vao)
-			gl_state.bound_vao->normal_array_enabled = GL_FALSE;
-		break;
-	case GL_TEXTURE_COORD_ARRAY:
-		gl_state.texcoord_array_enabled = GL_FALSE;
-		if (gl_state.bound_vao)
-			gl_state.bound_vao->texcoord_array_enabled = GL_FALSE;
-		break;
-	default:
-		glSetError(GL_INVALID_ENUM);
-		break;
-	}
-}
-
-GL_API void GL_APIENTRY glClientActiveTexture(GLenum texture)
-{
-	gl_state.client_active_texture = texture;
 }
 
 GL_API void GL_APIENTRY glHint(GLenum target, GLenum mode)

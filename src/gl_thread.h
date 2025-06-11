@@ -2,6 +2,7 @@
 #define GL_THREAD_H
 
 #include <threads.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,6 +23,7 @@ void thread_pool_init(int num_threads);
 void thread_pool_submit(task_function_t func, void *task_data,
 			stage_tag_t stage);
 void thread_pool_wait(void);
+int thread_pool_wait_timeout(uint32_t ms);
 void thread_pool_shutdown(void);
 
 void thread_profile_start(void);

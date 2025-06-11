@@ -1,6 +1,8 @@
 #include "gl_framebuffer.h"
 #include "gl_logger.h"
 #include "gl_memory_tracker.h"
+#define PIPELINE_USE_GLSTATE 0
+_Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "gl_utils.h"
 #include "gl_thread.h"
 #include "../gl_context.h"

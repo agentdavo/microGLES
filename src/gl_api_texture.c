@@ -60,7 +60,7 @@ GL_API void GL_APIENTRY glTexParameteri(GLenum target, GLenum pname,
 		glSetError(GL_INVALID_ENUM);
 		return;
 	}
-	context_tex_parameter(target, pname, param);
+	context_tex_parameterf(target, pname, (GLfloat)param);
 }
 
 GL_API void GL_APIENTRY glTexImage2D(GLenum target, GLint level,
@@ -70,7 +70,7 @@ GL_API void GL_APIENTRY glTexImage2D(GLenum target, GLint level,
 				     const void *pixels)
 {
 	context_tex_image_2d(target, level, internalformat, width, height,
-			     border, format, type, pixels);
+			     format, type, pixels);
 }
 
 GL_API void GL_APIENTRY glTexSubImage2D(GLenum target, GLint level,
@@ -81,4 +81,130 @@ GL_API void GL_APIENTRY glTexSubImage2D(GLenum target, GLint level,
 {
 	context_tex_sub_image_2d(target, level, xoffset, yoffset, width, height,
 				 format, type, pixels);
+}
+GL_API void GL_APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param)
+{
+	if (target != GL_TEXTURE_ENV && target != GL_POINT_SPRITE_OES) {
+		glSetError(GL_INVALID_ENUM);
+		return;
+	}
+	int unit = gl_state.active_texture - GL_TEXTURE0;
+	switch (pname) {
+	case GL_TEXTURE_ENV_MODE:
+		switch ((GLenum)param) {
+		case GL_MODULATE:
+		case GL_DECAL:
+		case GL_BLEND:
+		case GL_ADD:
+		case GL_REPLACE:
+		case GL_COMBINE:
+			gl_state.tex_env_mode[unit] = (GLenum)param;
+			break;
+		default:
+			glSetError(GL_INVALID_ENUM);
+			break;
+		}
+		break;
+	case GL_COMBINE_RGB:
+		gl_state.tex_env_combine_rgb[unit] = (GLenum)param;
+		break;
+	case GL_COMBINE_ALPHA:
+		gl_state.tex_env_combine_alpha[unit] = (GLenum)param;
+		break;
+	case GL_SRC0_RGB:
+		gl_state.tex_env_src_rgb[unit][0] = (GLenum)param;
+		break;
+	case GL_SRC1_RGB:
+		gl_state.tex_env_src_rgb[unit][1] = (GLenum)param;
+		break;
+	case GL_SRC2_RGB:
+		gl_state.tex_env_src_rgb[unit][2] = (GLenum)param;
+		break;
+	case GL_SRC0_ALPHA:
+		gl_state.tex_env_src_alpha[unit][0] = (GLenum)param;
+		break;
+	case GL_SRC1_ALPHA:
+		gl_state.tex_env_src_alpha[unit][1] = (GLenum)param;
+		break;
+	case GL_SRC2_ALPHA:
+		gl_state.tex_env_src_alpha[unit][2] = (GLenum)param;
+		break;
+	case GL_OPERAND0_RGB:
+		gl_state.tex_env_operand_rgb[unit][0] = (GLenum)param;
+		break;
+	case GL_OPERAND1_RGB:
+		gl_state.tex_env_operand_rgb[unit][1] = (GLenum)param;
+		break;
+	case GL_OPERAND2_RGB:
+		gl_state.tex_env_operand_rgb[unit][2] = (GLenum)param;
+		break;
+	case GL_OPERAND0_ALPHA:
+		gl_state.tex_env_operand_alpha[unit][0] = (GLenum)param;
+		break;
+	case GL_OPERAND1_ALPHA:
+		gl_state.tex_env_operand_alpha[unit][1] = (GLenum)param;
+		break;
+	case GL_OPERAND2_ALPHA:
+		gl_state.tex_env_operand_alpha[unit][2] = (GLenum)param;
+		break;
+	case GL_RGB_SCALE:
+		if (param == 1.0f || param == 2.0f || param == 4.0f)
+			gl_state.tex_env_rgb_scale[unit] = param;
+		else
+			glSetError(GL_INVALID_VALUE);
+		break;
+	case GL_ALPHA_SCALE:
+		if (param == 1.0f || param == 2.0f || param == 4.0f)
+			gl_state.tex_env_alpha_scale[unit] = param;
+		else
+			glSetError(GL_INVALID_VALUE);
+		break;
+	case GL_COORD_REPLACE_OES:
+		gl_state.tex_env_coord_replace[unit] = param ? GL_TRUE :
+							       GL_FALSE;
+		break;
+	default:
+		glSetError(GL_INVALID_ENUM);
+		break;
+	}
+	context_set_texture_env(unit, pname, &param);
+}
+
+GL_API void GL_APIENTRY glTexEnvfv(GLenum target, GLenum pname,
+				   const GLfloat *params)
+{
+	if ((target != GL_TEXTURE_ENV && target != GL_POINT_SPRITE_OES) ||
+	    !params) {
+		if (!params)
+			glSetError(GL_INVALID_VALUE);
+		else
+			glSetError(GL_INVALID_ENUM);
+		return;
+	}
+	int unit = gl_state.active_texture - GL_TEXTURE0;
+	switch (pname) {
+	case GL_TEXTURE_ENV_COLOR:
+		memcpy(gl_state.tex_env_color[unit], params,
+		       sizeof(GLfloat) * 4);
+		context_set_texture_env(unit, pname, params);
+		break;
+	default:
+		glTexEnvf(target, pname, params[0]);
+		break;
+	}
+}
+
+GL_API void GL_APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param)
+{
+	glTexEnvf(target, pname, (GLfloat)param);
+}
+
+GL_API void GL_APIENTRY glTexEnviv(GLenum target, GLenum pname,
+				   const GLint *params)
+{
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	glTexEnvi(target, pname, params[0]);
 }
