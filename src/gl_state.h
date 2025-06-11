@@ -3,7 +3,7 @@
 #ifndef GL_STATE_H
 #define GL_STATE_H
 
-#include "gl_framebuffer_object.h" /* For FramebufferOES and RenderbufferOES */
+#include "gl_api_fbo.h" /* For FramebufferOES and RenderbufferOES */
 #include "matrix_utils.h" /* For mat4 */
 #include <GLES/gl.h>
 #include <GLES/glext.h>

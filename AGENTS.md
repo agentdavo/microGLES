@@ -21,3 +21,5 @@ When modifying code in this folder:
 - Source files must be formatted via the `format` target before committing:
   `cmake --build build --target format`.
 - Benchmarks and conformance tests follow the same rules.
+
+Pending: refactor remaining GL API functions into dedicated files.

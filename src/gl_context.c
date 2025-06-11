@@ -6,6 +6,7 @@
 #include <string.h>
 
 static RenderContext g_render_context;
+static RenderContext *g_current_context = &g_render_context;
 static _Thread_local GLenum thread_error = GL_NO_ERROR;
 
 static void init_defaults(RenderContext *ctx)
@@ -55,8 +56,14 @@ static void init_defaults(RenderContext *ctx)
 	ctx->blend.src_factor = GL_ONE;
 	ctx->blend.dst_factor = GL_ZERO;
 	atomic_init(&ctx->blend.version, 0);
+	ctx->blend_enabled = GL_FALSE;
 
-	for (int i = 0; i < 1; ++i) {
+	ctx->alpha_test.enabled = GL_FALSE;
+	ctx->alpha_test.func = GL_ALWAYS;
+	ctx->alpha_test.ref = 0.0f;
+	atomic_init(&ctx->alpha_test.version, 0);
+
+	for (int i = 0; i < 8; ++i) {
 		ctx->lights[i].ambient[0] = 0.2f;
 		ctx->lights[i].ambient[1] = 0.2f;
 		ctx->lights[i].ambient[2] = 0.2f;
@@ -65,10 +72,22 @@ static void init_defaults(RenderContext *ctx)
 		ctx->lights[i].diffuse[1] = 1.0f;
 		ctx->lights[i].diffuse[2] = 1.0f;
 		ctx->lights[i].diffuse[3] = 1.0f;
+		ctx->lights[i].specular[0] = 1.0f;
+		ctx->lights[i].specular[1] = 1.0f;
+		ctx->lights[i].specular[2] = 1.0f;
+		ctx->lights[i].specular[3] = 1.0f;
 		ctx->lights[i].position[0] = 0.0f;
 		ctx->lights[i].position[1] = 0.0f;
 		ctx->lights[i].position[2] = 1.0f;
 		ctx->lights[i].position[3] = 0.0f; /* directional */
+		ctx->lights[i].spot_direction[0] = 0.0f;
+		ctx->lights[i].spot_direction[1] = 0.0f;
+		ctx->lights[i].spot_direction[2] = -1.0f;
+		ctx->lights[i].spot_exponent = 0.0f;
+		ctx->lights[i].spot_cutoff = 180.0f;
+		ctx->lights[i].constant_attenuation = 1.0f;
+		ctx->lights[i].linear_attenuation = 0.0f;
+		ctx->lights[i].quadratic_attenuation = 0.0f;
 		ctx->lights[i].enabled = GL_FALSE;
 		atomic_init(&ctx->lights[i].version, 0);
 	}
@@ -116,6 +135,11 @@ void context_init(void)
 RenderContext *context_get(void)
 {
 	return &g_render_context;
+}
+
+RenderContext *GetCurrentContext(void)
+{
+	return g_current_context;
 }
 
 void context_update_modelview_matrix(const mat4 *mat)
@@ -193,11 +217,20 @@ void context_set_blend_func(GLenum sfactor, GLenum dfactor)
 	log_state_change("blend func");
 }
 
+void context_set_alpha_func(GLenum func, GLfloat ref)
+{
+	g_render_context.alpha_test.func = func;
+	g_render_context.alpha_test.ref = ref;
+	atomic_fetch_add_explicit(&g_render_context.alpha_test.version, 1,
+				  memory_order_relaxed);
+	log_state_change("alpha func");
+}
+
 void context_set_light(GLenum light, GLenum pname, const GLfloat *params)
 {
-	if (light != GL_LIGHT0)
+	if (light < GL_LIGHT0 || light > GL_LIGHT7)
 		return;
-	LightState *ls = &g_render_context.lights[0];
+	LightState *ls = &g_render_context.lights[light - GL_LIGHT0];
 	switch (pname) {
 	case GL_AMBIENT:
 		memcpy(ls->ambient, params, sizeof(GLfloat) * 4);
@@ -205,8 +238,29 @@ void context_set_light(GLenum light, GLenum pname, const GLfloat *params)
 	case GL_DIFFUSE:
 		memcpy(ls->diffuse, params, sizeof(GLfloat) * 4);
 		break;
+	case GL_SPECULAR:
+		memcpy(ls->specular, params, sizeof(GLfloat) * 4);
+		break;
 	case GL_POSITION:
 		memcpy(ls->position, params, sizeof(GLfloat) * 4);
+		break;
+	case GL_SPOT_DIRECTION:
+		memcpy(ls->spot_direction, params, sizeof(GLfloat) * 3);
+		break;
+	case GL_SPOT_EXPONENT:
+		ls->spot_exponent = params[0];
+		break;
+	case GL_SPOT_CUTOFF:
+		ls->spot_cutoff = params[0];
+		break;
+	case GL_CONSTANT_ATTENUATION:
+		ls->constant_attenuation = params[0];
+		break;
+	case GL_LINEAR_ATTENUATION:
+		ls->linear_attenuation = params[0];
+		break;
+	case GL_QUADRATIC_ATTENUATION:
+		ls->quadratic_attenuation = params[0];
 		break;
 	case GL_LIGHT_MODEL_TWO_SIDE:
 		/* ignore for now */

@@ -1,9 +1,10 @@
-/* gl_framebuffer_object.h */
+/* gl_api_fbo.h */
 
-#ifndef GL_FRAMEBUFFER_OBJECT_H
-#define GL_FRAMEBUFFER_OBJECT_H
+#ifndef GL_API_FBO_H
+#define GL_API_FBO_H
 
 #include "gl_types.h" /* For TextureOES */
+#include "pipeline/gl_framebuffer.h" /* For Framebuffer */
 #include <GLES/gl.h>
 #include <GLES/glext.h>
 #include <stddef.h>
@@ -56,6 +57,11 @@ typedef struct FramebufferOES {
 	FramebufferAttachmentOES color_attachment;
 	FramebufferAttachmentOES depth_attachment;
 	FramebufferAttachmentOES stencil_attachment;
+	/*
+         * Actual pixel storage for the rasterizer. When the framebuffer is
+         * bound, all clears and draws operate on this object.
+         */
+	struct Framebuffer *fb;
 } FramebufferOES;
 
 /* Function prototypes */
@@ -89,4 +95,4 @@ void GL_APIENTRY glGenerateMipmapOES(GLenum target);
 }
 #endif
 
-#endif /* GL_FRAMEBUFFER_OBJECT_H */
+#endif /* GL_API_FBO_H */

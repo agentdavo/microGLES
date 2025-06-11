@@ -4,7 +4,7 @@
 #define GL_GLEXT_PROTOTYPES
 #include "gl_context.h"
 #include "pipeline/gl_framebuffer.h"
-#include "gl_framebuffer_object.h"
+#include "gl_api_fbo.h"
 #include <GLES/glext.h>
 #include <string.h>
 

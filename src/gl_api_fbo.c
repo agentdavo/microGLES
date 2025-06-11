@@ -1,6 +1,6 @@
 /* gl_framebuffer_object.c */
 
-#include "gl_framebuffer_object.h"
+#include "gl_api_fbo.h"
 #include "gl_state.h"
 #include "gl_types.h"
 #include "gl_utils.h"
@@ -132,6 +132,8 @@ static FramebufferOES *create_framebuffer(void)
 	fb->stencil_attachment.type = ATTACHMENT_NONE;
 	fb->stencil_attachment.attachment.renderbuffer = NULL;
 	fb->stencil_attachment.attachment.texture = NULL;
+
+	fb->fb = NULL;
 
 	return fb;
 }

@@ -1,7 +1,7 @@
 /* gl_state.c */
 
 #include "gl_state.h"
-#include "gl_framebuffer_object.h" // For RenderbufferOES, FramebufferOES
+#include "gl_api_fbo.h" // For RenderbufferOES, FramebufferOES
 #include "gl_types.h" // For TextureOES
 #include "gl_utils.h" // For tracked_free
 #include "gl_logger.h"

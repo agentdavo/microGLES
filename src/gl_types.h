@@ -10,6 +10,7 @@ extern "C" {
 
 typedef struct {
 	GLfloat x, y, z, w;
+	GLfloat normal[3];
 	GLfloat color[4];
 	GLfloat texcoord[4];
 } Vertex;
