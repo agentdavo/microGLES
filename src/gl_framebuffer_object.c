@@ -133,6 +133,8 @@ static FramebufferOES *create_framebuffer(void)
 	fb->stencil_attachment.attachment.renderbuffer = NULL;
 	fb->stencil_attachment.attachment.texture = NULL;
 
+	fb->fb = NULL;
+
 	return fb;
 }
 

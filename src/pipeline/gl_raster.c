@@ -79,8 +79,9 @@ void process_fragment_tile_job(void *task_data)
 {
 	FragmentTileJob *job = (FragmentTileJob *)task_data;
 	for (uint32_t y = job->y0; y <= job->y1; ++y)
-		for (uint32_t x = job->x0; x <= job->x1; ++x)
-			framebuffer_set_pixel(job->fb, x, y, job->color,
-					      job->depth);
+		for (uint32_t x = job->x0; x <= job->x1; ++x) {
+			Fragment frag = { x, y, job->color, job->depth };
+			pipeline_shade_fragment(&frag, job->fb);
+		}
 	MT_FREE(job, STAGE_FRAGMENT);
 }

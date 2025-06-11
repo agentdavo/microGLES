@@ -14,7 +14,8 @@ typedef struct {
 	Framebuffer *fb;
 } VertexJob;
 
-void pipeline_transform_vertex(Vertex *dst, const Vertex *src, const mat4 *mvp);
+void pipeline_transform_vertex(Vertex *dst, const Vertex *src, const mat4 *mvp,
+			       const mat4 *normal_mat);
 void process_vertex_job(void *task_data);
 
 #ifdef __cplusplus

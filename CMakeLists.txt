@@ -13,6 +13,8 @@ set(SOURCE_FILES
     src/gl_framebuffer_object.c
     src/gl_state.c
     src/gl_utils.c
+    src/gl_api_blend.c
+    src/gl_api_draw.c
     src/gl_functions.c
     src/gl_extensions.c
     src/gl_context.c

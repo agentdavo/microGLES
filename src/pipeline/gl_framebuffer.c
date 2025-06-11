@@ -119,7 +119,7 @@ void framebuffer_set_pixel(Framebuffer *fb, uint32_t x, uint32_t y,
 		return;
 	/* TODO: Implement tiled writes for reduced contention */
 	size_t idx = (size_t)y * fb->width + x;
-	RenderContext *ctx = context_get();
+	RenderContext *ctx = GetCurrentContext();
 	StencilState *ss = &ctx->stencil;
 	uint8_t stencil = atomic_load(&fb->stencil_buffer[idx]);
 	if (ctx->stencil_test_enabled) {
@@ -188,6 +188,11 @@ void framebuffer_set_pixel(Framebuffer *fb, uint32_t x, uint32_t y,
 	}
 	float current = atomic_load(&fb->depth_buffer[idx]);
 	bool depth_pass = false;
+	/*
+         * Multiple fragment threads may attempt to write the same depth
+         * location concurrently. Compare-and-swap ensures only the closest
+         * fragment updates the buffer while losers retry with the new value.
+         */
 	while (depth < current) {
 		if (atomic_compare_exchange_weak(&fb->depth_buffer[idx],
 						 &current, depth)) {

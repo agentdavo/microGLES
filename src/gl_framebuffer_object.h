@@ -4,6 +4,7 @@
 #define GL_FRAMEBUFFER_OBJECT_H
 
 #include "gl_types.h" /* For TextureOES */
+#include "pipeline/gl_framebuffer.h" /* For Framebuffer */
 #include <GLES/gl.h>
 #include <GLES/glext.h>
 #include <stddef.h>
@@ -56,6 +57,11 @@ typedef struct FramebufferOES {
 	FramebufferAttachmentOES color_attachment;
 	FramebufferAttachmentOES depth_attachment;
 	FramebufferAttachmentOES stencil_attachment;
+	/*
+         * Actual pixel storage for the rasterizer. When the framebuffer is
+         * bound, all clears and draws operate on this object.
+         */
+	struct Framebuffer *fb;
 } FramebufferOES;
 
 /* Function prototypes */
