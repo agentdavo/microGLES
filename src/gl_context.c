@@ -2,6 +2,7 @@
 #include "gl_logger.h"
 #include "gl_memory_tracker.h"
 #include "gl_thread.h"
+#include "gl_state.h"
 #include <string.h>
 
 static RenderContext g_render_context;
@@ -368,6 +369,19 @@ void context_delete_textures(GLsizei n, const GLuint *textures)
 					g_render_context.textures[k - 1] =
 						g_render_context.textures[k];
 				g_render_context.texture_count--;
+				for (GLuint m = 0; m < gl_state.texture_count;
+				     ++m) {
+					if (gl_state.textures[m] == tex) {
+						for (GLuint n = m + 1;
+						     n < gl_state.texture_count;
+						     ++n)
+							gl_state.textures[n - 1] =
+								gl_state.textures
+									[n];
+						gl_state.texture_count--;
+						break;
+					}
+				}
 				break;
 			}
 		}
@@ -399,6 +413,8 @@ void context_tex_image_2d(GLenum target, GLint level, GLint internalformat,
 		tex->target = target;
 		g_render_context.textures[g_render_context.texture_count++] =
 			tex;
+		if (gl_state.texture_count < MAX_TEXTURES)
+			gl_state.textures[gl_state.texture_count++] = tex;
 	}
 	tex->internalformat = internalformat;
 	tex->format = format;

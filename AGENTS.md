@@ -15,6 +15,8 @@ When modifying code in this folder:
   ```
 - Run the benchmark and conformance tests to verify runtime behaviour:
   `./build/bin/benchmark` and `./build/bin/conformance`.
+- Use tools like `valgrind` or `gdb` to diagnose crashes or memory errors
+  when tests fail.
 - Update README.md if the public API or build steps change.
 - Source files must be formatted via the `format` target before committing:
   `cmake --build build --target format`.
