@@ -1,0 +1,79 @@
+#ifndef GL_CONTEXT_H
+#define GL_CONTEXT_H
+
+#include "matrix_utils.h"
+#include <GLES/gl.h>
+#include <stdatomic.h>
+#include <threads.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct {
+	GLenum env_mode;
+	GLfloat env_color[4];
+	atomic_uint version;
+} TextureState;
+
+typedef struct {
+	GLfloat ambient[4];
+	GLfloat diffuse[4];
+	GLfloat position[4];
+	GLboolean enabled;
+	atomic_uint version;
+} LightState;
+
+typedef struct {
+	GLfloat ambient[4];
+	GLfloat diffuse[4];
+	GLfloat specular[4];
+	GLfloat emission[4];
+	GLfloat shininess;
+	atomic_uint version;
+} MaterialState;
+
+typedef struct {
+	GLenum src_factor;
+	GLenum dst_factor;
+	atomic_uint version;
+} BlendState;
+
+typedef struct {
+	mat4 modelview_matrix;
+	mat4 projection_matrix;
+	mat4 texture_matrix;
+	GLfloat current_color[4];
+	GLfloat clear_color[4];
+	GLboolean depth_test_enabled;
+	GLenum depth_func;
+	GLfloat current_normal[3];
+	atomic_uint version_modelview;
+	atomic_uint version_projection;
+	atomic_uint version_texture;
+	TextureState texture_env[2];
+	BlendState blend;
+	LightState lights[1];
+	MaterialState material;
+} RenderContext;
+
+void context_init(void);
+RenderContext *context_get(void);
+void context_update_modelview_matrix(const mat4 *mat);
+void context_update_projection_matrix(const mat4 *mat);
+void context_update_texture_matrix(const mat4 *mat);
+void context_set_clear_color(GLfloat r, GLfloat g, GLfloat b, GLfloat a);
+void context_set_texture_env(GLenum unit, GLenum pname, const GLfloat *params);
+void context_set_blend_func(GLenum sfactor, GLenum dfactor);
+void context_set_light(GLenum light, GLenum pname, const GLfloat *params);
+void context_set_material(GLenum pname, const GLfloat *params);
+void context_set_error(GLenum error);
+GLenum context_get_error(void);
+
+void log_state_change(const char *msg);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // GL_CONTEXT_H

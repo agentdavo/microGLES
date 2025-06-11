@@ -1,79 +1,91 @@
 /* main.c */
 
-#include "gl_extensions.h"
+#include <GLES/gl.h>
+#include <GLES/glext.h>
 #include "gl_framebuffer_object.h"
 #include "gl_state.h"
+#include "gl_init.h"
 #include "gl_texture.h"
 #include "gl_utils.h"
-#include "logger.h"
-#include "memory_tracker.h"
+#include "gl_logger.h"
+#include "gl_memory_tracker.h"
 #include <stdio.h>
 
-int main() {
+extern const GLubyte *renderer_get_extensions(void);
 
-  /* Initialize Logger */
-  if (!InitLogger("renderer.log", LOG_LEVEL_DEBUG)) {
-    fprintf(stderr, "Failed to initialize logger.\n");
-    return -1;
-  }
+int main()
+{
+	/* Initialize Logger */
+	if (!logger_init("renderer.log", LOG_LEVEL_DEBUG)) {
+		fprintf(stderr, "Failed to initialize logger.\n");
+		return -1;
+	}
 
-  /* Initialize Memory Tracker */
-  if (!InitMemoryTracker()) {
-    LOG_FATAL("Failed to initialize Memory Tracker.");
-    return -1;
-  }
+	/* Initialize Memory Tracker */
+	if (!memory_tracker_init()) {
+		LOG_FATAL("Failed to initialize Memory Tracker.");
+		return -1;
+	}
 
-  /* Initialize GLState */
-  InitGLState(&gl_state);
+	/* Initialize GLState */
+	InitGLState(&gl_state);
+	Framebuffer *display = GL_init_with_framebuffer(256, 256);
+	if (!display) {
+		LOG_FATAL("Failed to create framebuffer");
+		return -1;
+	}
 
-  /* Log supported extensions */
-  const GLubyte *ext = renderer_get_extensions();
-  LOG_INFO("Supported extensions: %s", ext);
+	/* Log supported extensions */
+	const GLubyte *ext = renderer_get_extensions();
+	LOG_INFO("Supported extensions: %s", ext);
 
-  /* Your renderer initialization and operations */
+	/* Your renderer initialization and operations */
 
-  /* Example: Generate a renderbuffer */
-  GLuint rb;
-  glGenRenderbuffersOES(1, &rb);
-  glBindRenderbufferOES(GL_RENDERBUFFER_OES, rb);
-  glRenderbufferStorageOES(GL_RENDERBUFFER_OES, GL_RGBA4_OES, 256, 256);
+	/* Example: Generate a renderbuffer */
+	GLuint rb;
+	glGenRenderbuffersOES(1, &rb);
+	glBindRenderbufferOES(GL_RENDERBUFFER_OES, rb);
+	glRenderbufferStorageOES(GL_RENDERBUFFER_OES, GL_RGBA4_OES, 256, 256);
 
-  /* Example: Generate a framebuffer */
-  GLuint fb;
-  glGenFramebuffersOES(1, &fb);
-  glBindFramebufferOES(GL_FRAMEBUFFER_OES, fb);
-  glFramebufferRenderbufferOES(GL_FRAMEBUFFER_OES, GL_COLOR_ATTACHMENT0_OES,
-                               GL_RENDERBUFFER_OES, rb);
-  GLenum status = glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES);
-  if (status == GL_FRAMEBUFFER_COMPLETE_OES) {
-    LOG_INFO("Framebuffer %u is complete.", fb);
-  } else {
-    LOG_ERROR("Framebuffer %u is incomplete. Status: 0x%X", fb, status);
-  }
+	/* Example: Generate a framebuffer */
+	GLuint fb;
+	glGenFramebuffersOES(1, &fb);
+	glBindFramebufferOES(GL_FRAMEBUFFER_OES, fb);
+	glFramebufferRenderbufferOES(GL_FRAMEBUFFER_OES,
+				     GL_COLOR_ATTACHMENT0_OES,
+				     GL_RENDERBUFFER_OES, rb);
+	GLenum status = glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES);
+	if (status == GL_FRAMEBUFFER_COMPLETE_OES) {
+		LOG_INFO("Framebuffer %u is complete.", fb);
+	} else {
+		LOG_ERROR("Framebuffer %u is incomplete. Status: 0x%X", fb,
+			  status);
+	}
 
-  /* Example: Create a texture */
-  TextureOES *tex =
-      CreateTextureOES(GL_TEXTURE_2D_OES, GL_RGBA4_OES, 256, 256, GL_TRUE);
-  if (tex) {
-    TexImage2DOES(tex, 0, GL_RGBA4_OES, 256, 256, GL_RGBA, GL_UNSIGNED_BYTE,
-                  NULL);
-    BindTextureOES(GL_TEXTURE_2D_OES, tex);
-    /* Free the texture to avoid memory leaks */
-    tracked_free(tex, sizeof(TextureOES));
-  }
+	/* Example: Create a texture */
+	TextureOES *tex = CreateTextureOES(GL_TEXTURE_2D_OES, GL_RGBA4_OES, 256,
+					   256, GL_TRUE);
+	if (tex) {
+		TexImage2DOES(tex, 0, GL_RGBA4_OES, 256, 256, GL_RGBA,
+			      GL_UNSIGNED_BYTE, NULL);
+		BindTextureOES(GL_TEXTURE_2D_OES, tex);
+		/* Free the texture to avoid memory leaks */
+		tracked_free(tex, sizeof(TextureOES));
+	}
 
-  /* Print memory stats */
-  PrintMemoryUsage();
+	/* Print memory stats */
+	memory_tracker_report();
 
-  /* Your renderer operations */
+	/* Your renderer operations */
 
-  /* Cleanup */
-  CleanupGLState(&gl_state);
-  ShutdownMemoryTracker(); // Should report any leaks
-  PrintMemoryUsage();      // Should show zero allocations if all are freed
+	/* Cleanup */
+	GL_cleanup_with_framebuffer(display);
+	CleanupGLState(&gl_state);
+	memory_tracker_shutdown(); // Should report any leaks
+	memory_tracker_report(); // Should show zero allocations if all are freed
 
-  /* Cleanup Logger */
-  ShutdownLogger();
+	/* Cleanup Logger */
+	logger_shutdown();
 
-  return 0;
+	return 0;
 }
