@@ -1,0 +1,164 @@
+#include "gl_memory_tracker.h"
+#include "gl_logger.h"
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+#include <threads.h>
+
+#define MAX_ALLOCATIONS 1000
+
+typedef struct {
+	void *ptr;
+	size_t size;
+	stage_tag_t stage;
+	const char *type;
+	int line;
+	bool active;
+} allocation_t;
+
+static allocation_t g_allocs[MAX_ALLOCATIONS];
+static mtx_t g_mutex;
+static size_t g_current;
+static size_t g_peak;
+static size_t g_stage_current[STAGE_COUNT];
+static size_t g_stage_peak[STAGE_COUNT];
+
+int memory_tracker_init(void)
+{
+	mtx_init(&g_mutex, mtx_plain);
+	memset(g_allocs, 0, sizeof(g_allocs));
+	g_current = g_peak = 0;
+	memset(g_stage_current, 0, sizeof(g_stage_current));
+	memset(g_stage_peak, 0, sizeof(g_stage_peak));
+	LogMessage(LOG_LEVEL_INFO, "Memory tracker initialized");
+	return 1;
+}
+
+static void record_alloc(void *ptr, size_t size, stage_tag_t stage,
+			 const char *type, int line)
+{
+	for (int i = 0; i < MAX_ALLOCATIONS; ++i) {
+		if (!g_allocs[i].active) {
+			g_allocs[i] = (allocation_t){ ptr,  size, stage,
+						      type, line, true };
+			g_current += size;
+			g_stage_current[stage] += size;
+			if (g_current > g_peak)
+				g_peak = g_current;
+			if (g_stage_current[stage] > g_stage_peak[stage])
+				g_stage_peak[stage] = g_stage_current[stage];
+			return;
+		}
+	}
+	LogMessage(LOG_LEVEL_ERROR, "Memory tracker pool exhausted");
+}
+
+void *memory_tracker_allocate(size_t size, stage_tag_t stage, const char *type,
+			      int line)
+{
+	void *p = malloc(size);
+	if (!p)
+		return NULL;
+	mtx_lock(&g_mutex);
+	record_alloc(p, size, stage, type, line);
+	mtx_unlock(&g_mutex);
+	return p;
+}
+
+void *memory_tracker_calloc(size_t n, size_t size, stage_tag_t stage,
+			    const char *type, int line)
+{
+	void *p = calloc(n, size);
+	if (!p)
+		return NULL;
+	mtx_lock(&g_mutex);
+	record_alloc(p, n * size, stage, type, line);
+	mtx_unlock(&g_mutex);
+	return p;
+}
+
+void *memory_tracker_realloc(void *ptr, size_t size, stage_tag_t stage,
+			     const char *type, int line)
+{
+	mtx_lock(&g_mutex);
+	if (ptr) {
+		for (int i = 0; i < MAX_ALLOCATIONS; ++i) {
+			if (g_allocs[i].active && g_allocs[i].ptr == ptr) {
+				g_current -= g_allocs[i].size;
+				g_stage_current[g_allocs[i].stage] -=
+					g_allocs[i].size;
+				g_allocs[i].active = false;
+				break;
+			}
+		}
+	}
+	mtx_unlock(&g_mutex);
+	void *np = realloc(ptr, size);
+	if (!np)
+		return NULL;
+	mtx_lock(&g_mutex);
+	record_alloc(np, size, stage, type, line);
+	mtx_unlock(&g_mutex);
+	return np;
+}
+
+void memory_tracker_free(void *ptr, stage_tag_t stage, const char *type,
+			 int line)
+{
+	(void)stage;
+	(void)type;
+	(void)line;
+	if (!ptr)
+		return;
+	mtx_lock(&g_mutex);
+	for (int i = 0; i < MAX_ALLOCATIONS; ++i) {
+		if (g_allocs[i].active && g_allocs[i].ptr == ptr) {
+			g_current -= g_allocs[i].size;
+			g_stage_current[g_allocs[i].stage] -= g_allocs[i].size;
+			g_allocs[i].active = false;
+			break;
+		}
+	}
+	mtx_unlock(&g_mutex);
+	free(ptr);
+}
+
+size_t memory_tracker_current(void)
+{
+	return g_current;
+}
+
+size_t memory_tracker_peak(void)
+{
+	return g_peak;
+}
+
+void memory_tracker_report(void)
+{
+	LogMessage(LOG_LEVEL_INFO, "Current memory %zu bytes", g_current);
+	LogMessage(LOG_LEVEL_INFO, "Peak memory %zu bytes", g_peak);
+	for (int s = 0; s < STAGE_COUNT; ++s) {
+		LogMessage(LOG_LEVEL_INFO, "Stage %d peak %zu bytes", s,
+			   g_stage_peak[s]);
+	}
+}
+
+void memory_tracker_shutdown(void)
+{
+	mtx_lock(&g_mutex);
+	for (int i = 0; i < MAX_ALLOCATIONS; ++i) {
+		if (g_allocs[i].active) {
+			LogMessage(LOG_LEVEL_WARN,
+				   "Leaked %zu bytes from %s:%d",
+				   g_allocs[i].size, g_allocs[i].type,
+				   g_allocs[i].line);
+		}
+	}
+	for (int s = 0; s < STAGE_COUNT; ++s) {
+		LogMessage(LOG_LEVEL_INFO, "Stage %d peak memory %zu bytes", s,
+			   g_stage_peak[s]);
+	}
+	LogMessage(LOG_LEVEL_INFO, "Peak memory usage %zu bytes", g_peak);
+	mtx_unlock(&g_mutex);
+	mtx_destroy(&g_mutex);
+}
