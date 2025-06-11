@@ -1,7 +1,7 @@
-/* gl_framebuffer_object.h */
+/* gl_api_fbo.h */
 
-#ifndef GL_FRAMEBUFFER_OBJECT_H
-#define GL_FRAMEBUFFER_OBJECT_H
+#ifndef GL_API_FBO_H
+#define GL_API_FBO_H
 
 #include "gl_types.h" /* For TextureOES */
 #include "pipeline/gl_framebuffer.h" /* For Framebuffer */
@@ -95,4 +95,4 @@ void GL_APIENTRY glGenerateMipmapOES(GLenum target);
 }
 #endif
 
-#endif /* GL_FRAMEBUFFER_OBJECT_H */
+#endif /* GL_API_FBO_H */

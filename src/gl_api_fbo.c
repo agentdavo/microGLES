@@ -1,6 +1,6 @@
 /* gl_framebuffer_object.c */
 
-#include "gl_framebuffer_object.h"
+#include "gl_api_fbo.h"
 #include "gl_state.h"
 #include "gl_types.h"
 #include "gl_utils.h"

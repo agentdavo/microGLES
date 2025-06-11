@@ -2,7 +2,7 @@
 
 #include <GLES/gl.h>
 #include <GLES/glext.h>
-#include "gl_framebuffer_object.h"
+#include "gl_api_fbo.h"
 #include "gl_state.h"
 #include "gl_init.h"
 #include "gl_types.h"

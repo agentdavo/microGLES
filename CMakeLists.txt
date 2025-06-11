@@ -10,7 +10,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # Define source files
 set(SOURCE_FILES
-    src/gl_framebuffer_object.c
+    src/gl_api_fbo.c
     src/gl_state.c
     src/gl_utils.c
     src/gl_api_blend.c
@@ -33,7 +33,7 @@ set(RENDERER_MAIN src/main.c)
 
 # Define header files (for IDE visibility, optional)
 set(HEADER_FILES
-    src/gl_framebuffer_object.h
+    src/gl_api_fbo.h
     src/gl_state.h
     src/gl_utils.h
     src/matrix_utils.h
