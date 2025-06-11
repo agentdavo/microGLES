@@ -4,9 +4,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <time.h>
 
 #define MAX_TASKS 256
-#define LOCAL_QUEUE_SIZE 64
+#define LOCAL_QUEUE_SIZE 128
 
 typedef struct {
 	task_function_t function;
@@ -42,13 +43,28 @@ static _Alignas(64) atomic_uint_fast64_t g_global_head;
 static _Alignas(64) atomic_uint_fast64_t g_global_tail;
 static thrd_t *g_worker_threads;
 static int g_num_threads;
+static _Thread_local int tls_tid = -1;
 static atomic_bool g_shutdown_flag = false;
 static atomic_bool g_profiling_enabled = false;
 static _Thread_local thread_profile_t g_thread_profile;
 
+#if defined(__x86_64__)
+#include <x86intrin.h>
+#endif
+
 static uint64_t get_cycles(void)
 {
-	return 0; /* platform-specific */
+#if defined(__x86_64__)
+	return __rdtsc();
+#elif defined(__aarch64__)
+	uint64_t val;
+	asm volatile("mrs %0, cntvct_el0" : "=r"(val));
+	return val;
+#else
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (uint64_t)ts.tv_sec * 1000000000ull + ts.tv_nsec;
+#endif
 }
 
 static const char *stage_names[STAGE_COUNT] = { "Vertex", "Primitive", "Raster",
@@ -87,8 +103,8 @@ static bool steal_task(int thread_id, task_t *out)
 				return true;
 			}
 			g_thread_profile.stages[task.stage].contention_events++;
+			g_thread_profile.stages[task.stage].steal_attempts++;
 		}
-		g_thread_profile.stages[STAGE_VERTEX].steal_attempts++;
 	}
 	g_thread_profile.stages[STAGE_VERTEX].steal_cycles +=
 		get_cycles() - start;
@@ -99,7 +115,9 @@ static int worker_thread_main(void *arg)
 {
 	int thread_id = *(int *)arg;
 	free(arg);
+	tls_tid = thread_id;
 	task_queue_t *local_queue = &g_local_queues[thread_id];
+	int idle_loops = 0;
 	while (!atomic_load_explicit(&g_shutdown_flag, memory_order_acquire)) {
 		uint64_t start_cycles = get_cycles();
 		if (!atomic_load_explicit(&g_profiling_enabled,
@@ -112,11 +130,12 @@ static int worker_thread_main(void *arg)
 		uint64_t tail = atomic_load_explicit(&local_queue->tail,
 						     memory_order_acquire);
 		if (head < tail) {
-			uint64_t slot = head % LOCAL_QUEUE_SIZE;
+			uint64_t new_tail = tail - 1;
+			uint64_t slot = new_tail % LOCAL_QUEUE_SIZE;
 			task_t task = local_queue->entries[slot];
-			if (task.token == head) {
+			if (task.token == new_tail) {
 				if (atomic_compare_exchange_strong_explicit(
-					    &local_queue->head, &head, head + 1,
+					    &local_queue->tail, &tail, new_tail,
 					    memory_order_release,
 					    memory_order_relaxed)) {
 					g_thread_profile.stages[task.stage]
@@ -126,6 +145,7 @@ static int worker_thread_main(void *arg)
 					g_thread_profile.stages[task.stage]
 						.task_cycles +=
 						get_cycles() - ts;
+					idle_loops = 0;
 					continue;
 				}
 				g_thread_profile.stages[task.stage]
@@ -151,6 +171,7 @@ static int worker_thread_main(void *arg)
 					g_thread_profile.stages[task.stage]
 						.task_cycles +=
 						get_cycles() - ts;
+					idle_loops = 0;
 					continue;
 				}
 				g_thread_profile.stages[task.stage]
@@ -164,11 +185,18 @@ static int worker_thread_main(void *arg)
 			stolen.function(stolen.task_data);
 			g_thread_profile.stages[stolen.stage].task_cycles +=
 				get_cycles() - ts;
+			idle_loops = 0;
 			continue;
 		}
 		g_thread_profile.stages[STAGE_VERTEX].idle_cycles +=
 			get_cycles() - start_cycles;
-		thrd_yield();
+		idle_loops++;
+		if (idle_loops > 100) {
+			struct timespec ts = { 0, 50 };
+			thrd_sleep(&ts, NULL);
+		} else {
+			thrd_yield();
+		}
 	}
 	for (int s = 0; s < STAGE_COUNT; ++s)
 		g_local_queues[thread_id].profile_data.stages[s] =
@@ -197,7 +225,7 @@ void thread_pool_init(int num_threads)
 void thread_pool_submit(task_function_t func, void *task_data,
 			stage_tag_t stage)
 {
-	int thread_id = thrd_current() % g_num_threads;
+	int thread_id = (tls_tid >= 0) ? tls_tid : 0;
 	task_queue_t *local_queue = &g_local_queues[thread_id];
 	uint64_t tail =
 		atomic_load_explicit(&local_queue->tail, memory_order_relaxed);
@@ -235,6 +263,41 @@ void thread_pool_wait(void)
 		       atomic_load_explicit(&g_local_queues[i].tail,
 					    memory_order_relaxed))
 			thrd_yield();
+	}
+}
+
+int thread_pool_wait_timeout(uint32_t ms)
+{
+	struct timespec start;
+	clock_gettime(CLOCK_MONOTONIC, &start);
+	for (;;) {
+		bool done = atomic_load_explicit(&g_global_head,
+						 memory_order_acquire) >=
+			    atomic_load_explicit(&g_global_tail,
+						 memory_order_relaxed);
+		if (done) {
+			done = true;
+			for (int i = 0; i < g_num_threads; i++) {
+				if (atomic_load_explicit(&g_local_queues[i].head,
+							 memory_order_acquire) <
+				    atomic_load_explicit(
+					    &g_local_queues[i].tail,
+					    memory_order_relaxed)) {
+					done = false;
+					break;
+				}
+			}
+			if (done)
+				return 1;
+		}
+		struct timespec now;
+		clock_gettime(CLOCK_MONOTONIC, &now);
+		uint64_t elapsed =
+			(uint64_t)(now.tv_sec - start.tv_sec) * 1000 +
+			(uint64_t)(now.tv_nsec - start.tv_nsec) / 1000000;
+		if (elapsed >= ms)
+			return 0;
+		thrd_yield();
 	}
 }
 

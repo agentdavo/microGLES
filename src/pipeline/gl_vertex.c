@@ -1,6 +1,8 @@
 #include "gl_vertex.h"
 #include "gl_primitive.h"
 #include "../gl_context.h"
+#define PIPELINE_USE_GLSTATE 0
+_Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "../gl_memory_tracker.h"
 #include "../gl_thread.h"
 #include <string.h>

@@ -10,12 +10,20 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # Define source files
 set(SOURCE_FILES
+    src/gl_api_state.c
+    src/gl_api_matrix.c
+    src/gl_api_vertex_array.c
+    src/gl_api_draw.c
+    src/gl_api_texture.c
+    src/gl_api_lighting.c
+    src/gl_api_depthstencil.c
+    src/gl_api_blend.c
+    src/gl_api_pixels.c
+    src/gl_api_misc.c
     src/gl_api_fbo.c
+    src/gl_api_buffer.c
     src/gl_state.c
     src/gl_utils.c
-    src/gl_api_blend.c
-    src/gl_api_draw.c
-    src/gl_functions.c
     src/gl_extensions.c
     src/gl_context.c
     src/gl_thread.c
@@ -34,6 +42,9 @@ set(RENDERER_MAIN src/main.c)
 # Define header files (for IDE visibility, optional)
 set(HEADER_FILES
     src/gl_api_fbo.h
+    src/gl_api_pixels.h
+    src/gl_api_texture.h
+    src/gl_api_vertex_array.h
     src/gl_state.h
     src/gl_utils.h
     src/matrix_utils.h

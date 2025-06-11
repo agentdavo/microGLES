@@ -12,6 +12,14 @@ GL_API void GL_APIENTRY glTexParameterfv(GLenum target, GLenum pname,
 					 const GLfloat *params);
 GL_API void GL_APIENTRY glTexParameteri(GLenum target, GLenum pname,
 					GLint param);
+GL_API void GL_APIENTRY glTexParameteriv(GLenum target, GLenum pname,
+					 const GLint *params);
+GL_API void GL_APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param);
+GL_API void GL_APIENTRY glTexEnvfv(GLenum target, GLenum pname,
+				   const GLfloat *params);
+GL_API void GL_APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param);
+GL_API void GL_APIENTRY glTexEnviv(GLenum target, GLenum pname,
+				   const GLint *params);
 GL_API void GL_APIENTRY glTexImage2D(GLenum target, GLint level,
 				     GLint internalformat, GLsizei width,
 				     GLsizei height, GLint border,

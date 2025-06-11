@@ -156,3 +156,34 @@ GL_API void GL_APIENTRY glBufferSubData(GLenum target, GLintptr offset,
 	if (size > 0 && data)
 		memcpy((char *)obj->data + offset, data, size);
 }
+
+GL_API void GL_APIENTRY glGetBufferParameteriv(GLenum target, GLenum pname,
+					       GLint *params)
+{
+	if (!params)
+		return;
+	BufferObject *obj = NULL;
+	if (target == GL_ARRAY_BUFFER) {
+		obj = find_buffer(gl_state.array_buffer_binding);
+	} else if (target == GL_ELEMENT_ARRAY_BUFFER) {
+		obj = find_buffer(gl_state.element_array_buffer_binding);
+	} else {
+		glSetError(GL_INVALID_ENUM);
+		return;
+	}
+	if (!obj) {
+		glSetError(GL_INVALID_OPERATION);
+		return;
+	}
+	switch (pname) {
+	case GL_BUFFER_SIZE:
+		*params = (GLint)obj->size;
+		break;
+	case GL_BUFFER_USAGE:
+		*params = (GLint)obj->usage;
+		break;
+	default:
+		glSetError(GL_INVALID_ENUM);
+		break;
+	}
+}

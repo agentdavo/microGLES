@@ -54,6 +54,15 @@ typedef struct {
 
 typedef struct {
 	GLboolean enabled;
+	GLint size;
+	GLenum type;
+	GLsizei stride;
+	const void *pointer;
+	atomic_uint version;
+} ArrayState;
+
+typedef struct {
+	GLboolean enabled;
 	GLenum func;
 	GLfloat ref;
 	atomic_uint version;
@@ -87,6 +96,22 @@ typedef struct {
 	GLboolean blend_enabled;
 	AlphaTestState alpha_test;
 	LightState lights[8];
+	GLboolean texture_2d_enabled;
+	atomic_uint version_tex_enable;
+	GLboolean cull_face_enabled;
+	GLenum cull_face_mode;
+	GLenum front_face;
+	atomic_uint version_cull;
+	GLboolean scissor_test_enabled;
+	GLint scissor_box[4];
+	atomic_uint version_scissor;
+	GLboolean color_mask[4];
+	GLboolean depth_mask;
+	atomic_uint version_mask;
+	ArrayState vertex_array;
+	ArrayState color_array;
+	ArrayState normal_array;
+	ArrayState texcoord_array;
 	MaterialState material;
 	FogState fog;
 } RenderContext;

@@ -196,11 +196,8 @@ void InitGLState(GLState *state)
 	state->sample_coverage_enabled = GL_FALSE;
 	state->scissor_test_enabled = GL_FALSE;
 	state->stencil_test_enabled = GL_FALSE;
-	state->texture_2d_enabled = GL_FALSE;
 	for (int i = 0; i < 6; ++i)
 		state->clip_plane_enabled[i] = GL_FALSE;
-	for (int i = 0; i < 8; ++i)
-		state->light_enabled[i] = GL_FALSE;
 
 	state->vertex_array_enabled = GL_FALSE;
 	state->vertex_array_size = 4;
