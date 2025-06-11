@@ -1,6 +1,6 @@
-#include "framebuffer.h"
-#include "logger.h"
-#include "memory_tracker.h"
+#include "gl_framebuffer.h"
+#include "gl_logger.h"
+#include "gl_memory_tracker.h"
 #include "gl_utils.h"
 #include <stdio.h>
 #include <string.h>
