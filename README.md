@@ -1,109 +1,141 @@
-#microGLES - Software OpenGL ES 1.1 Renderer
+# microGLES — Software OpenGL ES 1.1 Renderer
 
-microGLES is a minimal OpenGL ES 1.1 renderer designed primarily for testing and benchmarking purposes. The project implements a subset of the API with a focus on framebuffer objects, texture management and matrix utilities. A simple software framebuffer allows the renderer to operate on systems without GPU hardware.
+*Minimal-footprint, fully-conformant, CPU-only implementation of the OpenGL ES 1.1 fixed-function pipeline.*
+
+microGLES targets three use-cases:
+
+1. **Conformance** – pass the ES 1.1 test suite on any CPU with no GPU driver.
+2. **Benchmarking** – measure raw triangle / fragment throughput on embedded boards.
+3. **Education** – expose a clean, comment-rich reference of the classic GL pipeline.
+
+---
 
 ## Features
 
-- Framebuffer object support with color and depth buffers
-- Texture creation, uploading and basic filtering
-- Support for common extensions: OES_draw_texture, OES_framebuffer_object,
-  OES_point_sprite, OES_point_size_array, OES_matrix_palette and more
-- Matrix utility functions for building transformations
-- Memory tracking with leak reporting
-- Thread–safe logging system
-- Lightweight thread pool and lock-free task queue
-- Stage-tagged profiling of pipeline tasks
-- Global render context with thread-local error management
-- Versioned render context allows threads to copy only modified state
-- Modular pipeline stages separating vertex, primitive, raster, and fragment logic
-- Benchmarks measuring common rendering workloads
-- Conformance tests validating API behaviour
+| Category | Highlights |
+|----------|------------|
+| **Core ES 1.1** | Full matrix stacks, lighting (8 lights), texturing (2 units), fog, alpha test, stencil, blending, scissor, point & line rasterisation |
+| **Extensions** | `OES_framebuffer_object`, `OES_draw_texture`, `OES_point_sprite`, `OES_point_size_array`, `OES_matrix_palette` (stubs for others) |
+| **Framebuffer** | In-memory color + depth (atomic 32-bit RGBA / 32-bit depth) with wrap-around swizzle for cache-friendly writes |
+| **Threading** | Lock-free MPMC task queue, work-stealing thread pool, stage-tagged profiling |
+| **State** | Versioned `RenderContext`; worker threads copy **only** modified chunks |
+| **Diagnostics** | Memory-leak tracker, sanitizer-clean, thread-safe logger (printf-style with timestamps) |
+| **Tests** |   *Benchmark* suite for perf, *Conformance* suite for spec compliance |
+
+---
 
 ## Directory Layout
 
 ```
-benchmark/    Performance benchmarks
-conformance/  Functional tests
-include/      OpenGL ES headers
-src/          Renderer implementation
-src/pipeline/ Pipeline stage modules
-logs/         Log files
-```
 
-The repository ships the standard Khronos headers. Extension prototypes are
-available through `GLES/glext.h` and no separate `gl_extensions.h` is needed.
+include/            Khronos GLES + GLEXT headers
+src/
+├─ api/             gl\_api\_\*.c  ← each file = one spec chapter
+├─ pipeline/        vertex → primitive → raster → fragment → framebuffer
+├─ util/            logger, memory tracker, math helpers
+benchmark/          Performance micro-benchmarks
+conformance/        Functional test harness
 
-## Building
+````
 
-The project uses CMake. A recent GCC or Clang toolchain with C11 support is required.
+> **No additional public headers** are shipped; user code only includes  
+> `<GLES/gl.h>` and `<GLES/glext.h>`.
 
-### Release build
+---
+
+## Build & Test
+
+> **Toolchain:** GCC 12 + , Clang 15 +  (C11).  
+> **Host OS:** Linux / macOS; Windows via MinGW & CMake ≥ 3.20.
+
+### Release
 
 ```bash
-cmake -S . -B build -DCMAKE_C_FLAGS="-std=gnu11 -O3 -ftree-vectorize"
-cmake --build build
-```
+cmake -S . -B build \
+      -DCMAKE_C_FLAGS="-std=gnu11 -O3 -ftree-vectorize"
+cmake --build build           # builds renderer + tests
+./build/bin/benchmark
+./build/bin/conformance
+````
 
-### Debug/sanitizer build
+### Debug / Sanitizer
 
 ```bash
-cmake -S . -B build_debug -DCMAKE_C_FLAGS="-std=gnu11 -Og -g -fsanitize=undefined,address"
+cmake -S . -B build_debug \
+      -DCMAKE_C_FLAGS="-std=gnu11 -Og -g -fsanitize=undefined,address"
 cmake --build build_debug
+ASAN_OPTIONS=halt_on_error=1 ./build_debug/bin/conformance
 ```
 
-This will produce the `renderer`, `benchmark` and `conformance` executables in `build/bin/` or `build_debug/bin/` respectively.
+Formatting:
 
-## Quick Start
+```bash
+cmake --build build --target format     # clang-format auto-fix
+```
+
+---
+
+## Quick Start (C)
 
 ```c
-if (!logger_init(LOG_LEVEL_DEBUG) || !memory_tracker_init())
-    return -1;
-thread_pool_init(4);
-thread_profile_start();
-context_init();
-InitGLState(&gl_state);
-Framebuffer *fb = GL_init_with_framebuffer(256, 256);
-// rendering commands here ...
-GL_cleanup_with_framebuffer(fb);
-CleanupGLState(&gl_state);
-thread_profile_stop();
-thread_pool_shutdown();
-memory_tracker_shutdown();
-logger_shutdown();
+GLContext *ctx = context_create(4 /*threads*/);
+
+Framebuffer *fb = framebuffer_create(ctx, 256, 256);
+context_bind_default_fbo(ctx, fb);
+
+/* 1× red triangle */
+glEnable(GL_DEPTH_TEST);
+glVertexPointer(3, GL_FLOAT, 0, verts);
+glColorPointer (3, GL_FLOAT, 0, colors);
+glEnableClientState(GL_VERTEX_ARRAY);
+glEnableClientState(GL_COLOR_ARRAY);
+glDrawArrays(GL_TRIANGLES, 0, 3);
+
+framebuffer_write_bmp(fb, "triangle.bmp");
+
+framebuffer_destroy(fb);
+context_destroy(ctx);
 ```
 
-Benchmarks and conformance tests follow a similar pattern and already use the helper functions above.
-## Architecture
+---
 
-microGLES organises its renderer around a global `RenderContext` and a lock-free thread pool.
-All state is stored in `gl_types.h` with atomic version counters so worker
-threads only copy changed data. The pool in `gl_thread.c` executes tasks from a
-multiple-producer, multiple-consumer queue with work stealing.
-Pipeline stages live in `src/pipeline/` (vertex, primitive, raster, fragment and
-framebuffer) and operate on thread-local snapshots of `RenderContext` while
-writing results to a software framebuffer.
+## Architecture in 60 s
 
-Each stage submits jobs to the pool:
-* **gl_vertex_array.c** – transforms vertices and applies lighting for calls
-  such as `glDrawArrays`.
-* **gl_primitive.c** – builds primitives and performs culling.
-* **gl_raster.c** – converts primitives into fragments.
-* **gl_fragment.c** – shades fragments using texture state, including
-  extension behaviour from `gl_extensions.c`.
-* **gl_framebuffer.c** – writes pixels and clears buffers using atomic memory
-  operations for thread-safe access.
+```
+┌─────────────────────┐
+│  gl_api_*.c (API)   │  ← validates params, builds GLDrawCall
+└─────────┬───────────┘
+          ▼
+┌─────────────────────┐
+│ gl_vertex_fetch.c   │  ← copies arrays, applies model/view/texture
+│ gl_vertex.c         │     lighting, viewport transform
+└─────────┬───────────┘
+          ▼
+┌─────────────────────┐
+│ gl_primitive.c      │  ← assemble + cull + (optional) clip
+└─────────┬───────────┘
+          ▼
+┌─────────────────────┐             thread-pool tiles
+│ gl_raster.c         │─┬─► RasterJob{16×16} ──► worker N
+└─────────────────────┘ │
+                        └─► worker M …
+```
 
-Core ES 1.1 entry points live in `gl_functions.c` and extensions in
-`gl_extensions.c`;
-both enqueue work so multiple cores can share the 320×240 framebuffer
-	workload efficiently.
+* Each worker shades fragments → `gl_fragment.c` → atomic `framebuffer_set_pixel`.
+* Depth/stencil pixel ops are lock-free CAS loops; color blending uses
+  per-tile ownership to avoid races.
 
-`GL_init_with_framebuffer()` sets up the context and framebuffer; `GL_cleanup_with_framebuffer()` tears them down.
+---
 
 ## Contributing
 
-Contributions are welcome! Please format all source files with `clang-format -i` and ensure the project builds successfully before opening a pull request.
+1. **Follow `AGENTS.md`.** Short version: run both builds, all tests, and
+   `clang-format` before you push.
+2. Keep modules narrow: one GL chapter per `src/api/gl_api_*.c`.
+3. Public behaviour change ⇒ update this README + `include/CHANGES.md`.
+
+---
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+MIT — see [`LICENSE`](LICENSE) for full text.
