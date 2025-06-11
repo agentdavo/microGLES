@@ -20,11 +20,19 @@ set(SOURCE_FILES
     src/gl_api_blend.c
     src/gl_api_pixels.c
     src/gl_api_misc.c
-    src/gl_api_fbo.c
+    src/extensions/gl_ext_OES_framebuffer_object.c
     src/gl_api_buffer.c
     src/gl_state.c
     src/gl_utils.c
-    src/extensions/gl_extensions.c
+    src/extensions/gl_ext_common.c
+    src/extensions/gl_ext_OES_draw_texture.c
+    src/extensions/gl_ext_OES_matrix_get.c
+    src/extensions/gl_ext_OES_point_size_array.c
+    src/extensions/gl_ext_OES_point_sprite.c
+    src/extensions/gl_ext_OES_egl_image.c
+    src/extensions/gl_ext_OES_egl_image_external.c
+    src/extensions/gl_ext_OES_required_internalformat.c
+    src/extensions/gl_ext_OES_blend_eq_sep.c
     src/gl_context.c
     src/gl_thread.c
     src/gl_init.c

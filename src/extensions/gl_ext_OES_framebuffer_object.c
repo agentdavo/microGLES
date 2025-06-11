@@ -4,6 +4,9 @@
 #include "gl_state.h"
 #include "gl_types.h"
 #include "gl_utils.h"
+#include "gl_ext_common.h"
+EXT_REGISTER("GL_OES_framebuffer_object")
+int ext_link_dummy_OES_framebuffer_object;
 #include "gl_logger.h"
 #include "gl_memory_tracker.h"
 #include <GLES/gl.h> // Core OpenGL ES 1.1
