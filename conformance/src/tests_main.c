@@ -4,7 +4,13 @@
 #include "gl_logger.h"
 #include "gl_memory_tracker.h"
 #include "gl_thread.h"
+#ifdef MICROGLES_COMMAND_BUFFER
+#include "command_buffer.h"
+#endif
 #include <stdio.h>
+#include <string.h>
+#include <stdbool.h>
+#include <unistd.h>
 
 static void run_tests(const struct Test *tests, size_t count, int *pass,
 		      int *total)
@@ -26,17 +32,28 @@ static void run_tests(const struct Test *tests, size_t count, int *pass,
 	}
 }
 
-int main()
+int main(int argc, char **argv)
 {
+	bool profile = false;
+	for (int i = 1; i < argc; ++i)
+		if (strcmp(argv[i], "--profile") == 0)
+			profile = true;
 	if (!logger_init("conformance.log", LOG_LEVEL_INFO)) {
 		fprintf(stderr, "Failed to init logger.\n");
 		return -1;
 	}
+	int cd = chdir("conformance");
+	(void)cd;
 	if (!memory_tracker_init()) {
 		LOG_FATAL("Failed to init Memory Tracker.");
 		return -1;
 	}
 	thread_pool_init(4);
+#ifdef MICROGLES_COMMAND_BUFFER
+	command_buffer_init();
+#endif
+	if (profile)
+		thread_profile_start();
 	InitGLState(&gl_state);
 	Framebuffer *fb = GL_init_with_framebuffer(64, 64);
 	if (!fb) {
@@ -58,13 +75,19 @@ int main()
 	RUN(get_state_tests);
 	RUN(get_matrix_tests);
 	RUN(get_texture_tests);
+	RUN(get_texture_cache_tests);
 	RUN(get_buffer_tests);
 	RUN(get_draw_tests);
 	RUN(get_fbo_tests);
 	RUN(get_extensions_tests);
+	RUN(get_thread_stress_tests);
+	RUN(get_point_sprite_tests);
 	RUN(get_autogen_tests);
 	RUN(get_all_calls_tests);
 
+#ifdef MICROGLES_COMMAND_BUFFER
+	command_buffer_shutdown();
+#endif
 	thread_pool_shutdown();
 	GL_cleanup_with_framebuffer(fb);
 	CleanupGLState(&gl_state);

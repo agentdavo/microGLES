@@ -4,6 +4,8 @@ cmake_minimum_required(VERSION 3.10)
 # Project name and version
 project(OpenGLES_Renderer VERSION 1.0 LANGUAGES C)
 
+option(GL_ENABLE_MICROGLES_COMMAND_BUFFER "Enable command buffer recorder" OFF)
+
 # Set C standard
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -35,6 +37,9 @@ set(SOURCE_FILES
     src/extensions/gl_ext_OES_blend_eq_sep.c
     src/gl_context.c
     src/gl_thread.c
+    src/texture_cache.c
+    src/ktx_loader.c
+    src/command_buffer.c
     src/gl_init.c
     src/pipeline/gl_framebuffer.c
     src/pipeline/gl_vertex.c
@@ -64,6 +69,9 @@ set(HEADER_FILES
     src/gl_logger.h
     src/gl_context.h
     src/gl_thread.h
+    src/texture_cache.h
+    src/ktx_loader.h
+    src/command_buffer.h
     src/gl_init.h
 )
 
@@ -111,6 +119,10 @@ set_target_properties(renderer PROPERTIES
 # Optional: Enable warnings and optimizations
 target_compile_options(renderer_lib PRIVATE -Wall -Wextra -Wpedantic -O2)
 target_compile_options(renderer PRIVATE -Wall -Wextra -Wpedantic -O2)
+if(GL_ENABLE_MICROGLES_COMMAND_BUFFER)
+    target_compile_definitions(renderer_lib PUBLIC MICROGLES_COMMAND_BUFFER)
+    target_compile_definitions(renderer PUBLIC MICROGLES_COMMAND_BUFFER)
+endif()
 
 # Optional: Create logs directory if it doesn't exist
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/logs)

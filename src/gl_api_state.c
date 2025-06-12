@@ -9,70 +9,112 @@ GL_API void GL_APIENTRY glEnable(GLenum cap)
 {
 	switch (cap) {
 	case GL_ALPHA_TEST:
-		gl_state.alpha_test_enabled = GL_TRUE;
 		GetCurrentContext()->alpha_test.enabled = GL_TRUE;
 		break;
 	case GL_BLEND:
-		gl_state.blend_enabled = GL_TRUE;
-		GetCurrentContext()->blend_enabled = GL_TRUE;
+		SET_BOOL_AND_BUMP(GetCurrentContext(), blend_enabled, GL_TRUE,
+				  GetCurrentContext()->blend.version);
 		break;
 	case GL_COLOR_LOGIC_OP:
-		gl_state.color_logic_op_enabled = GL_TRUE;
+		SET_BOOL_AND_BUMP(GetCurrentContext(), color_logic_op_enabled,
+				  GL_TRUE,
+				  GetCurrentContext()->version_color_logic_op);
 		break;
 	case GL_COLOR_MATERIAL:
-		gl_state.color_material_enabled = GL_TRUE;
+		SET_BOOL_AND_BUMP(GetCurrentContext(), color_material_enabled,
+				  GL_TRUE,
+				  GetCurrentContext()->version_color_material);
 		break;
 	case GL_CULL_FACE:
-		gl_state.cull_face_enabled = GL_TRUE;
+		SET_BOOL_AND_BUMP(GetCurrentContext(), cull_face_enabled,
+				  GL_TRUE, GetCurrentContext()->version_cull);
 		break;
 	case GL_DEPTH_TEST:
-		gl_state.depth_test_enabled = GL_TRUE;
+		SET_BOOL_AND_BUMP(GetCurrentContext(), depth_test_enabled,
+				  GL_TRUE, GetCurrentContext()->version_depth);
 		break;
 	case GL_DITHER:
-		gl_state.dither_enabled = GL_TRUE;
+		SET_BOOL_AND_BUMP(GetCurrentContext(), dither_enabled, GL_TRUE,
+				  GetCurrentContext()->version_dither);
 		break;
 	case GL_FOG:
-		gl_state.fog_enabled = GL_TRUE;
-		GetCurrentContext()->fog.enabled = GL_TRUE;
+		SET_BOOL_AND_BUMP(GetCurrentContext(), fog.enabled, GL_TRUE,
+				  GetCurrentContext()->fog.version);
 		break;
 	case GL_LIGHTING:
-		gl_state.lighting_enabled = GL_TRUE;
+		SET_BOOL_AND_BUMP(GetCurrentContext(), lighting_enabled,
+				  GL_TRUE,
+				  GetCurrentContext()->version_lighting);
 		break;
 	case GL_LINE_SMOOTH:
-		gl_state.line_smooth_enabled = GL_TRUE;
+
+		SET_BOOL_AND_BUMP(GetCurrentContext(), line_smooth_enabled,
+				  GL_TRUE,
+				  GetCurrentContext()->version_line_smooth);
 		break;
 	case GL_MULTISAMPLE:
-		gl_state.multisample_enabled = GL_TRUE;
+
+		SET_BOOL_AND_BUMP(GetCurrentContext(), multisample_enabled,
+				  GL_TRUE,
+				  GetCurrentContext()->version_multisample);
 		break;
 	case GL_NORMALIZE:
-		gl_state.normalize_enabled = GL_TRUE;
+
+		SET_BOOL_AND_BUMP(GetCurrentContext(), normalize_enabled,
+				  GL_TRUE,
+				  GetCurrentContext()->version_normalize);
 		break;
 	case GL_POINT_SMOOTH:
-		gl_state.point_smooth_enabled = GL_TRUE;
+
+		SET_BOOL_AND_BUMP(GetCurrentContext(), point_smooth_enabled,
+				  GL_TRUE,
+				  GetCurrentContext()->version_point_smooth);
 		break;
 	case GL_POINT_SPRITE_OES:
-		gl_state.point_sprite_enabled = GL_TRUE;
+
+		SET_BOOL_AND_BUMP(GetCurrentContext(), point_sprite_enabled,
+				  GL_TRUE,
+				  GetCurrentContext()->version_point_sprite);
 		break;
 	case GL_POLYGON_OFFSET_FILL:
-		gl_state.polygon_offset_fill_enabled = GL_TRUE;
+
+		SET_BOOL_AND_BUMP(
+			GetCurrentContext(), polygon_offset_fill_enabled,
+			GL_TRUE,
+			GetCurrentContext()->version_polygon_offset_fill);
 		break;
 	case GL_RESCALE_NORMAL:
-		gl_state.rescale_normal_enabled = GL_TRUE;
+
+		SET_BOOL_AND_BUMP(GetCurrentContext(), rescale_normal_enabled,
+				  GL_TRUE,
+				  GetCurrentContext()->version_rescale_normal);
 		break;
 	case GL_SAMPLE_ALPHA_TO_COVERAGE:
-		gl_state.sample_alpha_to_coverage_enabled = GL_TRUE;
+
+		SET_BOOL_AND_BUMP(
+			GetCurrentContext(), sample_alpha_to_coverage_enabled,
+			GL_TRUE,
+			GetCurrentContext()->version_sample_alpha_to_coverage);
 		break;
 	case GL_SAMPLE_ALPHA_TO_ONE:
-		gl_state.sample_alpha_to_one_enabled = GL_TRUE;
+
+		SET_BOOL_AND_BUMP(
+			GetCurrentContext(), sample_alpha_to_one_enabled,
+			GL_TRUE,
+			GetCurrentContext()->version_sample_alpha_to_one);
 		break;
 	case GL_SAMPLE_COVERAGE:
-		gl_state.sample_coverage_enabled = GL_TRUE;
+
+		SET_BOOL_AND_BUMP(GetCurrentContext(), sample_coverage_enabled,
+				  GL_TRUE,
+				  GetCurrentContext()->version_sample_coverage);
 		break;
 	case GL_SCISSOR_TEST:
-		gl_state.scissor_test_enabled = GL_TRUE;
+		SET_BOOL_AND_BUMP(GetCurrentContext(), scissor_test_enabled,
+				  GL_TRUE,
+				  GetCurrentContext()->version_scissor);
 		break;
 	case GL_STENCIL_TEST:
-		gl_state.stencil_test_enabled = GL_TRUE;
 		GetCurrentContext()->stencil_test_enabled = GL_TRUE;
 		break;
 	case GL_TEXTURE_2D:
@@ -85,7 +127,11 @@ GL_API void GL_APIENTRY glEnable(GLenum cap)
 	case GL_CLIP_PLANE3:
 	case GL_CLIP_PLANE4:
 	case GL_CLIP_PLANE5:
-		gl_state.clip_plane_enabled[cap - GL_CLIP_PLANE0] = GL_TRUE;
+
+		SET_BOOL_AND_BUMP(GetCurrentContext(),
+				  clip_plane_enabled[cap - GL_CLIP_PLANE0],
+				  GL_TRUE,
+				  GetCurrentContext()->version_clip_plane);
 		break;
 	case GL_LIGHT0:
 	case GL_LIGHT1:
@@ -109,70 +155,114 @@ GL_API void GL_APIENTRY glDisable(GLenum cap)
 {
 	switch (cap) {
 	case GL_ALPHA_TEST:
-		gl_state.alpha_test_enabled = GL_FALSE;
 		GetCurrentContext()->alpha_test.enabled = GL_FALSE;
 		break;
 	case GL_BLEND:
-		gl_state.blend_enabled = GL_FALSE;
-		GetCurrentContext()->blend_enabled = GL_FALSE;
+		SET_BOOL_AND_BUMP(GetCurrentContext(), blend_enabled, GL_FALSE,
+				  GetCurrentContext()->blend.version);
 		break;
 	case GL_COLOR_LOGIC_OP:
-		gl_state.color_logic_op_enabled = GL_FALSE;
+
+		SET_BOOL_AND_BUMP(GetCurrentContext(), color_logic_op_enabled,
+				  GL_FALSE,
+				  GetCurrentContext()->version_color_logic_op);
 		break;
 	case GL_COLOR_MATERIAL:
-		gl_state.color_material_enabled = GL_FALSE;
+
+		SET_BOOL_AND_BUMP(GetCurrentContext(), color_material_enabled,
+				  GL_FALSE,
+				  GetCurrentContext()->version_color_material);
 		break;
 	case GL_CULL_FACE:
-		gl_state.cull_face_enabled = GL_FALSE;
+		SET_BOOL_AND_BUMP(GetCurrentContext(), cull_face_enabled,
+				  GL_FALSE, GetCurrentContext()->version_cull);
 		break;
 	case GL_DEPTH_TEST:
-		gl_state.depth_test_enabled = GL_FALSE;
+		SET_BOOL_AND_BUMP(GetCurrentContext(), depth_test_enabled,
+				  GL_FALSE, GetCurrentContext()->version_depth);
 		break;
 	case GL_DITHER:
-		gl_state.dither_enabled = GL_FALSE;
+		SET_BOOL_AND_BUMP(GetCurrentContext(), dither_enabled, GL_FALSE,
+				  GetCurrentContext()->version_dither);
 		break;
 	case GL_FOG:
-		gl_state.fog_enabled = GL_FALSE;
-		GetCurrentContext()->fog.enabled = GL_FALSE;
+		SET_BOOL_AND_BUMP(GetCurrentContext(), fog.enabled, GL_FALSE,
+				  GetCurrentContext()->fog.version);
 		break;
 	case GL_LIGHTING:
-		gl_state.lighting_enabled = GL_FALSE;
+		SET_BOOL_AND_BUMP(GetCurrentContext(), lighting_enabled,
+				  GL_FALSE,
+				  GetCurrentContext()->version_lighting);
 		break;
 	case GL_LINE_SMOOTH:
-		gl_state.line_smooth_enabled = GL_FALSE;
+
+		SET_BOOL_AND_BUMP(GetCurrentContext(), line_smooth_enabled,
+				  GL_FALSE,
+				  GetCurrentContext()->version_line_smooth);
 		break;
 	case GL_MULTISAMPLE:
-		gl_state.multisample_enabled = GL_FALSE;
+
+		SET_BOOL_AND_BUMP(GetCurrentContext(), multisample_enabled,
+				  GL_FALSE,
+				  GetCurrentContext()->version_multisample);
 		break;
 	case GL_NORMALIZE:
-		gl_state.normalize_enabled = GL_FALSE;
+
+		SET_BOOL_AND_BUMP(GetCurrentContext(), normalize_enabled,
+				  GL_FALSE,
+				  GetCurrentContext()->version_normalize);
 		break;
 	case GL_POINT_SMOOTH:
-		gl_state.point_smooth_enabled = GL_FALSE;
+
+		SET_BOOL_AND_BUMP(GetCurrentContext(), point_smooth_enabled,
+				  GL_FALSE,
+				  GetCurrentContext()->version_point_smooth);
 		break;
 	case GL_POINT_SPRITE_OES:
-		gl_state.point_sprite_enabled = GL_FALSE;
+
+		SET_BOOL_AND_BUMP(GetCurrentContext(), point_sprite_enabled,
+				  GL_FALSE,
+				  GetCurrentContext()->version_point_sprite);
 		break;
 	case GL_POLYGON_OFFSET_FILL:
-		gl_state.polygon_offset_fill_enabled = GL_FALSE;
+
+		SET_BOOL_AND_BUMP(
+			GetCurrentContext(), polygon_offset_fill_enabled,
+			GL_FALSE,
+			GetCurrentContext()->version_polygon_offset_fill);
 		break;
 	case GL_RESCALE_NORMAL:
-		gl_state.rescale_normal_enabled = GL_FALSE;
+
+		SET_BOOL_AND_BUMP(GetCurrentContext(), rescale_normal_enabled,
+				  GL_FALSE,
+				  GetCurrentContext()->version_rescale_normal);
 		break;
 	case GL_SAMPLE_ALPHA_TO_COVERAGE:
-		gl_state.sample_alpha_to_coverage_enabled = GL_FALSE;
+
+		SET_BOOL_AND_BUMP(
+			GetCurrentContext(), sample_alpha_to_coverage_enabled,
+			GL_FALSE,
+			GetCurrentContext()->version_sample_alpha_to_coverage);
 		break;
 	case GL_SAMPLE_ALPHA_TO_ONE:
-		gl_state.sample_alpha_to_one_enabled = GL_FALSE;
+
+		SET_BOOL_AND_BUMP(
+			GetCurrentContext(), sample_alpha_to_one_enabled,
+			GL_FALSE,
+			GetCurrentContext()->version_sample_alpha_to_one);
 		break;
 	case GL_SAMPLE_COVERAGE:
-		gl_state.sample_coverage_enabled = GL_FALSE;
+
+		SET_BOOL_AND_BUMP(GetCurrentContext(), sample_coverage_enabled,
+				  GL_FALSE,
+				  GetCurrentContext()->version_sample_coverage);
 		break;
 	case GL_SCISSOR_TEST:
-		gl_state.scissor_test_enabled = GL_FALSE;
+		SET_BOOL_AND_BUMP(GetCurrentContext(), scissor_test_enabled,
+				  GL_FALSE,
+				  GetCurrentContext()->version_scissor);
 		break;
 	case GL_STENCIL_TEST:
-		gl_state.stencil_test_enabled = GL_FALSE;
 		GetCurrentContext()->stencil_test_enabled = GL_FALSE;
 		break;
 	case GL_TEXTURE_2D:
@@ -185,7 +275,11 @@ GL_API void GL_APIENTRY glDisable(GLenum cap)
 	case GL_CLIP_PLANE3:
 	case GL_CLIP_PLANE4:
 	case GL_CLIP_PLANE5:
-		gl_state.clip_plane_enabled[cap - GL_CLIP_PLANE0] = GL_FALSE;
+
+		SET_BOOL_AND_BUMP(GetCurrentContext(),
+				  clip_plane_enabled[cap - GL_CLIP_PLANE0],
+				  GL_FALSE,
+				  GetCurrentContext()->version_clip_plane);
 		break;
 	case GL_LIGHT0:
 	case GL_LIGHT1:
@@ -209,47 +303,47 @@ GLboolean glIsEnabled(GLenum cap)
 {
 	switch (cap) {
 	case GL_ALPHA_TEST:
-		return gl_state.alpha_test_enabled;
+		return GetCurrentContext()->alpha_test.enabled;
 	case GL_BLEND:
-		return gl_state.blend_enabled;
+		return GetCurrentContext()->blend_enabled;
 	case GL_COLOR_LOGIC_OP:
-		return gl_state.color_logic_op_enabled;
+		return GetCurrentContext()->color_logic_op_enabled;
 	case GL_COLOR_MATERIAL:
-		return gl_state.color_material_enabled;
+		return GetCurrentContext()->color_material_enabled;
 	case GL_CULL_FACE:
-		return gl_state.cull_face_enabled;
+		return GetCurrentContext()->cull_face_enabled;
 	case GL_DEPTH_TEST:
-		return gl_state.depth_test_enabled;
+		return GetCurrentContext()->depth_test_enabled;
 	case GL_DITHER:
-		return gl_state.dither_enabled;
+		return GetCurrentContext()->dither_enabled;
 	case GL_FOG:
-		return gl_state.fog_enabled;
+		return GetCurrentContext()->fog.enabled;
 	case GL_LIGHTING:
-		return gl_state.lighting_enabled;
+		return GetCurrentContext()->lighting_enabled;
 	case GL_LINE_SMOOTH:
-		return gl_state.line_smooth_enabled;
+		return GetCurrentContext()->line_smooth_enabled;
 	case GL_MULTISAMPLE:
-		return gl_state.multisample_enabled;
+		return GetCurrentContext()->multisample_enabled;
 	case GL_NORMALIZE:
-		return gl_state.normalize_enabled;
+		return GetCurrentContext()->normalize_enabled;
 	case GL_POINT_SMOOTH:
-		return gl_state.point_smooth_enabled;
+		return GetCurrentContext()->point_smooth_enabled;
 	case GL_POINT_SPRITE_OES:
-		return gl_state.point_sprite_enabled;
+		return GetCurrentContext()->point_sprite_enabled;
 	case GL_POLYGON_OFFSET_FILL:
-		return gl_state.polygon_offset_fill_enabled;
+		return GetCurrentContext()->polygon_offset_fill_enabled;
 	case GL_RESCALE_NORMAL:
-		return gl_state.rescale_normal_enabled;
+		return GetCurrentContext()->rescale_normal_enabled;
 	case GL_SAMPLE_ALPHA_TO_COVERAGE:
-		return gl_state.sample_alpha_to_coverage_enabled;
+		return GetCurrentContext()->sample_alpha_to_coverage_enabled;
 	case GL_SAMPLE_ALPHA_TO_ONE:
-		return gl_state.sample_alpha_to_one_enabled;
+		return GetCurrentContext()->sample_alpha_to_one_enabled;
 	case GL_SAMPLE_COVERAGE:
-		return gl_state.sample_coverage_enabled;
+		return GetCurrentContext()->sample_coverage_enabled;
 	case GL_SCISSOR_TEST:
-		return gl_state.scissor_test_enabled;
+		return GetCurrentContext()->scissor_test_enabled;
 	case GL_STENCIL_TEST:
-		return gl_state.stencil_test_enabled;
+		return GetCurrentContext()->stencil_test_enabled;
 	case GL_TEXTURE_2D:
 		return GetCurrentContext()->texture_2d_enabled;
 	case GL_CLIP_PLANE0:
@@ -258,7 +352,8 @@ GLboolean glIsEnabled(GLenum cap)
 	case GL_CLIP_PLANE3:
 	case GL_CLIP_PLANE4:
 	case GL_CLIP_PLANE5:
-		return gl_state.clip_plane_enabled[cap - GL_CLIP_PLANE0];
+		return GetCurrentContext()
+			->clip_plane_enabled[cap - GL_CLIP_PLANE0];
 	case GL_LIGHT0:
 	case GL_LIGHT1:
 	case GL_LIGHT2:
@@ -305,11 +400,23 @@ GL_API void GL_APIENTRY glHint(GLenum target, GLenum mode)
 GL_API void GL_APIENTRY glCullFace(GLenum mode)
 {
 	gl_state.cull_face_mode = mode;
+	RenderContext *ctx = GetCurrentContext();
+	if (ctx->cull_face_mode != mode) {
+		ctx->cull_face_mode = mode;
+		atomic_fetch_add_explicit(&ctx->version_cull, 1,
+					  memory_order_relaxed);
+	}
 }
 
 GL_API void GL_APIENTRY glFrontFace(GLenum mode)
 {
 	gl_state.front_face = mode;
+	RenderContext *ctx = GetCurrentContext();
+	if (ctx->front_face != mode) {
+		ctx->front_face = mode;
+		atomic_fetch_add_explicit(&ctx->version_cull, 1,
+					  memory_order_relaxed);
+	}
 }
 
 GL_API void GL_APIENTRY glShadeModel(GLenum mode)
@@ -353,10 +460,20 @@ GL_API void GL_APIENTRY glGetBooleanv(GLenum pname, GLboolean *data)
 		return;
 	switch (pname) {
 	case GL_COLOR_WRITEMASK:
+#if defined(__GNUC__)
+		if (((uintptr_t)data % (sizeof(GLboolean) * 4)) == 0) {
+			data[0] = gl_state.color_mask[0];
+			data[1] = gl_state.color_mask[1];
+			data[2] = gl_state.color_mask[2];
+			data[3] = gl_state.color_mask[3];
+		} else
+			return;
+#else
 		data[0] = gl_state.color_mask[0];
 		data[1] = gl_state.color_mask[1];
 		data[2] = gl_state.color_mask[2];
 		data[3] = gl_state.color_mask[3];
+#endif
 		break;
 	case GL_DEPTH_WRITEMASK:
 		*data = gl_state.depth_mask;
@@ -409,6 +526,9 @@ GL_API void GL_APIENTRY glGetFloatv(GLenum pname, GLfloat *data)
 	case GL_SAMPLE_COVERAGE_VALUE:
 		data[0] = gl_state.sample_coverage_value;
 		break;
+	case GL_ALPHA_TEST_REF:
+		data[0] = gl_state.alpha_ref;
+		break;
 	case GL_LINE_WIDTH:
 		data[0] = gl_state.line_width;
 		break;
@@ -423,16 +543,32 @@ GL_API void GL_APIENTRY glGetIntegerv(GLenum pname, GLint *data)
 		return;
 	switch (pname) {
 	case GL_VIEWPORT:
+#if defined(__GNUC__)
+		if (((uintptr_t)data % (sizeof(GLint) * 4)) == 0) {
+			data[0] = gl_state.viewport[0];
+			data[1] = gl_state.viewport[1];
+			data[2] = gl_state.viewport[2];
+			data[3] = gl_state.viewport[3];
+		} else
+			return;
+#else
 		data[0] = gl_state.viewport[0];
 		data[1] = gl_state.viewport[1];
 		data[2] = gl_state.viewport[2];
 		data[3] = gl_state.viewport[3];
+#endif
+		break;
+	case GL_SCISSOR_BOX:
+		data[0] = gl_state.scissor_box[0];
+		data[1] = gl_state.scissor_box[1];
+		data[2] = gl_state.scissor_box[2];
+		data[3] = gl_state.scissor_box[3];
 		break;
 	case GL_ACTIVE_TEXTURE:
-		*data = gl_state.active_texture;
+		*data = GetCurrentContext()->active_texture;
 		break;
 	case GL_CLIENT_ACTIVE_TEXTURE:
-		*data = gl_state.client_active_texture;
+		*data = GetCurrentContext()->client_active_texture;
 		break;
 	case GL_ARRAY_BUFFER_BINDING:
 		*data = gl_state.array_buffer_binding;
@@ -440,11 +576,14 @@ GL_API void GL_APIENTRY glGetIntegerv(GLenum pname, GLint *data)
 	case GL_ELEMENT_ARRAY_BUFFER_BINDING:
 		*data = gl_state.element_array_buffer_binding;
 		break;
-	case GL_TEXTURE_BINDING_2D:
-		*data = gl_state.bound_texture;
+	case GL_TEXTURE_BINDING_2D: {
+		RenderContext *ctx = GetCurrentContext();
+		*data = ctx->texture_env[ctx->active_texture - GL_TEXTURE0]
+				.bound_texture;
 		break;
+	}
 	case GL_TEXTURE_BINDING_EXTERNAL_OES:
-		*data = gl_state.bound_texture_external;
+		*data = GetCurrentContext()->bound_texture_external;
 		break;
 	case GL_CULL_FACE_MODE:
 		*data = gl_state.cull_face_mode;
@@ -498,6 +637,12 @@ GL_API void GL_APIENTRY glGetIntegerv(GLenum pname, GLint *data)
 	case GL_LINE_WIDTH:
 		*data = (GLint)gl_state.line_width;
 		break;
+	case GL_ALPHA_TEST_FUNC:
+		*data = gl_state.alpha_func;
+		break;
+	case GL_ALPHA_TEST:
+		*data = GetCurrentContext()->alpha_test.enabled ? 1 : 0;
+		break;
 	default:
 		break;
 	}
@@ -509,18 +654,19 @@ GL_API void GL_APIENTRY glGetPointerv(GLenum pname, void **params)
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
+	RenderContext *ctx = GetCurrentContext();
 	switch (pname) {
 	case GL_VERTEX_ARRAY_POINTER:
-		*params = (void *)gl_state.vertex_array_pointer;
+		*params = (void *)ctx->vertex_array.pointer;
 		break;
 	case GL_COLOR_ARRAY_POINTER:
-		*params = (void *)gl_state.color_array_pointer;
+		*params = (void *)ctx->color_array.pointer;
 		break;
 	case GL_NORMAL_ARRAY_POINTER:
-		*params = (void *)gl_state.normal_array_pointer;
+		*params = (void *)ctx->normal_array.pointer;
 		break;
 	case GL_TEXTURE_COORD_ARRAY_POINTER:
-		*params = (void *)gl_state.texcoord_array_pointer;
+		*params = (void *)ctx->texcoord_array.pointer;
 		break;
 	default:
 		glSetError(GL_INVALID_ENUM);

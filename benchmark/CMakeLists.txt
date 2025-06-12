@@ -13,6 +13,9 @@ set(BENCH_SOURCES
     src/alpha_blend_demo.c
     src/miletostone1.c
     src/milestone2.c
+    src/texture_stream.c
+    src/toggle_blend.c
+    src/fill_rate.c
     src/pipeline_test.c
 )
 
