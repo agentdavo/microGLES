@@ -20,10 +20,12 @@ No SIMD intrinsics or platform APIs are required; just a C11 tool-chain.
 |------|--------|
 | **Fixed-function core** | ✔ Matrix stacks, lighting (8 lights), fog, 2-unit texturing, alpha-test, depth & stencil, blending, scissor, point/line primitives |
 | **Extensions** | ✔ `OES_framebuffer_object`, `OES_draw_texture`, `OES_point_sprite`, `OES_point_size_array`, `OES_matrix_palette` *(stubs for others)* |
+| **Utilities** | ✔ `load_ktx_texture()` helper for KTX image loading |
 | **Framebuffer** | ✔ RGBA8 + 32-bit float depth, atomic CAS writes, morton-swizzled layout |
-| **Threading** | ✔ Lock-free MPMC queue, work-stealing, per-stage profiling |
-| **State model** | ✔ Versioned `RenderContext`; worker threads clone only dirtied chunks |
-| **Diagnostics** | ✔ Early-init memory tracker, async logger, build-in perf counters |
+| **Threading** | ✔ Lock-free MPMC queue, optional command buffer recorder, per-stage profiling (`--profile`) |
+| **Pipeline** | ✔ 16×16 tiled fragment stage, 4×4 texture block cache |
+| **State model** | ✔ Versioned `RenderContext`; worker threads clone only dirtied chunks. RenderContext now holds all dynamic flags (see docs/migration/state.md) |
+| **Diagnostics** | ✔ Early-init memory tracker, async logger, built-in perf counters |
 | **Tooling** | ✔ Release + ASAN builds, style check (`clang-format`), benchmarks, conformance harness |
 
 ---
@@ -37,6 +39,7 @@ src/
 ├─ api/             <- one file per GL 1.1 chapter  (gl\_api\_xxx.c)
 ├─ pipeline/        <- vertex → primitive → raster → fragment → framebuffer
 ├─ util/            <- logger, memory-tracker, math helpers
+docs/               <- HTML docs & migration notes
 benchmark/          <- perf micro-benchmarks
 conformance/        <- spec-validation tests
 
@@ -62,6 +65,18 @@ cmake --build build                 # produces bin/* executables
 ./build/bin/renderer_conformance
 ````
 
+To gather per-stage timings at runtime, pass `--profile` to the
+benchmark or conformance executables.
+
+To enable the optional command buffer recorder, configure with:
+
+```bash
+cmake -S . -B build_cb \
+      -DGL_ENABLE_MICROGLES_COMMAND_BUFFER=ON \
+      -DCMAKE_C_FLAGS="-std=gnu11 -O3 -ftree-vectorize"
+cmake --build build_cb
+```
+
 ### Debug / Sanitizer
 
 ```bash
@@ -75,6 +90,22 @@ Auto-format:
 
 ```bash
 cmake --build build --target format    # runs clang-format on all .c/.h
+```
+
+Developers may build with `-Werror` to surface warnings as errors:
+
+```bash
+cmake -S . -B build -DCMAKE_C_FLAGS="-std=gnu11 -O3 -ftree-vectorize -Werror"
+cmake --build build
+```
+
+### Debugging with Valgrind and GDB
+
+Use these tools to catch memory errors and inspect crashes:
+
+```bash
+valgrind ./build/bin/renderer_conformance
+gdb --args ./build/bin/renderer_conformance
 ```
 
 ---
@@ -94,7 +125,9 @@ int main(void)
     logger_init(NULL, LOG_LEVEL_INFO);
     memory_tracker_init();
     thread_pool_init(4);            /* 4 worker threads */
-    thread_profile_start();
+#ifdef ENABLE_PROFILE
+    thread_profile_start();        /* optional: per-stage timings */
+#endif
 
     /* GL context + default FBO */
     GLContext *ctx = context_create();      /* wraps global RenderContext */
@@ -117,12 +150,16 @@ int main(void)
     /* teardown */
     framebuffer_destroy(fb);
     context_destroy(ctx);
+#ifdef ENABLE_PROFILE
     thread_profile_stop();
+#endif
     thread_pool_shutdown();
     memory_tracker_report();        /* should show 0 leaks */
     logger_shutdown();
 }
 ```
+Compile with `-DENABLE_PROFILE` or pass `--profile` to the bundled
+programs to record per-stage timings.
 
 ---
 
@@ -144,10 +181,10 @@ Thread pool workers
   │      gl_primitive.c       Assemble, cull, clip
   │              │
   │              ▼
-  │      gl_raster.c          Edge functions, tile subdivision
+  │      gl_raster.c          Edge functions, emit 16×16 tile jobs
   │              │
   │              ▼
-  │      gl_fragment.c        Texturing, fog, blend, alpha-test
+  │      gl_fragment.c        Shade tile buffer, texturing, fog, blend
   │              │
   ▼              ▼
  gl_framebuffer.c (atomic depth/stencil/color)

@@ -8,6 +8,10 @@ set(CONFORMANCE_SOURCES
     src/tests/buffer.c
     src/tests/draw.c
     src/tests/fbo.c
+    src/tests/state_flag_version.c
+    src/tests/texture_cache.c
+    src/tests/thread_stress.c
+    src/tests/point_sprite.c
     src/tests/all_calls.c
     src/tests/extensions.c
     src/tests/util.c

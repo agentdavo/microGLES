@@ -19,3 +19,4 @@ numbers may vary depending on hardware and compiler options.
 | Spinning Cubes             | N/A |
 | Multitexture Demo          | N/A |
 | Alpha Blend Demo           | N/A |
+| Fill Rate Suite            | N/A |

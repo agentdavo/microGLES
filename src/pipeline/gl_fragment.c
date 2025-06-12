@@ -1,11 +1,14 @@
 #include "gl_fragment.h"
 #include "../gl_logger.h"
 #include "../gl_context.h"
+#include "texture_cache.h"
+#include "../gl_thread.h"
 #define PIPELINE_USE_GLSTATE 0
 _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "../gl_memory_tracker.h"
 #include "../gl_types.h"
 #include "gl_framebuffer.h"
+#include "gl_raster.h"
 #include <string.h>
 #include <math.h>
 #include <stdbool.h>
@@ -30,10 +33,15 @@ static _Thread_local TextureState local_tex[2];
 static _Thread_local unsigned local_tex_ver[2];
 static _Thread_local BlendState local_blend;
 static _Thread_local unsigned local_blend_ver;
+static _Thread_local GLboolean local_blend_on;
 static _Thread_local FogState local_fog;
 static _Thread_local unsigned local_fog_ver;
 static _Thread_local AlphaTestState local_alpha;
 static _Thread_local unsigned local_alpha_ver;
+static _Thread_local GLboolean tl_sprite_mode;
+static _Thread_local GLfloat tl_sprite_cx;
+static _Thread_local GLfloat tl_sprite_cy;
+static _Thread_local GLfloat tl_sprite_size;
 
 static float blend_factor(GLenum factor, float srcC, float dstC, float srcA,
 			  float dstA)
@@ -81,6 +89,7 @@ static void update_state(void)
 		memcpy(&local_blend, &ctx->blend, sizeof(BlendState));
 		local_blend_ver = bv;
 	}
+	local_blend_on = ctx->blend_enabled;
 	unsigned fv = atomic_load(&ctx->fog.version);
 	if (fv != local_fog_ver) {
 		memcpy(&local_fog, &ctx->fog, sizeof(FogState));
@@ -97,9 +106,19 @@ void pipeline_shade_fragment(Fragment *frag, Framebuffer *fb)
 {
 	update_state();
 	TextureOES *tex = context_find_texture(local_tex[0].bound_texture);
-	if (tex && tex->data) {
-		float u = (float)frag->x / fb->width;
-		float v = (float)frag->y / fb->height;
+	texture_cache_t *cache = thread_get_texture_cache();
+	if (tex && tex->levels[0]) {
+		float u;
+		float v;
+		if (tl_sprite_mode) {
+			float left = tl_sprite_cx - tl_sprite_size * 0.5f;
+			float top = tl_sprite_cy - tl_sprite_size * 0.5f;
+			u = (frag->x - left) / tl_sprite_size;
+			v = (frag->y - top) / tl_sprite_size;
+		} else {
+			u = (float)frag->x / fb->width;
+			v = (float)frag->y / fb->height;
+		}
 		if (tex->wrap_s == GL_REPEAT)
 			u -= floorf(u);
 		else
@@ -108,20 +127,41 @@ void pipeline_shade_fragment(Fragment *frag, Framebuffer *fb)
 			v -= floorf(v);
 		else
 			v = fminf(fmaxf(v, 0.0f), 1.0f);
-		float x = u * (tex->width - 1);
-		float y = v * (tex->height - 1);
+		unsigned level = 0;
+		if (tex->min_filter >= GL_NEAREST_MIPMAP_NEAREST) {
+			float ratio =
+				fmaxf((float)tex->mip_width[0] / fb->width,
+				      (float)tex->mip_height[0] / fb->height);
+			float lod = log2f(ratio);
+			if (lod < 0.0f)
+				lod = 0.0f;
+			if (lod > tex->current_level)
+				lod = tex->current_level;
+			level = (unsigned)lod;
+		}
+		if (!tex->levels[level])
+			level = 0;
+		float x = u * (tex->mip_width[level] - 1);
+		float y = v * (tex->mip_height[level] - 1);
 		int ix = (int)roundf(x);
 		int iy = (int)roundf(y);
-		if (tex->min_filter == GL_LINEAR ||
-		    tex->mag_filter == GL_LINEAR) {
-			int ix1 = ix < tex->width - 1 ? ix + 1 : ix;
-			int iy1 = iy < tex->height - 1 ? iy + 1 : iy;
+		bool linear = tex->min_filter == GL_LINEAR ||
+			      tex->mag_filter == GL_LINEAR ||
+			      tex->min_filter == GL_LINEAR_MIPMAP_NEAREST ||
+			      tex->min_filter == GL_LINEAR_MIPMAP_LINEAR;
+		if (linear) {
+			int ix1 = ix < tex->mip_width[level] - 1 ? ix + 1 : ix;
+			int iy1 = iy < tex->mip_height[level] - 1 ? iy + 1 : iy;
 			float fx = x - floorf(x);
 			float fy = y - floorf(y);
-			uint32_t c00 = tex->data[iy * tex->width + ix];
-			uint32_t c10 = tex->data[iy * tex->width + ix1];
-			uint32_t c01 = tex->data[iy1 * tex->width + ix];
-			uint32_t c11 = tex->data[iy1 * tex->width + ix1];
+			uint32_t c00 =
+				texture_cache_fetch(cache, tex, level, ix, iy);
+			uint32_t c10 =
+				texture_cache_fetch(cache, tex, level, ix1, iy);
+			uint32_t c01 =
+				texture_cache_fetch(cache, tex, level, ix, iy1);
+			uint32_t c11 = texture_cache_fetch(cache, tex, level,
+							   ix1, iy1);
 			float r = ((c00 & 0xFF) * (1 - fx) * (1 - fy) +
 				   (c10 & 0xFF) * fx * (1 - fy) +
 				   (c01 & 0xFF) * (1 - fx) * fy +
@@ -143,7 +183,8 @@ void pipeline_shade_fragment(Fragment *frag, Framebuffer *fb)
 			else
 				frag->color = color;
 		} else {
-			uint32_t color = tex->data[iy * tex->width + ix];
+			uint32_t color =
+				texture_cache_fetch(cache, tex, level, ix, iy);
 			if (local_tex[0].env_mode == GL_MODULATE)
 				frag->color = modulate(frag->color, color);
 			else
@@ -209,7 +250,7 @@ void pipeline_shade_fragment(Fragment *frag, Framebuffer *fb)
 		if (!pass)
 			return;
 	}
-	if (ctx->blend_enabled) {
+	if (local_blend_on) {
 		uint32_t dst = framebuffer_get_pixel(fb, frag->x, frag->y);
 		float srcA = ((frag->color >> 24) & 0xFF) / 255.0f;
 		float dstA = ((dst >> 24) & 0xFF) / 255.0f;
@@ -248,5 +289,79 @@ void process_fragment_job(void *task_data)
 {
 	FragmentJob *job = (FragmentJob *)task_data;
 	pipeline_shade_fragment(&job->frag, job->fb);
+	MT_FREE(job, STAGE_FRAGMENT);
+}
+
+void process_fragment_tile_job(void *task_data)
+{
+	FragmentTileJob *job = (FragmentTileJob *)task_data;
+	uint32_t w = job->x1 - job->x0 + 1;
+	uint32_t h = job->y1 - job->y0 + 1;
+
+	_Atomic uint32_t local_color[TILE_SIZE * TILE_SIZE];
+	_Atomic float local_depth[TILE_SIZE * TILE_SIZE];
+	_Atomic uint8_t local_stencil[TILE_SIZE * TILE_SIZE];
+
+	Framebuffer tile_fb = {
+		.width = w,
+		.height = h,
+		.color_buffer = local_color,
+		.depth_buffer = local_depth,
+		.stencil_buffer = local_stencil,
+	};
+
+	Framebuffer *fb = job->fb;
+	for (uint32_t row = 0; row < h; ++row) {
+		size_t idx = (size_t)(job->y0 + row) * fb->width + job->x0;
+		memcpy((uint32_t *)&local_color[row * w],
+		       (uint32_t *)&fb->color_buffer[idx],
+		       w * sizeof(uint32_t));
+		memcpy((float *)&local_depth[row * w],
+		       (float *)&fb->depth_buffer[idx], w * sizeof(float));
+		memcpy((uint8_t *)&local_stencil[row * w],
+		       (uint8_t *)&fb->stencil_buffer[idx],
+		       w * sizeof(uint8_t));
+	}
+
+	GLboolean prev_mode = tl_sprite_mode;
+	GLfloat prev_cx = tl_sprite_cx;
+	GLfloat prev_cy = tl_sprite_cy;
+	GLfloat prev_size = tl_sprite_size;
+	if (job->sprite_mode) {
+		tl_sprite_mode = GL_TRUE;
+		tl_sprite_cx = job->sprite_cx;
+		tl_sprite_cy = job->sprite_cy;
+		tl_sprite_size = job->sprite_size;
+	}
+
+	for (uint32_t row = 0; row < h; ++row) {
+		for (uint32_t col = 0; col < w; ++col) {
+			Fragment frag = {
+				.x = job->x0 + col,
+				.y = job->y0 + row,
+				.color = job->color,
+				.depth = job->depth,
+			};
+			pipeline_shade_fragment(&frag, &tile_fb);
+		}
+	}
+
+	if (job->sprite_mode) {
+		tl_sprite_mode = prev_mode;
+		tl_sprite_cx = prev_cx;
+		tl_sprite_cy = prev_cy;
+		tl_sprite_size = prev_size;
+	}
+
+	for (uint32_t row = 0; row < h; ++row) {
+		size_t idx = (size_t)(job->y0 + row) * fb->width + job->x0;
+		memcpy((uint32_t *)&fb->color_buffer[idx],
+		       (uint32_t *)&local_color[row * w], w * sizeof(uint32_t));
+		memcpy((float *)&fb->depth_buffer[idx],
+		       (float *)&local_depth[row * w], w * sizeof(float));
+		memcpy((uint8_t *)&fb->stencil_buffer[idx],
+		       (uint8_t *)&local_stencil[row * w], w * sizeof(uint8_t));
+	}
+
 	MT_FREE(job, STAGE_FRAGMENT);
 }

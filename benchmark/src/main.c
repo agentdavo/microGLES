@@ -4,11 +4,20 @@
 #include "gl_logger.h"
 #include "gl_memory_tracker.h"
 #include "gl_thread.h"
+#ifdef MICROGLES_COMMAND_BUFFER
+#include "command_buffer.h"
+#endif
 #include <stdio.h>
+#include <string.h>
+#include <stdbool.h>
 #include <assert.h>
 
-int main()
+int main(int argc, char **argv)
 {
+	bool profile = false;
+	for (int i = 1; i < argc; ++i)
+		if (strcmp(argv[i], "--profile") == 0)
+			profile = true;
 	if (!logger_init("benchmark.log", LOG_LEVEL_INFO)) {
 		fprintf(stderr, "Failed to initialize logger.\n");
 		return -1;
@@ -18,7 +27,11 @@ int main()
 		return -1;
 	}
 	thread_pool_init(4);
-	thread_profile_start();
+#ifdef MICROGLES_COMMAND_BUFFER
+	command_buffer_init();
+#endif
+	if (profile)
+		thread_profile_start();
 	InitGLState(&gl_state);
 	Framebuffer *fb = GL_init_with_framebuffer(256, 256);
 	if (!fb) {
@@ -83,8 +96,24 @@ int main()
 #ifdef DEBUG
 	assert(glGetError() == GL_NO_ERROR);
 #endif
+	run_texture_stream(fb, &result);
+#ifdef DEBUG
+	assert(glGetError() == GL_NO_ERROR);
+#endif
+	run_toggle_blend(fb, &result);
+#ifdef DEBUG
+	assert(glGetError() == GL_NO_ERROR);
+#endif
+	BenchmarkResult fill_results[3];
+	run_fill_rate_suite(fb, fill_results);
+#ifdef DEBUG
+	assert(glGetError() == GL_NO_ERROR);
+#endif
 
 	thread_pool_wait();
+#ifdef MICROGLES_COMMAND_BUFFER
+	command_buffer_shutdown();
+#endif
 	thread_pool_shutdown();
 	GL_cleanup_with_framebuffer(fb);
 	CleanupGLState(&gl_state);
