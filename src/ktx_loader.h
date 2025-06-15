@@ -1,5 +1,9 @@
 #ifndef KTX_LOADER_H
 #define KTX_LOADER_H
+/**
+ * @file ktx_loader.h
+ * @brief Loader for KTX texture files.
+ */
 
 #include <GLES/gl.h>
 #include <GLES/glext.h>

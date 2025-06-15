@@ -1,5 +1,9 @@
 #ifndef GL_ERRORS_H
 #define GL_ERRORS_H
+/**
+ * @file gl_errors.h
+ * @brief Helpers for OpenGL ES error management.
+ */
 
 #include <GLES/gl.h>
 

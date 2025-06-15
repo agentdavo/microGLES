@@ -1,5 +1,9 @@
 #ifndef GL_CONTEXT_H
 #define GL_CONTEXT_H
+/**
+ * @file gl_context.h
+ * @brief Global rendering context definition.
+ */
 
 #include "matrix_utils.h"
 #include <GLES/gl.h>

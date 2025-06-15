@@ -2,6 +2,10 @@
 
 #ifndef GL_STATE_H
 #define GL_STATE_H
+/**
+ * @file gl_state.h
+ * @brief Legacy global state structure (to be removed).
+ */
 
 #include "gl_api_fbo.h" /* For FramebufferOES and RenderbufferOES */
 #include "matrix_utils.h" /* For mat4 */

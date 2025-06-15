@@ -4,9 +4,7 @@
 #include "gl_logger.h"
 #include "gl_memory_tracker.h"
 #include "gl_thread.h"
-#ifdef MICROGLES_COMMAND_BUFFER
 #include "command_buffer.h"
-#endif
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -49,9 +47,7 @@ int main(int argc, char **argv)
 		return -1;
 	}
 	thread_pool_init(4);
-#ifdef MICROGLES_COMMAND_BUFFER
 	command_buffer_init();
-#endif
 	if (profile)
 		thread_profile_start();
 	InitGLState(&gl_state);
@@ -85,9 +81,7 @@ int main(int argc, char **argv)
 	RUN(get_autogen_tests);
 	RUN(get_all_calls_tests);
 
-#ifdef MICROGLES_COMMAND_BUFFER
 	command_buffer_shutdown();
-#endif
 	thread_pool_shutdown();
 	GL_cleanup_with_framebuffer(fb);
 	CleanupGLState(&gl_state);

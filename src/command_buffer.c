@@ -1,5 +1,4 @@
 #include "command_buffer.h"
-#ifdef MICROGLES_COMMAND_BUFFER
 #include <stdatomic.h>
 
 #define COMMAND_RING_SIZE 1024
@@ -49,10 +48,10 @@ void command_buffer_flush(void)
 			thread_pool_submit(cmd->params.task.func,
 					   cmd->params.task.data,
 					   cmd->params.task.stage);
+			cmd->op = 0;
 		}
 		h++;
 	}
 	atomic_store_explicit(&g_head, t, memory_order_release);
 	atomic_store_explicit(&g_tail, t, memory_order_release);
 }
-#endif /* MICROGLES_COMMAND_BUFFER */

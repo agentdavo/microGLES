@@ -1,5 +1,9 @@
 #ifndef TEXTURE_CACHE_H
 #define TEXTURE_CACHE_H
+/**
+ * @file texture_cache.h
+ * @brief 4x4 texture block cache for fragment sampling.
+ */
 #include <stdint.h>
 #include <stdbool.h>
 #include "gl_types.h"
