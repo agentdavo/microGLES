@@ -1,5 +1,9 @@
 #ifndef GL_TYPES_H
 #define GL_TYPES_H
+/**
+ * @file gl_types.h
+ * @brief Core data structures shared across modules.
+ */
 
 #include <GLES/gl.h>
 #include <stdatomic.h>

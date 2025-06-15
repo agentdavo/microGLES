@@ -1,5 +1,9 @@
 #ifndef GL_API_STATE_H
 #define GL_API_STATE_H
+/**
+ * @file gl_api_state.h
+ * @brief State manipulation functions for OpenGL ES.
+ */
 #include <GLES/gl.h>
 
 GL_API void GL_APIENTRY glEnable(GLenum cap);

@@ -2,9 +2,7 @@
 #include "gl_context.h"
 #include "gl_memory_tracker.h"
 #include "gl_init.h"
-#ifdef MICROGLES_COMMAND_BUFFER
 #include "command_buffer.h"
-#endif
 #include "pipeline/gl_vertex.h"
 #include "pipeline/gl_raster.h"
 #include "matrix_utils.h"
@@ -209,12 +207,8 @@ GL_API void GL_APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count)
 			}
 		}
 		job->fb = fb;
-#ifdef MICROGLES_COMMAND_BUFFER
 		command_buffer_record_task(process_vertex_job, job,
 					   STAGE_VERTEX);
-#else
-		thread_pool_submit(process_vertex_job, job, STAGE_VERTEX);
-#endif
 	}
 }
 

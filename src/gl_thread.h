@@ -1,5 +1,9 @@
 #ifndef GL_THREAD_H
 #define GL_THREAD_H
+/**
+ * @file gl_thread.h
+ * @brief Thread pool helpers used by the renderer.
+ */
 
 #include <threads.h>
 #include <stdint.h>

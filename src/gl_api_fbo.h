@@ -2,6 +2,10 @@
 
 #ifndef GL_API_FBO_H
 #define GL_API_FBO_H
+/**
+ * @file gl_api_fbo.h
+ * @brief Framebuffer object helpers for the ES 1.1 renderer.
+ */
 
 #include "gl_types.h" /* For TextureOES */
 #include "pipeline/gl_framebuffer.h" /* For Framebuffer */

@@ -5,9 +5,7 @@
 _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "gl_utils.h"
 #include "gl_thread.h"
-#ifdef MICROGLES_COMMAND_BUFFER
 #include "command_buffer.h"
-#endif
 #include "../gl_context.h"
 #include <stdatomic.h>
 #include <stdbool.h>
@@ -118,11 +116,7 @@ void framebuffer_clear_async(Framebuffer *fb, uint32_t clear_color,
 		return;
 	}
 	*task = (ClearTask){ fb, clear_color, clear_depth, clear_stencil };
-#ifdef MICROGLES_COMMAND_BUFFER
 	command_buffer_record_task(clear_task_func, task, STAGE_FRAMEBUFFER);
-#else
-	thread_pool_submit(clear_task_func, task, STAGE_FRAMEBUFFER);
-#endif
 }
 
 void framebuffer_set_pixel(Framebuffer *fb, uint32_t x, uint32_t y,

@@ -4,7 +4,6 @@ cmake_minimum_required(VERSION 3.10)
 # Project name and version
 project(OpenGLES_Renderer VERSION 1.0 LANGUAGES C)
 
-option(GL_ENABLE_MICROGLES_COMMAND_BUFFER "Enable command buffer recorder" OFF)
 
 # Set C standard
 set(CMAKE_C_STANDARD 11)
@@ -119,10 +118,8 @@ set_target_properties(renderer PROPERTIES
 # Optional: Enable warnings and optimizations
 target_compile_options(renderer_lib PRIVATE -Wall -Wextra -Wpedantic -O2)
 target_compile_options(renderer PRIVATE -Wall -Wextra -Wpedantic -O2)
-if(GL_ENABLE_MICROGLES_COMMAND_BUFFER)
-    target_compile_definitions(renderer_lib PUBLIC MICROGLES_COMMAND_BUFFER)
-    target_compile_definitions(renderer PUBLIC MICROGLES_COMMAND_BUFFER)
-endif()
+target_compile_definitions(renderer_lib PUBLIC MICROGLES_COMMAND_BUFFER)
+target_compile_definitions(renderer PUBLIC MICROGLES_COMMAND_BUFFER)
 
 # Optional: Create logs directory if it doesn't exist
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/logs)
@@ -158,3 +155,14 @@ add_subdirectory(conformance)
 
 enable_testing()
 add_test(NAME conformance COMMAND renderer_conformance)
+
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+    set(DOXYGEN_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/docs/release")
+    configure_file(${CMAKE_SOURCE_DIR}/docs/Doxyfile.in
+                   ${CMAKE_BINARY_DIR}/Doxyfile @ONLY)
+    add_custom_target(doc
+        COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Generate API documentation with Doxygen")
+endif()

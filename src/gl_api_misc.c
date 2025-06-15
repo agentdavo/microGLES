@@ -5,9 +5,7 @@
 #include <string.h>
 #include "gl_utils.h"
 #include "gl_thread.h"
-#ifdef MICROGLES_COMMAND_BUFFER
 #include "command_buffer.h"
-#endif
 
 GL_API void GL_APIENTRY glClipPlanef(GLenum plane, const GLfloat *equation)
 {
@@ -324,17 +322,13 @@ GL_API void GL_APIENTRY glTranslatex(GLfixed x, GLfixed y, GLfixed z)
 
 GL_API void GL_APIENTRY glFinish(void)
 {
-#ifdef MICROGLES_COMMAND_BUFFER
 	command_buffer_flush();
-#endif
 	thread_pool_wait_timeout(1000);
 }
 
 GL_API void GL_APIENTRY glFlush(void)
 {
-#ifdef MICROGLES_COMMAND_BUFFER
 	command_buffer_flush();
-#endif
 }
 
 GLenum glGetError(void)

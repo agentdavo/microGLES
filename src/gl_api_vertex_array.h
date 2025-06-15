@@ -1,5 +1,9 @@
 #ifndef GL_API_VERTEX_ARRAY_H
 #define GL_API_VERTEX_ARRAY_H
+/**
+ * @file gl_api_vertex_array.h
+ * @brief Vertex array management APIs.
+ */
 #include <GLES/gl.h>
 
 GL_API void GL_APIENTRY glEnableClientState(GLenum array);

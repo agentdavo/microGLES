@@ -1,5 +1,9 @@
 #ifndef GL_MEMORY_TRACKER_H
 #define GL_MEMORY_TRACKER_H
+/**
+ * @file gl_memory_tracker.h
+ * @brief Simple memory allocation tracker for debugging.
+ */
 
 #include <stddef.h>
 #include <threads.h>
