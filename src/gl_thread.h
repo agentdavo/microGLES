@@ -3,6 +3,8 @@
 
 #include <threads.h>
 #include <stdint.h>
+#include <stdbool.h>
+#include "texture_cache.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,9 +28,18 @@ void thread_pool_wait(void);
 int thread_pool_wait_timeout(uint32_t ms);
 void thread_pool_shutdown(void);
 
+/* Returns true if worker threads are processing tasks. */
+bool thread_pool_active(void);
+
 void thread_profile_start(void);
 void thread_profile_stop(void);
 void thread_profile_report(void);
+
+/* texture cache helpers */
+texture_cache_t *thread_get_texture_cache(void);
+void thread_profile_cache_hit(void);
+void thread_profile_cache_miss(void);
+void thread_profile_get_cache_stats(uint64_t *hits, uint64_t *misses);
 
 #ifdef __cplusplus
 }

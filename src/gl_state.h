@@ -108,9 +108,7 @@ typedef struct {
 	struct FramebufferOES *bound_framebuffer; // Currently bound framebuffer
 	struct FramebufferOES default_framebuffer; // Default framebuffer (ID 0)
 
-	GLuint texture_count; // Number of active textures
-	GLuint next_texture_id;
-	struct TextureOES *textures[MAX_TEXTURES]; // Array of textures
+	/* Texture management moved to RenderContext */
 
 	/* Buffer objects */
 	GLuint next_buffer_id; // Next available buffer object ID
@@ -155,12 +153,7 @@ typedef struct {
 	GLenum depth_func;
 	GLenum cull_face_mode;
 	GLenum front_face;
-	GLfloat current_color[4];
-	GLfloat current_normal[3];
-	GLenum active_texture;
-	GLenum client_active_texture;
-	GLuint bound_texture;
-	GLuint bound_texture_external;
+	/* Client active texture and bindings moved to RenderContext */
 	GLint viewport[4];
 	/* Additional misc state */
 	GLfloat point_size;
@@ -201,8 +194,6 @@ typedef struct {
 	GLfloat point_size_max;
 
 	/* Texture environment per texture unit */
-	GLenum tex_env_mode[8];
-	GLfloat tex_env_color[8][4];
 	GLenum tex_env_combine_rgb[8];
 	GLenum tex_env_combine_alpha[8];
 	GLenum tex_env_src_rgb[8][3];
@@ -213,9 +204,6 @@ typedef struct {
 	GLfloat tex_env_alpha_scale[8];
 	GLboolean tex_env_coord_replace[8];
 
-	/* Current texture coordinates per unit */
-	GLfloat current_texcoord[8][4];
-
 	/* TexGen state */
 	GLenum tex_gen_mode[4];
 	GLfloat tex_gen_plane[4][4];
@@ -223,29 +211,7 @@ typedef struct {
 	/* Material parameters for front and back faces */
 	Material material[2];
 
-	/* Capability flags */
-	GLboolean alpha_test_enabled;
-	GLboolean blend_enabled;
-	GLboolean color_logic_op_enabled;
-	GLboolean color_material_enabled;
-	GLboolean cull_face_enabled;
-	GLboolean depth_test_enabled;
-	GLboolean dither_enabled;
-	GLboolean fog_enabled;
-	GLboolean lighting_enabled;
-	GLboolean line_smooth_enabled;
-	GLboolean multisample_enabled;
-	GLboolean normalize_enabled;
-	GLboolean point_smooth_enabled;
-	GLboolean point_sprite_enabled;
-	GLboolean polygon_offset_fill_enabled;
-	GLboolean rescale_normal_enabled;
-	GLboolean sample_alpha_to_coverage_enabled;
-	GLboolean sample_alpha_to_one_enabled;
-	GLboolean sample_coverage_enabled;
-	GLboolean scissor_test_enabled;
-	GLboolean stencil_test_enabled;
-	GLboolean clip_plane_enabled[6];
+	/* Capability flags moved to RenderContext */
 	Light lights[8];
 
 	/* Fog parameters */
@@ -261,29 +227,7 @@ typedef struct {
 	GLenum perspective_correction_hint;
 	GLenum point_smooth_hint;
 
-	/* Vertex array state */
-	GLboolean vertex_array_enabled;
-	GLint vertex_array_size;
-	GLenum vertex_array_type;
-	GLsizei vertex_array_stride;
-	const void *vertex_array_pointer;
-
-	GLboolean color_array_enabled;
-	GLint color_array_size;
-	GLenum color_array_type;
-	GLsizei color_array_stride;
-	const void *color_array_pointer;
-
-	GLboolean normal_array_enabled;
-	GLenum normal_array_type;
-	GLsizei normal_array_stride;
-	const void *normal_array_pointer;
-
-	GLboolean texcoord_array_enabled;
-	GLint texcoord_array_size;
-	GLenum texcoord_array_type;
-	GLsizei texcoord_array_stride;
-	const void *texcoord_array_pointer;
+	/* Vertex array state removed in favor of RenderContext */
 
 	/* Point size array state (OES_point_size_array) */
 	GLenum point_size_array_type;

@@ -14,6 +14,9 @@ static void init_defaults(RenderContext *ctx)
 	mat4_identity(&ctx->modelview_matrix);
 	mat4_identity(&ctx->projection_matrix);
 	mat4_identity(&ctx->texture_matrix);
+	ctx->modelview_stack_depth = 1;
+	ctx->projection_stack_depth = 1;
+	ctx->texture_stack_depth = 1;
 	ctx->current_color[0] = 1.0f;
 	ctx->current_color[1] = 1.0f;
 	ctx->current_color[2] = 1.0f;
@@ -24,6 +27,7 @@ static void init_defaults(RenderContext *ctx)
 	ctx->clear_color[3] = 1.0f;
 	ctx->depth_test_enabled = GL_TRUE;
 	ctx->depth_func = GL_LESS;
+	atomic_init(&ctx->version_depth, 0);
 	ctx->current_normal[0] = 0.0f;
 	ctx->current_normal[1] = 0.0f;
 	ctx->current_normal[2] = 1.0f;
@@ -52,6 +56,12 @@ static void init_defaults(RenderContext *ctx)
 		ctx->texture_env[i].min_filter = GL_NEAREST;
 		ctx->texture_env[i].mag_filter = GL_NEAREST;
 		atomic_init(&ctx->texture_env[i].version, 0);
+	}
+	for (int u = 0; u < 8; ++u) {
+		ctx->current_texcoord[u][0] = 0.0f;
+		ctx->current_texcoord[u][1] = 0.0f;
+		ctx->current_texcoord[u][2] = 0.0f;
+		ctx->current_texcoord[u][3] = 1.0f;
 	}
 	ctx->blend.src_factor = GL_ONE;
 	ctx->blend.dst_factor = GL_ZERO;
@@ -113,6 +123,10 @@ static void init_defaults(RenderContext *ctx)
 	atomic_init(&ctx->normal_array.version, 0);
 	memset(&ctx->texcoord_array, 0, sizeof(ArrayState));
 	atomic_init(&ctx->texcoord_array.version, 0);
+	ctx->point_size_array_enabled = GL_FALSE;
+	ctx->point_size_array_type = GL_FLOAT;
+	ctx->point_size_array_stride = 0;
+	ctx->point_size_array_pointer = NULL;
 	memcpy(ctx->material.ambient, ctx->current_color, sizeof(GLfloat) * 4);
 	ctx->material.diffuse[0] = 1.0f;
 	ctx->material.diffuse[1] = 1.0f;
@@ -140,9 +154,48 @@ static void init_defaults(RenderContext *ctx)
 	ctx->fog.color[3] = ctx->clear_color[3];
 	atomic_init(&ctx->fog.version, 0);
 
+	ctx->color_logic_op_enabled = GL_FALSE;
+	atomic_init(&ctx->version_color_logic_op, 0);
+	ctx->color_material_enabled = GL_FALSE;
+	atomic_init(&ctx->version_color_material, 0);
+	ctx->dither_enabled = GL_TRUE;
+	atomic_init(&ctx->version_dither, 0);
+	ctx->lighting_enabled = GL_FALSE;
+	atomic_init(&ctx->version_lighting, 0);
+	ctx->line_smooth_enabled = GL_FALSE;
+	atomic_init(&ctx->version_line_smooth, 0);
+	ctx->multisample_enabled = GL_TRUE;
+	atomic_init(&ctx->version_multisample, 0);
+	ctx->normalize_enabled = GL_FALSE;
+	atomic_init(&ctx->version_normalize, 0);
+	ctx->point_smooth_enabled = GL_FALSE;
+	atomic_init(&ctx->version_point_smooth, 0);
+	ctx->point_sprite_enabled = GL_FALSE;
+	atomic_init(&ctx->version_point_sprite, 0);
+	ctx->polygon_offset_fill_enabled = GL_FALSE;
+	atomic_init(&ctx->version_polygon_offset_fill, 0);
+	ctx->rescale_normal_enabled = GL_FALSE;
+	atomic_init(&ctx->version_rescale_normal, 0);
+	ctx->sample_alpha_to_coverage_enabled = GL_FALSE;
+	atomic_init(&ctx->version_sample_alpha_to_coverage, 0);
+	ctx->sample_alpha_to_one_enabled = GL_FALSE;
+	atomic_init(&ctx->version_sample_alpha_to_one, 0);
+	ctx->sample_coverage_enabled = GL_FALSE;
+	atomic_init(&ctx->version_sample_coverage, 0);
+	for (int i = 0; i < 6; ++i)
+		ctx->clip_plane_enabled[i] = GL_FALSE;
+	atomic_init(&ctx->version_clip_plane, 0);
+
+	ctx->validated_blend_version = 0;
+	ctx->validated_depth_version = 0;
+	ctx->validated_fog_version = 0;
+	ctx->validated_cull_version = 0;
+
 	ctx->texture_count = 0;
 	ctx->next_texture_id = 1;
 	ctx->active_texture = GL_TEXTURE0;
+	ctx->client_active_texture = GL_TEXTURE0;
+	ctx->bound_texture_external = 0;
 	for (int i = 0; i < MAX_TEXTURES; ++i)
 		ctx->textures[i] = NULL;
 }
@@ -213,14 +266,17 @@ void context_set_texture_env(GLenum unit, GLenum pname, const GLfloat *params)
 	log_state_change("texture env updated");
 }
 
-void context_bind_texture(GLenum unit, GLuint texture)
+void context_bind_texture(GLenum unit, GLenum target, GLuint texture)
 {
 	if (unit >= 2)
 		return;
 	TextureState *ts = &g_render_context.texture_env[unit];
 	ts->bound_texture = texture;
+	if (target == GL_TEXTURE_EXTERNAL_OES)
+		g_render_context.bound_texture_external = texture;
 	atomic_fetch_add_explicit(&ts->version, 1, memory_order_relaxed);
-	LOG_DEBUG("bind texture unit %u id %u", unit, texture);
+	LOG_DEBUG("bind texture unit %u target 0x%X id %u", unit, target,
+		  texture);
 }
 
 void context_active_texture(GLenum unit)
@@ -246,6 +302,14 @@ void context_set_alpha_func(GLenum func, GLfloat ref)
 	atomic_fetch_add_explicit(&g_render_context.alpha_test.version, 1,
 				  memory_order_relaxed);
 	log_state_change("alpha func");
+}
+
+void context_set_depth_func(GLenum func)
+{
+	g_render_context.depth_func = func;
+	atomic_fetch_add_explicit(&g_render_context.version_depth, 1,
+				  memory_order_relaxed);
+	log_state_change("depth func");
 }
 
 void context_set_light(GLenum light, GLenum pname, const GLfloat *params)
@@ -438,26 +502,16 @@ void context_delete_textures(GLsizei n, const GLuint *textures)
 			continue;
 		for (GLuint j = 0; j < g_render_context.texture_count; ++j) {
 			if (g_render_context.textures[j] == tex) {
-				MT_FREE(tex->data, STAGE_FRAGMENT);
+				for (int l = 0; l < MAX_MIPMAP_LEVELS; ++l)
+					if (tex->levels[l])
+						MT_FREE(tex->levels[l],
+							STAGE_FRAGMENT);
 				MT_FREE(tex, STAGE_FRAGMENT);
 				for (GLuint k = j + 1;
 				     k < g_render_context.texture_count; ++k)
 					g_render_context.textures[k - 1] =
 						g_render_context.textures[k];
 				g_render_context.texture_count--;
-				for (GLuint m = 0; m < gl_state.texture_count;
-				     ++m) {
-					if (gl_state.textures[m] == tex) {
-						for (GLuint n = m + 1;
-						     n < gl_state.texture_count;
-						     ++n)
-							gl_state.textures[n - 1] =
-								gl_state.textures
-									[n];
-						gl_state.texture_count--;
-						break;
-					}
-				}
 				break;
 			}
 		}
@@ -468,6 +522,7 @@ void context_tex_image_2d(GLenum target, GLint level, GLint internalformat,
 			  GLsizei width, GLsizei height, GLenum format,
 			  GLenum type, const void *pixels)
 {
+	(void)type;
 	if (target != GL_TEXTURE_2D && target != GL_TEXTURE_EXTERNAL_OES)
 		return;
 	TextureOES *tex = texture_find_internal(
@@ -489,18 +544,22 @@ void context_tex_image_2d(GLenum target, GLint level, GLint internalformat,
 		tex->target = target;
 		g_render_context.textures[g_render_context.texture_count++] =
 			tex;
-		if (gl_state.texture_count < MAX_TEXTURES)
-			gl_state.textures[gl_state.texture_count++] = tex;
 	}
 	tex->internalformat = internalformat;
 	tex->format = format;
-	tex->width = width;
-	tex->height = height;
+	tex->mip_width[level] = width;
+	tex->mip_height[level] = height;
+	if (level == 0) {
+		tex->width = width;
+		tex->height = height;
+	}
+	if (level > tex->current_level)
+		tex->current_level = level;
 	size_t size = (size_t)width * height * 4;
-	if (tex->data)
-		MT_FREE(tex->data, STAGE_FRAGMENT);
-	tex->data = MT_ALLOC(size, STAGE_FRAGMENT);
-	if (!tex->data)
+	if (tex->levels[level])
+		MT_FREE(tex->levels[level], STAGE_FRAGMENT);
+	tex->levels[level] = MT_ALLOC(size, STAGE_FRAGMENT);
+	if (!tex->levels[level])
 		return;
 	if (pixels) {
 		const uint8_t *src = pixels;
@@ -509,29 +568,37 @@ void context_tex_image_2d(GLenum target, GLint level, GLint internalformat,
 				uint32_t c = 0xFF000000u;
 				switch (format) {
 				case GL_RGBA:
-					c = src[(y * width + x) * 4 + 0] |
-					    (src[(y * width + x) * 4 + 1]
+					c = (uint32_t)src[(y * width + x) * 4 +
+							  0] |
+					    ((uint32_t)
+						     src[(y * width + x) * 4 + 1]
 					     << 8) |
-					    (src[(y * width + x) * 4 + 2]
+					    ((uint32_t)
+						     src[(y * width + x) * 4 + 2]
 					     << 16) |
-					    (src[(y * width + x) * 4 + 3]
+					    ((uint32_t)
+						     src[(y * width + x) * 4 + 3]
 					     << 24);
 					break;
 				case GL_RGB:
-					c = src[(y * width + x) * 3 + 0] |
-					    (src[(y * width + x) * 3 + 1]
+					c = (uint32_t)src[(y * width + x) * 3 +
+							  0] |
+					    ((uint32_t)
+						     src[(y * width + x) * 3 + 1]
 					     << 8) |
-					    (src[(y * width + x) * 3 + 2]
+					    ((uint32_t)
+						     src[(y * width + x) * 3 + 2]
 					     << 16) |
 					    0xFF000000u;
 					break;
 				case GL_ALPHA:
-					c = (src[y * width + x] << 24);
+					c = ((uint32_t)src[y * width + x]
+					     << 24);
 					break;
 				case GL_LUMINANCE: {
 					uint8_t l = src[y * width + x];
-					c = l | (l << 8) | (l << 16) |
-					    0xFF000000u;
+					c = (uint32_t)l | ((uint32_t)l << 8) |
+					    ((uint32_t)l << 16) | 0xFF000000u;
 					break;
 				}
 				case GL_LUMINANCE_ALPHA: {
@@ -539,7 +606,8 @@ void context_tex_image_2d(GLenum target, GLint level, GLint internalformat,
 						src[(y * width + x) * 2 + 0];
 					uint8_t a =
 						src[(y * width + x) * 2 + 1];
-					c = l | (l << 8) | (l << 16) |
+					c = (uint32_t)l | ((uint32_t)l << 8) |
+					    ((uint32_t)l << 16) |
 					    ((uint32_t)a << 24);
 					break;
 				}
@@ -547,7 +615,7 @@ void context_tex_image_2d(GLenum target, GLint level, GLint internalformat,
 					c = 0xFFFFFFFFu;
 					break;
 				}
-				tex->data[y * width + x] = c;
+				tex->levels[level][y * width + x] = c;
 			}
 		}
 	}
@@ -558,7 +626,6 @@ void context_tex_sub_image_2d(GLenum target, GLint level, GLint xoffset,
 			      GLint yoffset, GLsizei width, GLsizei height,
 			      GLenum format, GLenum type, const void *pixels)
 {
-	(void)level;
 	(void)type;
 	if (target != GL_TEXTURE_2D && target != GL_TEXTURE_EXTERNAL_OES)
 		return;
@@ -567,47 +634,81 @@ void context_tex_sub_image_2d(GLenum target, GLint level, GLint xoffset,
 			.texture_env[g_render_context.active_texture -
 				     GL_TEXTURE0]
 			.bound_texture);
-	if (!tex || !tex->data || !pixels)
+	if (!tex || !tex->levels[level] || !pixels)
 		return;
 	const uint8_t *src = pixels;
+
+	if (format == GL_RGBA && type == GL_UNSIGNED_BYTE) {
+		int row_bytes = width * 4;
+		int align = gl_state.unpack_alignment ?
+				    gl_state.unpack_alignment :
+				    4;
+		int row_padded = (row_bytes + align - 1) & ~(align - 1);
+
+		uint32_t *dst = tex->levels[level] +
+				(size_t)yoffset * tex->mip_width[level] +
+				xoffset;
+
+		if (row_padded == row_bytes) {
+			if (width == tex->mip_width[level] && xoffset == 0) {
+				memcpy(dst, src, (size_t)row_bytes * height);
+			} else {
+				for (int y = 0; y < height; ++y) {
+					memcpy(dst + y * tex->mip_width[level],
+					       src + y * row_bytes, row_bytes);
+				}
+			}
+			atomic_fetch_add_explicit(&tex->version, 1,
+						  memory_order_relaxed);
+			return;
+		}
+	}
+
 	for (int y = 0; y < height; ++y) {
 		for (int x = 0; x < width; ++x) {
 			uint32_t c = 0xFF000000u;
 			switch (format) {
 			case GL_RGBA:
-				c = src[(y * width + x) * 4 + 0] |
-				    (src[(y * width + x) * 4 + 1] << 8) |
-				    (src[(y * width + x) * 4 + 2] << 16) |
-				    (src[(y * width + x) * 4 + 3] << 24);
+				c = (uint32_t)src[(y * width + x) * 4 + 0] |
+				    ((uint32_t)src[(y * width + x) * 4 + 1]
+				     << 8) |
+				    ((uint32_t)src[(y * width + x) * 4 + 2]
+				     << 16) |
+				    ((uint32_t)src[(y * width + x) * 4 + 3]
+				     << 24);
 				break;
 			case GL_RGB:
-				c = src[(y * width + x) * 3 + 0] |
-				    (src[(y * width + x) * 3 + 1] << 8) |
-				    (src[(y * width + x) * 3 + 2] << 16) |
+				c = (uint32_t)src[(y * width + x) * 3 + 0] |
+				    ((uint32_t)src[(y * width + x) * 3 + 1]
+				     << 8) |
+				    ((uint32_t)src[(y * width + x) * 3 + 2]
+				     << 16) |
 				    0xFF000000u;
 				break;
 			case GL_ALPHA:
-				c = (src[y * width + x] << 24);
+				c = ((uint32_t)src[y * width + x] << 24);
 				break;
 			case GL_LUMINANCE: {
 				uint8_t l = src[y * width + x];
-				c = l | (l << 8) | (l << 16) | 0xFF000000u;
+				c = (uint32_t)l | ((uint32_t)l << 8) |
+				    ((uint32_t)l << 16) | 0xFF000000u;
 				break;
 			}
 			case GL_LUMINANCE_ALPHA: {
 				uint8_t l = src[(y * width + x) * 2 + 0];
 				uint8_t a = src[(y * width + x) * 2 + 1];
-				c = l | (l << 8) | (l << 16) |
-				    ((uint32_t)a << 24);
+				c = (uint32_t)l | ((uint32_t)l << 8) |
+				    ((uint32_t)l << 16) | ((uint32_t)a << 24);
 				break;
 			}
 			default:
 				c = 0xFFFFFFFFu;
 				break;
 			}
-			size_t idx = (size_t)(yoffset + y) * tex->width +
-				     (xoffset + x);
-			tex->data[idx] = c;
+			size_t idx =
+				(size_t)(yoffset + y) * tex->mip_width[level] +
+				(xoffset + x);
+			tex->levels[level][idx] = c;
 		}
 	}
 	atomic_fetch_add_explicit(&tex->version, 1, memory_order_relaxed);
