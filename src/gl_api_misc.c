@@ -5,6 +5,7 @@
 #include <string.h>
 #include "gl_utils.h"
 #include "gl_thread.h"
+#include "command_buffer.h"
 
 GL_API void GL_APIENTRY glClipPlanef(GLenum plane, const GLfloat *equation)
 {
@@ -110,19 +111,15 @@ GL_API void GL_APIENTRY glGetMaterialfv(GLenum face, GLenum pname,
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	int count;
 	Material *mat = NULL;
 	switch (face) {
 	case GL_FRONT:
-		count = 1;
 		mat = &gl_state.material[0];
 		break;
 	case GL_BACK:
-		count = 1;
 		mat = &gl_state.material[1];
 		break;
 	case GL_FRONT_AND_BACK:
-		count = 1;
 		mat = &gl_state.material[0];
 		break;
 	default:
@@ -164,10 +161,11 @@ GL_API void GL_APIENTRY glGetTexEnvfv(GLenum target, GLenum pname,
 		glSetError(GL_INVALID_ENUM);
 		return;
 	}
-	int unit = gl_state.active_texture - GL_TEXTURE0;
+	RenderContext *ctx = GetCurrentContext();
+	int unit = ctx->active_texture - GL_TEXTURE0;
 	switch (pname) {
 	case GL_TEXTURE_ENV_COLOR:
-		memcpy(params, gl_state.tex_env_color[unit],
+		memcpy(params, ctx->texture_env[unit].env_color,
 		       sizeof(GLfloat) * 4);
 		break;
 	default:
@@ -187,7 +185,10 @@ GL_API void GL_APIENTRY glGetTexParameterfv(GLenum target, GLenum pname,
 		glSetError(GL_INVALID_ENUM);
 		return;
 	}
-	TextureOES *tex = context_find_texture(gl_state.bound_texture);
+	RenderContext *ctx = GetCurrentContext();
+	int unit = ctx->active_texture - GL_TEXTURE0;
+	TextureOES *tex =
+		context_find_texture(ctx->texture_env[unit].bound_texture);
 	if (!tex) {
 		glSetError(GL_INVALID_OPERATION);
 		return;
@@ -229,10 +230,11 @@ GL_API void GL_APIENTRY glColor4x(GLfixed r, GLfixed g, GLfixed b, GLfixed a)
 
 GL_API void GL_APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 {
-	gl_state.current_color[0] = r;
-	gl_state.current_color[1] = g;
-	gl_state.current_color[2] = b;
-	gl_state.current_color[3] = a;
+	RenderContext *ctx = GetCurrentContext();
+	ctx->current_color[0] = r;
+	ctx->current_color[1] = g;
+	ctx->current_color[2] = b;
+	ctx->current_color[3] = a;
 }
 
 GL_API void GL_APIENTRY glDepthRangex(GLfixed n, GLfixed f)
@@ -268,7 +270,8 @@ GL_API void GL_APIENTRY glMultiTexCoord4f(GLenum target, GLfloat s, GLfloat t,
 		glSetError(GL_INVALID_ENUM);
 		return;
 	}
-	GLfloat *coord = gl_state.current_texcoord[target - GL_TEXTURE0];
+	RenderContext *ctx = GetCurrentContext();
+	GLfloat *coord = ctx->current_texcoord[target - GL_TEXTURE0];
 	coord[0] = s;
 	coord[1] = t;
 	coord[2] = r;
@@ -277,9 +280,10 @@ GL_API void GL_APIENTRY glMultiTexCoord4f(GLenum target, GLfloat s, GLfloat t,
 
 GL_API void GL_APIENTRY glNormal3f(GLfloat nx, GLfloat ny, GLfloat nz)
 {
-	gl_state.current_normal[0] = nx;
-	gl_state.current_normal[1] = ny;
-	gl_state.current_normal[2] = nz;
+	RenderContext *ctx = GetCurrentContext();
+	ctx->current_normal[0] = nx;
+	ctx->current_normal[1] = ny;
+	ctx->current_normal[2] = nz;
 }
 
 GL_API void GL_APIENTRY glOrthox(GLfixed l, GLfixed r, GLfixed b, GLfixed t,
@@ -318,12 +322,13 @@ GL_API void GL_APIENTRY glTranslatex(GLfixed x, GLfixed y, GLfixed z)
 
 GL_API void GL_APIENTRY glFinish(void)
 {
+	command_buffer_flush();
 	thread_pool_wait_timeout(1000);
 }
 
 GL_API void GL_APIENTRY glFlush(void)
 {
-	/* no-op in this implementation */
+	command_buffer_flush();
 }
 
 GLenum glGetError(void)

@@ -9,6 +9,7 @@ extern "C" {
 #endif
 
 void pipeline_rasterize_triangle(const Triangle *tri, Framebuffer *fb);
+void pipeline_rasterize_point(const Vertex *v, GLfloat size, Framebuffer *fb);
 
 #define TILE_SIZE 16
 
@@ -17,6 +18,10 @@ typedef struct {
 	uint32_t color;
 	float depth;
 	Framebuffer *fb;
+	GLboolean sprite_mode;
+	GLfloat sprite_cx;
+	GLfloat sprite_cy;
+	GLfloat sprite_size;
 } FragmentTileJob;
 
 typedef struct {

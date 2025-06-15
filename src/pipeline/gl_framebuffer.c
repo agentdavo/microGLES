@@ -5,6 +5,7 @@
 _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "gl_utils.h"
 #include "gl_thread.h"
+#include "command_buffer.h"
 #include "../gl_context.h"
 #include <stdatomic.h>
 #include <stdbool.h>
@@ -105,13 +106,17 @@ static void clear_task_func(void *arg)
 void framebuffer_clear_async(Framebuffer *fb, uint32_t clear_color,
 			     float clear_depth, uint8_t clear_stencil)
 {
+	if (!thread_pool_active()) {
+		framebuffer_clear(fb, clear_color, clear_depth, clear_stencil);
+		return;
+	}
 	ClearTask *task = MT_ALLOC(sizeof(ClearTask), STAGE_FRAMEBUFFER);
 	if (!task) {
 		LOG_ERROR("Failed to allocate ClearTask");
 		return;
 	}
 	*task = (ClearTask){ fb, clear_color, clear_depth, clear_stencil };
-	thread_pool_submit(clear_task_func, task, STAGE_FRAMEBUFFER);
+	command_buffer_record_task(clear_task_func, task, STAGE_FRAMEBUFFER);
 }
 
 void framebuffer_set_pixel(Framebuffer *fb, uint32_t x, uint32_t y,
@@ -122,9 +127,10 @@ void framebuffer_set_pixel(Framebuffer *fb, uint32_t x, uint32_t y,
 	/* TODO: Implement tiled writes for reduced contention */
 	size_t idx = (size_t)y * fb->width + x;
 	RenderContext *ctx = GetCurrentContext();
+	GLboolean stencil_on = ctx->stencil_test_enabled;
 	StencilState *ss = &ctx->stencil;
 	uint8_t stencil = atomic_load(&fb->stencil_buffer[idx]);
-	if (ctx->stencil_test_enabled) {
+	if (stencil_on) {
 		uint8_t masked = stencil & ss->mask;
 		uint8_t ref = ss->ref & ss->mask;
 		bool pass = false;
@@ -202,7 +208,7 @@ void framebuffer_set_pixel(Framebuffer *fb, uint32_t x, uint32_t y,
 			break;
 		}
 	}
-	if (ctx->stencil_test_enabled) {
+	if (stencil_on) {
 		uint8_t new = stencil;
 		GLenum op = depth_pass ? ss->zpass : ss->zfail;
 		switch (op) {
