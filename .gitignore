@@ -56,3 +56,4 @@ dkms.conf
 *.rgba
 !conformance/gold/*.rgba
 build_debug
+docs/release

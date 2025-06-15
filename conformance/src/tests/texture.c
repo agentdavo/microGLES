@@ -1,4 +1,9 @@
 #include "tests.h"
+#include "util.h"
+#include "ktx_loader.h"
+#include "gl_init.h"
+#include "gl_thread.h"
+#include "gl_context.h"
 #include <string.h>
 
 int test_texture_creation(void)
@@ -28,9 +33,26 @@ int test_texture_setup(void)
 	return 1;
 }
 
+int test_load_ktx(void)
+{
+	GLuint tex = 0;
+	KTXError err = load_ktx_texture("gold/red.ktx", &tex);
+	if (err != KTX_SUCCESS) {
+		LOG_ERROR("KTX load error %d", err);
+		return 0;
+	}
+	TextureOES *texObj = context_find_texture(tex);
+	int ok = texObj && texObj->mip_width[0] == 4 &&
+		 texObj->mip_height[0] == 4 &&
+		 texObj->levels[0][0] == 0xFF0000FFu;
+	glDeleteTextures(1, &tex);
+	return ok;
+}
+
 static const struct Test tests[] = {
 	{ "texture_creation", test_texture_creation },
 	{ "texture_setup", test_texture_setup },
+	{ "load_ktx", test_load_ktx },
 };
 
 const struct Test *get_texture_tests(size_t *count)

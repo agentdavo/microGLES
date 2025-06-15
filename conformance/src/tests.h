@@ -34,12 +34,15 @@ struct Test {
 const struct Test *get_state_tests(size_t *count);
 const struct Test *get_matrix_tests(size_t *count);
 const struct Test *get_texture_tests(size_t *count);
+const struct Test *get_texture_cache_tests(size_t *count);
 const struct Test *get_buffer_tests(size_t *count);
 const struct Test *get_draw_tests(size_t *count);
 const struct Test *get_fbo_tests(size_t *count);
 const struct Test *get_extensions_tests(size_t *count);
+const struct Test *get_thread_stress_tests(size_t *count);
 const struct Test *get_autogen_tests(size_t *count);
 const struct Test *get_all_calls_tests(size_t *count);
+const struct Test *get_point_sprite_tests(size_t *count);
 
 #ifdef __cplusplus
 }

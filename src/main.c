@@ -13,8 +13,10 @@
 
 extern const GLubyte *renderer_get_extensions(void);
 
-int main()
+int main(int argc, char **argv)
 {
+	(void)argc;
+	(void)argv;
 	/* Initialize Logger */
 	if (!logger_init("renderer.log", LOG_LEVEL_DEBUG)) {
 		fprintf(stderr, "Failed to initialize logger.\n");

@@ -1,5 +1,9 @@
 #ifndef GL_TYPES_H
 #define GL_TYPES_H
+/**
+ * @file gl_types.h
+ * @brief Core data structures shared across modules.
+ */
 
 #include <GLES/gl.h>
 #include <stdatomic.h>
@@ -13,6 +17,7 @@ typedef struct {
 	GLfloat normal[3];
 	GLfloat color[4];
 	GLfloat texcoord[4];
+	GLfloat point_size;
 } Vertex;
 
 typedef struct {
@@ -47,6 +52,8 @@ typedef struct {
 	atomic_uint version;
 } FogState;
 
+#define MAX_MIPMAP_LEVELS 12
+
 typedef struct TextureOES {
 	GLuint id;
 	GLenum target;
@@ -54,6 +61,9 @@ typedef struct TextureOES {
 	GLenum format; /* original user format */
 	GLsizei width;
 	GLsizei height;
+	GLsizei mip_width[MAX_MIPMAP_LEVELS];
+	GLsizei mip_height[MAX_MIPMAP_LEVELS];
+	uint32_t *levels[MAX_MIPMAP_LEVELS];
 	GLboolean mipmap_supported;
 	GLint current_level;
 	GLint wrap_s;
@@ -62,7 +72,6 @@ typedef struct TextureOES {
 	GLint mag_filter;
 	GLint crop_rect[4];
 	GLint required_units;
-	uint32_t *data;
 	atomic_uint version;
 	atomic_bool active;
 } TextureOES;

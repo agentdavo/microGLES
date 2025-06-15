@@ -1,11 +1,12 @@
 #include "gl_state.h"
+#include "gl_context.h"
 #include "gl_errors.h"
 #include <GLES/gl.h>
 #include <string.h>
 #include "matrix_utils.h"
 
 #define MODELVIEW_STACK_MAX 32
-#define PROJECTION_STACK_MAX 32
+#define PROJECTION_STACK_MAX 2
 #define TEXTURE_STACK_MAX 32
 
 static mat4 *current_matrix_ptr(void)
@@ -19,6 +20,23 @@ static mat4 *current_matrix_ptr(void)
 		return &gl_state.texture_matrix;
 	default:
 		return NULL;
+	}
+}
+
+static void sync_current_matrix(void)
+{
+	switch (gl_state.matrix_mode) {
+	case GL_MODELVIEW:
+		context_update_modelview_matrix(&gl_state.modelview_matrix);
+		break;
+	case GL_PROJECTION:
+		context_update_projection_matrix(&gl_state.projection_matrix);
+		break;
+	case GL_TEXTURE:
+		context_update_texture_matrix(&gl_state.texture_matrix);
+		break;
+	default:
+		break;
 	}
 }
 
@@ -69,6 +87,20 @@ GL_API void GL_APIENTRY glPushMatrix(void)
 	}
 	mat4_copy(&stack[*depth], current_matrix_ptr());
 	(*depth)++;
+	RenderContext *ctx = context_get();
+	switch (gl_state.matrix_mode) {
+	case GL_MODELVIEW:
+		ctx->modelview_stack_depth = *depth;
+		break;
+	case GL_PROJECTION:
+		ctx->projection_stack_depth = *depth;
+		break;
+	case GL_TEXTURE:
+		ctx->texture_stack_depth = *depth;
+		break;
+	default:
+		break;
+	}
 }
 
 GL_API void GL_APIENTRY glPopMatrix(void)
@@ -83,7 +115,22 @@ GL_API void GL_APIENTRY glPopMatrix(void)
 		return;
 	}
 	(*depth)--;
+	RenderContext *ctx = context_get();
+	switch (gl_state.matrix_mode) {
+	case GL_MODELVIEW:
+		ctx->modelview_stack_depth = *depth;
+		break;
+	case GL_PROJECTION:
+		ctx->projection_stack_depth = *depth;
+		break;
+	case GL_TEXTURE:
+		ctx->texture_stack_depth = *depth;
+		break;
+	default:
+		break;
+	}
 	mat4_copy(current_matrix_ptr(), &stack[*depth - 1]);
+	sync_current_matrix();
 }
 
 GL_API void GL_APIENTRY glLoadIdentity(void)
@@ -101,6 +148,7 @@ GL_API void GL_APIENTRY glLoadIdentity(void)
 	default:
 		break;
 	}
+	sync_current_matrix();
 }
 
 GL_API void GL_APIENTRY glLoadMatrixf(const GLfloat *m)
@@ -110,6 +158,7 @@ GL_API void GL_APIENTRY glLoadMatrixf(const GLfloat *m)
 	mat4 mat;
 	memcpy(mat.data, m, sizeof(GLfloat) * 16);
 	mat4_copy(current_matrix_ptr(), &mat);
+	sync_current_matrix();
 }
 
 GL_API void GL_APIENTRY glMultMatrixf(const GLfloat *m)
@@ -120,6 +169,7 @@ GL_API void GL_APIENTRY glMultMatrixf(const GLfloat *m)
 	memcpy(mat.data, m, sizeof(GLfloat) * 16);
 	mat4_multiply(&result, current_matrix_ptr(), &mat);
 	mat4_copy(current_matrix_ptr(), &result);
+	sync_current_matrix();
 }
 
 GL_API void GL_APIENTRY glTranslatef(GLfloat x, GLfloat y, GLfloat z)
@@ -129,6 +179,7 @@ GL_API void GL_APIENTRY glTranslatef(GLfloat x, GLfloat y, GLfloat z)
 	mat4_translate(&trans, x, y, z);
 	mat4_multiply(&result, current_matrix_ptr(), &trans);
 	mat4_copy(current_matrix_ptr(), &result);
+	sync_current_matrix();
 }
 
 GL_API void GL_APIENTRY glRotatef(GLfloat angle, GLfloat x, GLfloat y,
@@ -139,6 +190,7 @@ GL_API void GL_APIENTRY glRotatef(GLfloat angle, GLfloat x, GLfloat y,
 	mat4_rotate_axis(&rot, angle, x, y, z);
 	mat4_multiply(&result, current_matrix_ptr(), &rot);
 	mat4_copy(current_matrix_ptr(), &result);
+	sync_current_matrix();
 }
 
 GL_API void GL_APIENTRY glScalef(GLfloat x, GLfloat y, GLfloat z)
@@ -148,6 +200,7 @@ GL_API void GL_APIENTRY glScalef(GLfloat x, GLfloat y, GLfloat z)
 	mat4_scale(&scale, x, y, z);
 	mat4_multiply(&result, current_matrix_ptr(), &scale);
 	mat4_copy(current_matrix_ptr(), &result);
+	sync_current_matrix();
 }
 
 GL_API void GL_APIENTRY glFrustumf(GLfloat l, GLfloat r, GLfloat b, GLfloat t,
@@ -161,6 +214,7 @@ GL_API void GL_APIENTRY glFrustumf(GLfloat l, GLfloat r, GLfloat b, GLfloat t,
 	mat4_frustum(&frust, l, r, b, t, n, f);
 	mat4_multiply(&result, current_matrix_ptr(), &frust);
 	mat4_copy(current_matrix_ptr(), &result);
+	sync_current_matrix();
 }
 
 GL_API void GL_APIENTRY glOrthof(GLfloat l, GLfloat r, GLfloat b, GLfloat t,
@@ -174,4 +228,5 @@ GL_API void GL_APIENTRY glOrthof(GLfloat l, GLfloat r, GLfloat b, GLfloat t,
 	mat4_orthographic(&ortho, l, r, b, t, n, f);
 	mat4_multiply(&result, current_matrix_ptr(), &ortho);
 	mat4_copy(current_matrix_ptr(), &result);
+	sync_current_matrix();
 }

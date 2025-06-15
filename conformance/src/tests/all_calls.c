@@ -91,11 +91,12 @@ int test_all_entrypoints(void)
 	/* fixed-point fog functions unimplemented */
 	glFrontFace(GL_CCW);
 	glFrustumx(FIX(-1), FIX(1), FIX(-1), FIX(1), FIX(1), FIX(10));
-	GLboolean bval;
-	glGetBooleanv(GL_COLOR_WRITEMASK, &bval);
+	GLboolean bval[4];
+	glGetBooleanv(GL_COLOR_WRITEMASK, bval);
 	glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &idata);
 	/* fixed-point getters unimplemented */
-	glGetIntegerv(GL_VIEWPORT, &idata);
+	GLint vp[4];
+	glGetIntegerv(GL_VIEWPORT, vp);
 	/* fixed-point light/material getters unimplemented */
 	glGetPointerv(GL_VERTEX_ARRAY_POINTER, (void **)&eqx);
 	/* fixed-point tex env/parameter getters unimplemented */
