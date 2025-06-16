@@ -83,6 +83,10 @@ void framebuffer_destroy(Framebuffer *fb)
 {
 	if (!fb)
 		return;
+	if (thread_pool_active()) {
+		command_buffer_flush();
+		thread_pool_wait();
+	}
 	size_t pixels = (size_t)fb->width * fb->height;
 	tracked_free((void *)fb->color_buffer,
 		     pixels * sizeof(_Atomic uint32_t));
