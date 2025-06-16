@@ -235,33 +235,25 @@ static int worker_thread_main(void *arg)
 			idle_loops = 0;
 			continue;
 		}
-		if (profiling) {
+		if (profiling)
 			g_thread_profile.stages[STAGE_VERTEX].idle_cycles +=
 				get_cycles() - start_cycles;
-			mtx_lock(&g_wakeup_mutex);
-			uint64_t lh = atomic_load_explicit(
-				&local_queue->head, memory_order_relaxed);
-			uint64_t lt = atomic_load_explicit(
-				&local_queue->tail, memory_order_acquire);
-			uint64_t gh = atomic_load_explicit(
-				&g_global_head, memory_order_relaxed);
-			uint64_t gt = atomic_load_explicit(
-				&g_global_tail, memory_order_acquire);
-			if (lh >= lt && gh >= gt &&
-			    !atomic_load_explicit(&g_shutdown_flag,
-						  memory_order_relaxed))
-				cnd_wait(&g_wakeup, &g_wakeup_mutex);
-			mtx_unlock(&g_wakeup_mutex);
-			idle_loops = 0;
-		} else {
-			idle_loops++;
-			if (idle_loops > 100) {
-				struct timespec ts = { 0, 50 };
-				thrd_sleep(&ts, NULL);
-			} else {
-				thrd_yield();
-			}
-		}
+		idle_loops++;
+		mtx_lock(&g_wakeup_mutex);
+		uint64_t lh = atomic_load_explicit(&local_queue->head,
+						   memory_order_relaxed);
+		uint64_t lt = atomic_load_explicit(&local_queue->tail,
+						   memory_order_acquire);
+		uint64_t gh = atomic_load_explicit(&g_global_head,
+						   memory_order_relaxed);
+		uint64_t gt = atomic_load_explicit(&g_global_tail,
+						   memory_order_acquire);
+		if (lh >= lt && gh >= gt &&
+		    !atomic_load_explicit(&g_shutdown_flag,
+					  memory_order_relaxed))
+			cnd_wait(&g_wakeup, &g_wakeup_mutex);
+		mtx_unlock(&g_wakeup_mutex);
+		idle_loops = 0;
 	}
 	for (int s = 0; s < STAGE_COUNT; ++s)
 		g_local_queues[thread_id].profile_data.stages[s] =
