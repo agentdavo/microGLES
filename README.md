@@ -59,7 +59,7 @@ cmake --build build
 ./build/bin/renderer_conformance
 ```
 
-To gather per-stage timings at runtime, pass `--profile` to the benchmark or conformance executables. The stress_test program also accepts `--profile` for analyzing the million-cube scene. The command buffer recorder is always enabled, so no extra build flags are required.
+To gather per-stage timings at runtime, pass `--profile` to the benchmark or conformance executables. The stress_test program also accepts `--profile` for analyzing the million-cube scene. Pass `--stream-fb` to stress_test to pipe the framebuffer as raw RGBA to stdout for tools like `ffmpeg`. Use `--x11-window --width=640 --height=480` to display the framebuffer in an X11 window. The command buffer recorder is always enabled, so no extra build flags are required.
 
 ### Debug / Sanitizer
 
@@ -146,6 +146,31 @@ int main(void)
 
 Compile with `-DENABLE_PROFILE` or run any program with `--profile` to record per-stage timings. Without the flag, tasks still execute but no profiling counters are recorded.
 
+## Profiling
+
+microGLES includes a lightweight profiler integrated into the thread pool. When
+profiling is enabled (either by compiling with `-DENABLE_PROFILE` or passing
+`--profile` on the command line) each worker thread measures the cycle count
+spent in every pipeline stage while processing a command buffer. At shutdown
+`thread_profile_report()` prints a table showing task counts, average cycles per
+task and cache statistics for the vertex, primitive, raster, fragment and
+framebuffer stages. The data pinpoints bottlenecks—e.g. excessive fragment time
+may suggest better texture caching or smaller tile size—allowing refinement of
+math routines and thread counts.
+
+### Linking as a Static Library
+
+Build only the library if you want to embed microGLES in another project:
+
+```bash
+cmake -S . -B build
+cmake --build build --target renderer_lib
+```
+
+Then link `build/lib/librenderer_lib.a` and include the `src/` headers. Use the
+initialization helpers from the Quick Start section (e.g., `context_create`,
+`framebuffer_create`). When compiled with X11, running an app with
+`--x11-window` will display the framebuffer.
 ---
 
 ## Internal Pipeline

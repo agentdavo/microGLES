@@ -4,19 +4,35 @@
 #include <GLES/glext.h>
 #include "gl_api_fbo.h"
 #include "gl_state.h"
+#ifdef HAVE_X11
+#include "x11_window.h"
+#endif
 #include "gl_init.h"
 #include "gl_types.h"
 #include "gl_utils.h"
 #include "gl_logger.h"
 #include "gl_memory_tracker.h"
 #include <stdio.h>
+#include <unistd.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 
 extern const GLubyte *renderer_get_extensions(void);
 
 int main(int argc, char **argv)
 {
-	(void)argc;
-	(void)argv;
+	bool use_x11 = false;
+	unsigned win_w = 256;
+	unsigned win_h = 256;
+	for (int i = 1; i < argc; ++i) {
+		if (strcmp(argv[i], "--x11-window") == 0)
+			use_x11 = true;
+		else if (strncmp(argv[i], "--width=", 8) == 0)
+			win_w = (unsigned)atoi(argv[i] + 8);
+		else if (strncmp(argv[i], "--height=", 9) == 0)
+			win_h = (unsigned)atoi(argv[i] + 9);
+	}
 	/* Initialize Logger */
 	if (!logger_init("renderer.log", LOG_LEVEL_DEBUG)) {
 		fprintf(stderr, "Failed to initialize logger.\n");
@@ -31,7 +47,7 @@ int main(int argc, char **argv)
 
 	/* Initialize GLState */
 	InitGLState(&gl_state);
-	Framebuffer *display = GL_init_with_framebuffer(256, 256);
+	Framebuffer *display = GL_init_with_framebuffer(win_w, win_h);
 	if (!display) {
 		LOG_FATAL("Failed to create framebuffer");
 		return -1;
@@ -74,6 +90,19 @@ int main(int argc, char **argv)
 
 	/* Print memory stats */
 	memory_tracker_report();
+
+#ifdef HAVE_X11
+	X11Window *win = NULL;
+	if (use_x11)
+		win = x11_window_create(win_w, win_h, "microGLES");
+	if (win) {
+		x11_window_show_image(win, display);
+		sleep(2);
+		x11_window_destroy(win);
+	}
+#else
+	(void)use_x11;
+#endif
 
 	/* Your renderer operations */
 

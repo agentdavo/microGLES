@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <time.h>
 #include "pipeline/gl_framebuffer.h"
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,7 +36,8 @@ void run_milestone2(Framebuffer *fb, BenchmarkResult *result);
 void run_texture_stream(Framebuffer *fb, BenchmarkResult *result);
 void run_toggle_blend(Framebuffer *fb, BenchmarkResult *result);
 void run_fill_rate_suite(Framebuffer *fb, BenchmarkResult results[3]);
-void run_stress_test(Framebuffer *fb, BenchmarkResult *result);
+void run_stress_test(Framebuffer *fb, BenchmarkResult *result, bool stream_fb,
+		     int frames);
 
 #ifdef __cplusplus
 }

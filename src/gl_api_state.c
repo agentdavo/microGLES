@@ -2,11 +2,14 @@
 #include "gl_context.h"
 #include "gl_state_helpers.h"
 #include "gl_errors.h"
+#include "gl_thread.h"
+#include "function_profile.h"
 #include <GLES/gl.h>
 #include <string.h>
 
 GL_API void GL_APIENTRY glEnable(GLenum cap)
 {
+	PROFILE_START("glEnable");
 	switch (cap) {
 	case GL_ALPHA_TEST:
 		GetCurrentContext()->alpha_test.enabled = GL_TRUE;
@@ -149,10 +152,12 @@ GL_API void GL_APIENTRY glEnable(GLenum cap)
 		glSetError(GL_INVALID_ENUM);
 		break;
 	}
+	PROFILE_END("glEnable");
 }
 
 GL_API void GL_APIENTRY glDisable(GLenum cap)
 {
+	PROFILE_START("glDisable");
 	switch (cap) {
 	case GL_ALPHA_TEST:
 		GetCurrentContext()->alpha_test.enabled = GL_FALSE;
@@ -297,6 +302,7 @@ GL_API void GL_APIENTRY glDisable(GLenum cap)
 		glSetError(GL_INVALID_ENUM);
 		break;
 	}
+	PROFILE_END("glDisable");
 }
 
 GLboolean glIsEnabled(GLenum cap)

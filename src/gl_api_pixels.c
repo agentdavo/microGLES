@@ -3,15 +3,19 @@
 #include "gl_errors.h"
 #include "pipeline/gl_framebuffer.h"
 #include "gl_utils.h"
+#include "gl_thread.h"
+#include "function_profile.h"
 #include <GLES/gl.h>
 #include <string.h>
 
 GL_API void GL_APIENTRY glClear(GLbitfield mask)
 {
+	PROFILE_START("glClear");
 	const GLbitfield valid = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
 				 GL_STENCIL_BUFFER_BIT;
 	if (mask & ~valid) {
 		glSetError(GL_INVALID_VALUE);
+		PROFILE_END("glClear");
 		return;
 	}
 	Framebuffer *fb = NULL;
@@ -26,6 +30,7 @@ GL_API void GL_APIENTRY glClear(GLbitfield mask)
 		framebuffer_clear_async(fb, color, gl_state.clear_depth,
 					(uint8_t)gl_state.clear_stencil);
 	}
+	PROFILE_END("glClear");
 }
 
 GL_API void GL_APIENTRY glReadPixels(GLint x, GLint y, GLsizei width,
@@ -87,10 +92,12 @@ GL_API void GL_APIENTRY glDepthRangef(GLfloat n, GLfloat f)
 GL_API void GL_APIENTRY glClearColor(GLfloat red, GLfloat green, GLfloat blue,
 				     GLfloat alpha)
 {
+	PROFILE_START("glClearColor");
 	gl_state.clear_color[0] = red;
 	gl_state.clear_color[1] = green;
 	gl_state.clear_color[2] = blue;
 	gl_state.clear_color[3] = alpha;
+	PROFILE_END("glClearColor");
 }
 
 GL_API void GL_APIENTRY glClearColorx(GLfixed red, GLfixed green, GLfixed blue,

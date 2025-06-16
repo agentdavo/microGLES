@@ -38,6 +38,8 @@ bool thread_pool_active(void);
 void thread_profile_start(void);
 void thread_profile_stop(void);
 void thread_profile_report(void);
+bool thread_profile_is_enabled(void);
+uint64_t thread_get_cycles(void);
 
 /* texture cache helpers */
 texture_cache_t *thread_get_texture_cache(void);

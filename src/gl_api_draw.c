@@ -6,6 +6,8 @@
 #include "pipeline/gl_vertex.h"
 #include "pipeline/gl_raster.h"
 #include "matrix_utils.h"
+#include "gl_thread.h"
+#include "function_profile.h"
 #include <GLES/gl.h>
 #include <stdatomic.h>
 
@@ -23,6 +25,7 @@ static BufferObject *find_buffer(GLuint id)
 
 GL_API void GL_APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count)
 {
+	PROFILE_START("glDrawArrays");
 	switch (mode) {
 	case GL_POINTS:
 	case GL_LINE_STRIP:
@@ -34,11 +37,13 @@ GL_API void GL_APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count)
 		break;
 	default:
 		glSetError(GL_INVALID_ENUM);
+		PROFILE_END("glDrawArrays");
 		return;
 	}
 
 	if (first < 0 || count < 0) {
 		glSetError(GL_INVALID_VALUE);
+		PROFILE_END("glDrawArrays");
 		return;
 	}
 	RenderContext *ctx = GetCurrentContext();
@@ -57,6 +62,7 @@ GL_API void GL_APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count)
 	}
 	if (!ctx->vertex_array.enabled) {
 		glSetError(GL_INVALID_OPERATION);
+		PROFILE_END("glDrawArrays");
 		return;
 	}
 
@@ -65,8 +71,10 @@ GL_API void GL_APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count)
 		fb = gl_state.bound_framebuffer->fb;
 	if (!fb)
 		fb = GL_get_default_framebuffer();
-	if (!fb)
+	if (!fb) {
+		PROFILE_END("glDrawArrays");
 		return;
+	}
 
 	GLsizei vstride =
 		ctx->vertex_array.stride ?
@@ -215,6 +223,7 @@ GL_API void GL_APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count)
 GL_API void GL_APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type,
 				       const void *indices)
 {
+	PROFILE_START("glDrawElements");
 	switch (mode) {
 	case GL_POINTS:
 	case GL_LINE_STRIP:
@@ -226,21 +235,25 @@ GL_API void GL_APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type,
 		break;
 	default:
 		glSetError(GL_INVALID_ENUM);
+		PROFILE_END("glDrawElements");
 		return;
 	}
 
 	if (count < 0) {
 		glSetError(GL_INVALID_VALUE);
+		PROFILE_END("glDrawElements");
 		return;
 	}
 
 	if (type != GL_UNSIGNED_BYTE && type != GL_UNSIGNED_SHORT) {
 		glSetError(GL_INVALID_ENUM);
+		PROFILE_END("glDrawElements");
 		return;
 	}
 
 	if (!indices && gl_state.element_array_buffer_binding == 0) {
 		glSetError(GL_INVALID_VALUE);
+		PROFILE_END("glDrawElements");
 		return;
 	}
 
@@ -251,6 +264,7 @@ GL_API void GL_APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type,
 			find_buffer(gl_state.element_array_buffer_binding);
 		if (!obj || !obj->data) {
 			glSetError(GL_INVALID_OPERATION);
+			PROFILE_END("glDrawElements");
 			return;
 		}
 		size_t offset = (size_t)indices;
@@ -279,4 +293,5 @@ GL_API void GL_APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type,
 				     (GLuint)u16_indices[i];
 		glDrawArrays(mode, (GLint)idx, 1);
 	}
+	PROFILE_END("glDrawElements");
 }

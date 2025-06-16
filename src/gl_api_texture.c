@@ -2,6 +2,8 @@
 #include "gl_context.h"
 #include "gl_errors.h"
 #include "gl_utils.h"
+#include "gl_thread.h"
+#include "function_profile.h"
 #include <GLES/gl.h>
 #include <string.h>
 
@@ -12,13 +14,16 @@ GL_API void GL_APIENTRY glActiveTexture(GLenum texture)
 
 GL_API void GL_APIENTRY glBindTexture(GLenum target, GLuint texture)
 {
+	PROFILE_START("glBindTexture");
 	if (target != GL_TEXTURE_2D && target != GL_TEXTURE_EXTERNAL_OES) {
 		glSetError(GL_INVALID_ENUM);
+		PROFILE_END("glBindTexture");
 		return;
 	}
 	RenderContext *ctx = GetCurrentContext();
 	context_bind_texture(ctx->active_texture - GL_TEXTURE0, target,
 			     texture);
+	PROFILE_END("glBindTexture");
 }
 
 GL_API void GL_APIENTRY glGenTextures(GLsizei n, GLuint *textures)
@@ -87,9 +92,11 @@ GL_API void GL_APIENTRY glTexImage2D(GLenum target, GLint level,
 				     GLenum format, GLenum type,
 				     const void *pixels)
 {
+	PROFILE_START("glTexImage2D");
 	(void)border;
 	context_tex_image_2d(target, level, internalformat, width, height,
 			     format, type, pixels);
+	PROFILE_END("glTexImage2D");
 }
 
 GL_API void GL_APIENTRY glTexSubImage2D(GLenum target, GLint level,
@@ -98,8 +105,10 @@ GL_API void GL_APIENTRY glTexSubImage2D(GLenum target, GLint level,
 					GLenum format, GLenum type,
 					const void *pixels)
 {
+	PROFILE_START("glTexSubImage2D");
 	context_tex_sub_image_2d(target, level, xoffset, yoffset, width, height,
 				 format, type, pixels);
+	PROFILE_END("glTexSubImage2D");
 }
 GL_API void GL_APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param)
 {

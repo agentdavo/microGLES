@@ -12,9 +12,13 @@
 int main(int argc, char **argv)
 {
 	bool profile = false;
-	for (int i = 1; i < argc; ++i)
+	bool stream_fb = false;
+	for (int i = 1; i < argc; ++i) {
 		if (strcmp(argv[i], "--profile") == 0)
 			profile = true;
+		else if (strcmp(argv[i], "--stream-fb") == 0)
+			stream_fb = true;
+	}
 	if (!logger_init("stress_test.log", LOG_LEVEL_INFO)) {
 		fprintf(stderr, "Failed to initialize logger.\n");
 		return -1;
@@ -35,7 +39,7 @@ int main(int argc, char **argv)
 	}
 
 	BenchmarkResult result;
-	run_stress_test(fb, &result);
+	run_stress_test(fb, &result, stream_fb, 60);
 	printf("Stress Test: %.2f FPS\n", result.fps);
 
 	thread_pool_wait();

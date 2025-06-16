@@ -37,8 +37,10 @@ set(SOURCE_FILES
     src/gl_context.c
     src/gl_thread.c
     src/texture_cache.c
+    src/function_profile.c
     src/ktx_loader.c
     src/command_buffer.c
+    src/x11_window.c
     src/gl_init.c
     src/pipeline/gl_framebuffer.c
     src/pipeline/gl_vertex.c
@@ -72,6 +74,7 @@ set(HEADER_FILES
     src/ktx_loader.h
     src/command_buffer.h
     src/gl_init.h
+    src/x11_window.h
 )
 
 # Create executable
@@ -98,6 +101,12 @@ endif()
 # Find pthread
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
+find_package(X11)
+if(X11_FOUND)
+    target_compile_definitions(renderer_lib PUBLIC HAVE_X11)
+    target_include_directories(renderer_lib PUBLIC ${X11_INCLUDE_DIR})
+    list(APPEND EXTRA_LIBS ${X11_LIBRARIES})
+endif()
 
 # Link libraries
 target_link_libraries(renderer PRIVATE
@@ -106,6 +115,7 @@ target_link_libraries(renderer PRIVATE
     ${EGL_LIBRARY}
     Threads::Threads
     m # Math library
+    ${EXTRA_LIBS}
 )
 
 # Set output directories
