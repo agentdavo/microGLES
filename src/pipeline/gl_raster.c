@@ -1,6 +1,7 @@
 #include "gl_raster.h"
 #include "gl_fragment.h"
 #include "../gl_logger.h"
+#include "../gl_context.h"
 #define PIPELINE_USE_GLSTATE 0
 _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "../gl_memory_tracker.h"
@@ -44,6 +45,31 @@ void pipeline_rasterize_triangle(const Triangle *tri, Framebuffer *fb)
 	int imaxy = (int)maxy;
 	if (imaxy >= (int)fb->height)
 		imaxy = fb->height - 1;
+	RenderContext *ctx = GetCurrentContext();
+	if (ctx->scissor_test_enabled) {
+		int sx = ctx->scissor_box[0];
+		int sy = ctx->scissor_box[1];
+		int sx1 = sx + ctx->scissor_box[2] - 1;
+		int sy1 = sy + ctx->scissor_box[3] - 1;
+		if (sx < 0)
+			sx = 0;
+		if (sy < 0)
+			sy = 0;
+		if (sx1 >= (int)fb->width)
+			sx1 = fb->width - 1;
+		if (sy1 >= (int)fb->height)
+			sy1 = fb->height - 1;
+		if (iminx < sx)
+			iminx = sx;
+		if (iminy < sy)
+			iminy = sy;
+		if (imaxx > sx1)
+			imaxx = sx1;
+		if (imaxy > sy1)
+			imaxy = sy1;
+	}
+	if (iminx > imaxx || iminy > imaxy)
+		return;
 	uint32_t color = pack_color(tri->v0.color);
 	for (int ty = iminy; ty <= imaxy; ty += TILE_SIZE) {
 		for (int tx = iminx; tx <= imaxx; tx += TILE_SIZE) {
@@ -86,6 +112,31 @@ void pipeline_rasterize_point(const Vertex *v, GLfloat size, Framebuffer *fb)
 		x1 = fb->width - 1;
 	if (y1 >= (int)fb->height)
 		y1 = fb->height - 1;
+	RenderContext *ctx = GetCurrentContext();
+	if (ctx->scissor_test_enabled) {
+		int sx = ctx->scissor_box[0];
+		int sy = ctx->scissor_box[1];
+		int sx1 = sx + ctx->scissor_box[2] - 1;
+		int sy1 = sy + ctx->scissor_box[3] - 1;
+		if (sx < 0)
+			sx = 0;
+		if (sy < 0)
+			sy = 0;
+		if (sx1 >= (int)fb->width)
+			sx1 = fb->width - 1;
+		if (sy1 >= (int)fb->height)
+			sy1 = fb->height - 1;
+		if (x0 < sx)
+			x0 = sx;
+		if (y0 < sy)
+			y0 = sy;
+		if (x1 > sx1)
+			x1 = sx1;
+		if (y1 > sy1)
+			y1 = sy1;
+	}
+	if (x0 > x1 || y0 > y1)
+		return;
 	uint32_t color = pack_color(v->color);
 	for (int ty = y0; ty <= y1; ty += TILE_SIZE) {
 		for (int tx = x0; tx <= x1; tx += TILE_SIZE) {

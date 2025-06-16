@@ -23,6 +23,8 @@ The following table summarizes the key tests executed via the
 | Call glLogicOp           | Pass |
 | All entrypoints          | Pass |
 
+The rasterizer now performs scissor clipping during fragment generation.
+
 ## Function Coverage
 
 | Function | Test |

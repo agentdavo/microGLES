@@ -25,6 +25,8 @@ No SIMD intrinsics or platform APIs are required; only a C11 toolchain is needed
 | **Diagnostics**     | ✔ Early-init memory tracker, async logger, built-in perf counters    |
 | **Tooling**         | ✔ Release + ASAN builds, style check (`clang-format`), benchmarks, conformance harness |
 
+Note: Rasterization now discards fragments outside the scissor box when `GL_SCISSOR_TEST` is enabled.
+
 ---
 
 ## Project Layout
