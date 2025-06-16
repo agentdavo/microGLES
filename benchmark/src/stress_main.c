@@ -27,7 +27,10 @@ int main(int argc, char **argv)
 		LOG_FATAL("Failed to initialize Memory Tracker.");
 		return -1;
 	}
-	thread_pool_init_from_env();
+	if (!thread_pool_init_from_env()) {
+		LOG_FATAL("Failed to init thread pool");
+		return -1;
+	}
 	command_buffer_init();
 	if (profile)
 		thread_profile_start();
