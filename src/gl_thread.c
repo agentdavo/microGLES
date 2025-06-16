@@ -8,6 +8,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 #include "texture_cache.h"
 
 #define MAX_TASKS 256
@@ -351,14 +356,28 @@ fail:
 int thread_pool_init_from_env(void)
 {
 	const char *var = getenv("MICROGLES_THREADS");
-	long val = 4;
+	long val = -1;
 	if (var && *var) {
 		char *end;
 		long tmp = strtol(var, &end, 10);
 		if (*end == '\0' && tmp > 0 && tmp <= 64)
 			val = tmp;
 	}
-	return thread_pool_init((int)val);
+	if (val <= 0) {
+#ifdef _WIN32
+		SYSTEM_INFO info;
+		GetSystemInfo(&info);
+		val = info.dwNumberOfProcessors;
+#elif defined(_SC_NPROCESSORS_ONLN)
+		val = sysconf(_SC_NPROCESSORS_ONLN);
+#endif
+	}
+	if (val <= 0)
+		val = 1;
+	if (val > 64)
+		val = 64;
+	thread_pool_init((int)val);
+	return (int)val;
 }
 
 void thread_pool_submit(task_function_t func, void *task_data,
