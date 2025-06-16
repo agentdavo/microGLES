@@ -112,7 +112,10 @@ int main(void)
     /* Infrastructure */
     logger_init(NULL, LOG_LEVEL_INFO);
     memory_tracker_init();
-    thread_pool_init_from_env(); /* uses MICROGLES_THREADS or 4 */
+    if (!thread_pool_init_from_env()) {
+        LOG_FATAL("Thread pool init failed");
+        return -1;
+    }
 #ifdef ENABLE_PROFILE
     thread_profile_start(); /* Optional: per-stage timings */
 #endif

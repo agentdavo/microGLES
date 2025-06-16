@@ -262,12 +262,31 @@ static int worker_thread_main(void *arg)
 	return 0;
 }
 
-void thread_pool_init(int num_threads)
+int thread_pool_init(int num_threads)
 {
 	g_num_threads = num_threads > 0 ? num_threads : 1;
+
 	g_worker_threads = malloc(sizeof(thrd_t) * g_num_threads);
+	if (!g_worker_threads) {
+		LOG_ERROR("Failed to allocate worker thread handles");
+		return 0;
+	}
+
 	g_local_queues = calloc(g_num_threads, sizeof(task_queue_t));
+	if (!g_local_queues) {
+		LOG_ERROR("Failed to allocate local queues");
+		free(g_worker_threads);
+		return 0;
+	}
+
 	g_texture_caches = calloc(g_num_threads, sizeof(texture_cache_t));
+	if (!g_texture_caches) {
+		LOG_ERROR("Failed to allocate texture caches");
+		free(g_local_queues);
+		free(g_worker_threads);
+		return 0;
+	}
+
 	mtx_init(&g_wakeup_mutex, mtx_plain);
 	cnd_init(&g_wakeup);
 	for (int i = 0; i < g_num_threads; ++i)
@@ -276,13 +295,40 @@ void thread_pool_init(int num_threads)
 	atomic_init(&g_global_tail, 0);
 	atomic_store(&g_shutdown_flag, false);
 	atomic_store(&g_profiling_enabled, false);
+
+	int started = 0;
 	for (int i = 0; i < g_num_threads; i++) {
 		atomic_init(&g_local_queues[i].head, 0);
 		atomic_init(&g_local_queues[i].tail, 0);
 		int *tid = malloc(sizeof(int));
+		if (!tid) {
+			LOG_ERROR("Failed to allocate thread arg %d", i);
+			goto fail;
+		}
 		*tid = i;
-		thrd_create(&g_worker_threads[i], worker_thread_main, tid);
+		if (thrd_create(&g_worker_threads[i], worker_thread_main,
+				tid) != thrd_success) {
+			LOG_ERROR("Failed to create worker thread %d", i);
+			free(tid);
+			goto fail;
+		}
+		started++;
 	}
+	return g_num_threads;
+
+fail:
+	atomic_store(&g_shutdown_flag, true);
+	mtx_lock(&g_wakeup_mutex);
+	cnd_broadcast(&g_wakeup);
+	mtx_unlock(&g_wakeup_mutex);
+	for (int j = 0; j < started; ++j)
+		thrd_join(g_worker_threads[j], NULL);
+	cnd_destroy(&g_wakeup);
+	mtx_destroy(&g_wakeup_mutex);
+	free(g_texture_caches);
+	free(g_local_queues);
+	free(g_worker_threads);
+	return 0;
 }
 
 int thread_pool_init_from_env(void)
@@ -295,8 +341,7 @@ int thread_pool_init_from_env(void)
 		if (*end == '\0' && tmp > 0 && tmp <= 64)
 			val = tmp;
 	}
-	thread_pool_init((int)val);
-	return (int)val;
+	return thread_pool_init((int)val);
 }
 
 void thread_pool_submit(task_function_t func, void *task_data,
