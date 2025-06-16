@@ -43,10 +43,10 @@ static const GLubyte cube_indices[36] = {
 	20, 21, 22, 20, 22, 23 /* Bottom */
 };
 
-void run_stress_test(Framebuffer *fb, BenchmarkResult *result)
+void run_stress_test(Framebuffer *fb, BenchmarkResult *result, bool stream_fb,
+		     int frames)
 {
 	const int cube_count = 1000000;
-	const int frames = 1;
 	const int face_pixels = 64 * 64; /* approximate pixels per face */
 	GLuint tex[2];
 	GLubyte *pix = tracked_malloc(face_pixels * 4);
@@ -96,6 +96,10 @@ void run_stress_test(Framebuffer *fb, BenchmarkResult *result)
 			glBindTexture(GL_TEXTURE_2D, tex[i & 1]);
 			glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_BYTE,
 				       cube_indices);
+		}
+		if (stream_fb) {
+			framebuffer_stream_rgba(fb, stdout);
+			fflush(stdout);
 		}
 	}
 	clock_t end = clock();

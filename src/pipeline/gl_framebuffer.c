@@ -347,3 +347,23 @@ int framebuffer_write_rgba(const Framebuffer *fb, const char *path)
 	LOG_INFO("Wrote %s", path);
 	return 1;
 }
+
+int framebuffer_stream_rgba(const Framebuffer *fb, FILE *out)
+{
+	int width = (int)fb->width;
+	int height = (int)fb->height;
+	for (int y = 0; y < height; ++y) {
+		for (int x = 0; x < width; ++x) {
+			uint32_t pixel = atomic_load(
+				&fb->color_buffer[(size_t)y * fb->width + x]);
+			unsigned char bytes[4] = {
+				(unsigned char)((pixel >> 16) & 0xFF),
+				(unsigned char)((pixel >> 8) & 0xFF),
+				(unsigned char)(pixel & 0xFF),
+				(unsigned char)((pixel >> 24) & 0xFF)
+			};
+			fwrite(bytes, 1, 4, out);
+		}
+	}
+	return ferror(out) ? 0 : 1;
+}
