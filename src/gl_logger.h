@@ -1,5 +1,9 @@
 #ifndef GL_LOGGER_H
 #define GL_LOGGER_H
+/**
+ * @file gl_logger.h
+ * @brief Simple logging utilities for the renderer.
+ */
 
 #include <stdarg.h>
 #include <threads.h>

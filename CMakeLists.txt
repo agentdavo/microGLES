@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 3.10)
 # Project name and version
 project(OpenGLES_Renderer VERSION 1.0 LANGUAGES C)
 
+
 # Set C standard
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -35,6 +36,11 @@ set(SOURCE_FILES
     src/extensions/gl_ext_OES_blend_eq_sep.c
     src/gl_context.c
     src/gl_thread.c
+    src/texture_cache.c
+    src/function_profile.c
+    src/ktx_loader.c
+    src/command_buffer.c
+    src/x11_window.c
     src/gl_init.c
     src/pipeline/gl_framebuffer.c
     src/pipeline/gl_vertex.c
@@ -64,7 +70,11 @@ set(HEADER_FILES
     src/gl_logger.h
     src/gl_context.h
     src/gl_thread.h
+    src/texture_cache.h
+    src/ktx_loader.h
+    src/command_buffer.h
     src/gl_init.h
+    src/x11_window.h
 )
 
 # Create executable
@@ -91,6 +101,12 @@ endif()
 # Find pthread
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
+find_package(X11)
+if(X11_FOUND)
+    target_compile_definitions(renderer_lib PUBLIC HAVE_X11)
+    target_include_directories(renderer_lib PUBLIC ${X11_INCLUDE_DIR})
+    list(APPEND EXTRA_LIBS ${X11_LIBRARIES})
+endif()
 
 # Link libraries
 target_link_libraries(renderer PRIVATE
@@ -99,6 +115,7 @@ target_link_libraries(renderer PRIVATE
     ${EGL_LIBRARY}
     Threads::Threads
     m # Math library
+    ${EXTRA_LIBS}
 )
 
 # Set output directories
@@ -111,6 +128,8 @@ set_target_properties(renderer PROPERTIES
 # Optional: Enable warnings and optimizations
 target_compile_options(renderer_lib PRIVATE -Wall -Wextra -Wpedantic -O2)
 target_compile_options(renderer PRIVATE -Wall -Wextra -Wpedantic -O2)
+target_compile_definitions(renderer_lib PUBLIC MICROGLES_COMMAND_BUFFER)
+target_compile_definitions(renderer PUBLIC MICROGLES_COMMAND_BUFFER)
 
 # Optional: Create logs directory if it doesn't exist
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/logs)
@@ -146,3 +165,39 @@ add_subdirectory(conformance)
 
 enable_testing()
 add_test(NAME conformance COMMAND renderer_conformance)
+
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+    set(DOXYGEN_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/docs/release")
+    configure_file(${CMAKE_SOURCE_DIR}/docs/Doxyfile.in
+                   ${CMAKE_BINARY_DIR}/Doxyfile @ONLY)
+    add_custom_target(doc
+        COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Generate API documentation with Doxygen")
+endif()
+
+# RISC-V cross compilation tasks
+add_custom_target(riscv32_build
+    COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B build_rv32 -DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/cmake/riscv32-toolchain.cmake -DENABLE_PROFILE=ON
+    COMMAND ${CMAKE_COMMAND} --build build_rv32 --target benchmark
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Build benchmark for RISC-V 32")
+
+add_custom_target(riscv64_build
+    COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B build_rv64 -DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/cmake/riscv64-toolchain.cmake -DENABLE_PROFILE=ON
+    COMMAND ${CMAKE_COMMAND} --build build_rv64 --target benchmark
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Build benchmark for RISC-V 64")
+
+add_custom_target(run_rv32
+    COMMAND qemu-riscv32 ${CMAKE_SOURCE_DIR}/build_rv32/bin/benchmark > ${CMAKE_SOURCE_DIR}/benchmark/RV32.md || true
+    DEPENDS riscv32_build
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Run RISC-V32 benchmark via QEMU")
+
+add_custom_target(run_rv64
+    COMMAND qemu-riscv64 ${CMAKE_SOURCE_DIR}/build_rv64/bin/benchmark > ${CMAKE_SOURCE_DIR}/benchmark/RV64.md || true
+    DEPENDS riscv64_build
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Run RISC-V64 benchmark via QEMU")

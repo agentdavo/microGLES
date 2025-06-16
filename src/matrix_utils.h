@@ -2,6 +2,10 @@
 
 #ifndef MATRIX_UTILS_H
 #define MATRIX_UTILS_H
+/**
+ * @file matrix_utils.h
+ * @brief Helper math routines for matrix operations.
+ */
 
 #include <GLES/gl.h>
 #include <GLES/glext.h>
