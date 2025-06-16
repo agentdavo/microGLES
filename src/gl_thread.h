@@ -26,6 +26,7 @@ typedef enum {
 typedef void (*task_function_t)(void *task_data);
 
 void thread_pool_init(int num_threads);
+int thread_pool_init_from_env(void);
 void thread_pool_submit(task_function_t func, void *task_data,
 			stage_tag_t stage);
 void thread_pool_wait(void);

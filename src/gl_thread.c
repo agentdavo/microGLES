@@ -271,6 +271,20 @@ void thread_pool_init(int num_threads)
 	}
 }
 
+int thread_pool_init_from_env(void)
+{
+	const char *var = getenv("MICROGLES_THREADS");
+	long val = 4;
+	if (var && *var) {
+		char *end;
+		long tmp = strtol(var, &end, 10);
+		if (*end == '\0' && tmp > 0 && tmp <= 64)
+			val = tmp;
+	}
+	thread_pool_init((int)val);
+	return (int)val;
+}
+
 void thread_pool_submit(task_function_t func, void *task_data,
 			stage_tag_t stage)
 {
