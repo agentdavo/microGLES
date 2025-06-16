@@ -12,10 +12,11 @@ extern "C" {
 typedef struct {
 	Vertex in[3];
 	Framebuffer *fb;
+	GLint viewport[4];
 } VertexJob;
 
 void pipeline_transform_vertex(Vertex *dst, const Vertex *src, const mat4 *mvp,
-			       const mat4 *normal_mat);
+			       const mat4 *normal_mat, const GLint viewport[4]);
 void process_vertex_job(void *task_data);
 
 #ifdef __cplusplus

@@ -8,8 +8,10 @@
 extern "C" {
 #endif
 
-void pipeline_rasterize_triangle(const Triangle *tri, Framebuffer *fb);
-void pipeline_rasterize_point(const Vertex *v, GLfloat size, Framebuffer *fb);
+void pipeline_rasterize_triangle(const Triangle *tri, const GLint viewport[4],
+				 Framebuffer *fb);
+void pipeline_rasterize_point(const Vertex *v, GLfloat size,
+			      const GLint viewport[4], Framebuffer *fb);
 
 #define TILE_SIZE 16
 
@@ -27,6 +29,7 @@ typedef struct {
 typedef struct {
 	Triangle tri;
 	Framebuffer *fb;
+	GLint viewport[4];
 } RasterJob;
 
 void process_raster_job(void *task_data);

@@ -16,7 +16,8 @@ static uint32_t pack_color(const GLfloat c[4])
 	return (a << 24) | (b << 16) | (g << 8) | r;
 }
 
-void pipeline_rasterize_triangle(const Triangle *tri, Framebuffer *fb)
+void pipeline_rasterize_triangle(const Triangle *tri, const GLint viewport[4],
+				 Framebuffer *fb)
 {
 	float minx = tri->v0.x;
 	float maxx = tri->v0.x;
@@ -33,18 +34,22 @@ void pipeline_rasterize_triangle(const Triangle *tri, Framebuffer *fb)
 		if (v->y > maxy)
 			maxy = v->y;
 	}
+	int vp_x0 = viewport[0];
+	int vp_y0 = viewport[1];
+	int vp_x1 = viewport[0] + viewport[2] - 1;
+	int vp_y1 = viewport[1] + viewport[3] - 1;
 	int iminx = (int)minx;
-	if (iminx < 0)
-		iminx = 0;
+	if (iminx < vp_x0)
+		iminx = vp_x0;
 	int iminy = (int)miny;
-	if (iminy < 0)
-		iminy = 0;
+	if (iminy < vp_y0)
+		iminy = vp_y0;
 	int imaxx = (int)maxx;
-	if (imaxx >= (int)fb->width)
-		imaxx = fb->width - 1;
+	if (imaxx > vp_x1)
+		imaxx = vp_x1;
 	int imaxy = (int)maxy;
-	if (imaxy >= (int)fb->height)
-		imaxy = fb->height - 1;
+	if (imaxy > vp_y1)
+		imaxy = vp_y1;
 	RenderContext *ctx = GetCurrentContext();
 	if (ctx->scissor_test_enabled) {
 		int sx = ctx->scissor_box[0];
@@ -97,21 +102,26 @@ void pipeline_rasterize_triangle(const Triangle *tri, Framebuffer *fb)
 	}
 }
 
-void pipeline_rasterize_point(const Vertex *v, GLfloat size, Framebuffer *fb)
+void pipeline_rasterize_point(const Vertex *v, GLfloat size,
+			      const GLint viewport[4], Framebuffer *fb)
 {
 	int half = (int)(size * 0.5f);
 	int x0 = (int)(v->x - half);
 	int y0 = (int)(v->y - half);
 	int x1 = (int)(v->x + half);
 	int y1 = (int)(v->y + half);
-	if (x0 < 0)
-		x0 = 0;
-	if (y0 < 0)
-		y0 = 0;
-	if (x1 >= (int)fb->width)
-		x1 = fb->width - 1;
-	if (y1 >= (int)fb->height)
-		y1 = fb->height - 1;
+	int vp_x0 = viewport[0];
+	int vp_y0 = viewport[1];
+	int vp_x1 = viewport[0] + viewport[2] - 1;
+	int vp_y1 = viewport[1] + viewport[3] - 1;
+	if (x0 < vp_x0)
+		x0 = vp_x0;
+	if (y0 < vp_y0)
+		y0 = vp_y0;
+	if (x1 > vp_x1)
+		x1 = vp_x1;
+	if (y1 > vp_y1)
+		y1 = vp_y1;
 	RenderContext *ctx = GetCurrentContext();
 	if (ctx->scissor_test_enabled) {
 		int sx = ctx->scissor_box[0];
@@ -170,6 +180,6 @@ void pipeline_rasterize_point(const Vertex *v, GLfloat size, Framebuffer *fb)
 void process_raster_job(void *task_data)
 {
 	RasterJob *job = (RasterJob *)task_data;
-	pipeline_rasterize_triangle(&job->tri, job->fb);
+	pipeline_rasterize_triangle(&job->tri, job->viewport, job->fb);
 	MT_FREE(job, STAGE_RASTER);
 }
