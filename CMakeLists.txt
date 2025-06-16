@@ -164,7 +164,11 @@ add_subdirectory(benchmark)
 add_subdirectory(conformance)
 
 enable_testing()
-add_test(NAME conformance COMMAND renderer_conformance)
+add_test(
+    NAME conformance
+    COMMAND renderer_conformance
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
