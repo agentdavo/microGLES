@@ -147,6 +147,7 @@ int main(void)
 Compile with `-DENABLE_PROFILE` or run any program with `--profile` to record per-stage timings. Without the flag, tasks still execute but no profiling counters are recorded.
 
 ### Linking as a Static Library
+### Linking as a Static Library
 
 Build only the library if you want to embed microGLES in another project:
 
