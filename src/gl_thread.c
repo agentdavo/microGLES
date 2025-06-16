@@ -75,8 +75,9 @@ static uint64_t get_cycles(void)
 #endif
 }
 
-static const char *stage_names[STAGE_COUNT] = { "Vertex", "Primitive", "Raster",
-						"Fragment", "Framebuffer" };
+static const char *stage_names[STAGE_COUNT] = { "Vertex",      "Primitive",
+						"Raster",      "Fragment",
+						"Framebuffer", "Steal" };
 
 static bool steal_task(int thread_id, task_t *out, bool profiling)
 {
@@ -122,7 +123,7 @@ static bool steal_task(int thread_id, task_t *out, bool profiling)
 		}
 	}
 	if (profiling)
-		g_thread_profile.stages[STAGE_VERTEX].steal_cycles +=
+		g_thread_profile.stages[STAGE_STEAL].steal_cycles +=
 			get_cycles() - start;
 	return false;
 }
