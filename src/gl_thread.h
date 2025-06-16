@@ -20,6 +20,7 @@ typedef enum {
 	STAGE_RASTER,
 	STAGE_FRAGMENT,
 	STAGE_FRAMEBUFFER,
+	STAGE_STEAL,
 	STAGE_COUNT
 } stage_tag_t;
 
