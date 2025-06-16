@@ -1,3 +1,4 @@
+All capability flags have now been migrated to RenderContext.
 # GLState flag migration TODO
 
 The following capability flags exist in `GLState` but have not yet been
