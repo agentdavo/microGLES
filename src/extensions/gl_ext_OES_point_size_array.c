@@ -11,6 +11,10 @@ GL_API void GL_APIENTRY glPointSizePointerOES(GLenum type, GLsizei stride,
 	gl_state.point_size_array_type = type;
 	gl_state.point_size_array_stride = stride;
 	gl_state.point_size_array_pointer = pointer;
+	RenderContext *ctx = GetCurrentContext();
+	ctx->point_size_array_type = type;
+	ctx->point_size_array_stride = stride;
+	ctx->point_size_array_pointer = pointer;
 	if (gl_state.bound_vao) {
 		gl_state.bound_vao->point_size_array_type = type;
 		gl_state.bound_vao->point_size_array_stride = stride;

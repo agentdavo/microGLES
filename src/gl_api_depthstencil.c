@@ -11,6 +11,7 @@ GL_API void GL_APIENTRY glClearDepthf(GLfloat d)
 GL_API void GL_APIENTRY glDepthFunc(GLenum func)
 {
 	gl_state.depth_func = func;
+	context_set_depth_func(func);
 }
 
 GL_API void GL_APIENTRY glDepthMask(GLboolean flag)

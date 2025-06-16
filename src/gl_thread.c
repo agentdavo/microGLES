@@ -1,10 +1,13 @@
 #include "gl_thread.h"
 #include "gl_logger.h"
+#include "function_profile.h"
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
+#include "texture_cache.h"
 
 #define MAX_TASKS 256
 #define LOCAL_QUEUE_SIZE 128
@@ -24,6 +27,9 @@ typedef struct {
 	uint64_t task_cycles;
 	uint64_t idle_cycles;
 	uint64_t steal_cycles;
+	uint64_t tile_jobs;
+	uint64_t cache_hits;
+	uint64_t cache_misses;
 } stage_profile_t;
 
 typedef struct {
@@ -47,6 +53,8 @@ static _Thread_local int tls_tid = -1;
 static atomic_bool g_shutdown_flag = false;
 static atomic_bool g_profiling_enabled = false;
 static _Thread_local thread_profile_t g_thread_profile;
+static texture_cache_t *g_texture_caches;
+static _Thread_local texture_cache_t *tls_cache;
 
 #if defined(__x86_64__)
 #include <x86intrin.h>
@@ -70,9 +78,9 @@ static uint64_t get_cycles(void)
 static const char *stage_names[STAGE_COUNT] = { "Vertex", "Primitive", "Raster",
 						"Fragment", "Framebuffer" };
 
-static bool steal_task(int thread_id, task_t *out)
+static bool steal_task(int thread_id, task_t *out, bool profiling)
 {
-	uint64_t start = get_cycles();
+	uint64_t start = profiling ? get_cycles() : 0;
 	for (int i = 0; i < g_num_threads; ++i) {
 		if (i == thread_id)
 			continue;
@@ -96,18 +104,26 @@ static bool steal_task(int thread_id, task_t *out)
 				    memory_order_release,
 				    memory_order_relaxed)) {
 				*out = task;
-				g_thread_profile.stages[task.stage]
-					.steal_successes++;
-				g_thread_profile.stages[task.stage]
-					.steal_cycles += get_cycles() - start;
+				if (profiling) {
+					g_thread_profile.stages[task.stage]
+						.steal_successes++;
+					g_thread_profile.stages[task.stage]
+						.steal_cycles +=
+						get_cycles() - start;
+				}
 				return true;
 			}
-			g_thread_profile.stages[task.stage].contention_events++;
-			g_thread_profile.stages[task.stage].steal_attempts++;
+			if (profiling) {
+				g_thread_profile.stages[task.stage]
+					.contention_events++;
+				g_thread_profile.stages[task.stage]
+					.steal_attempts++;
+			}
 		}
 	}
-	g_thread_profile.stages[STAGE_VERTEX].steal_cycles +=
-		get_cycles() - start;
+	if (profiling)
+		g_thread_profile.stages[STAGE_VERTEX].steal_cycles +=
+			get_cycles() - start;
 	return false;
 }
 
@@ -116,15 +132,13 @@ static int worker_thread_main(void *arg)
 	int thread_id = *(int *)arg;
 	free(arg);
 	tls_tid = thread_id;
+	tls_cache = &g_texture_caches[thread_id];
 	task_queue_t *local_queue = &g_local_queues[thread_id];
 	int idle_loops = 0;
 	while (!atomic_load_explicit(&g_shutdown_flag, memory_order_acquire)) {
-		uint64_t start_cycles = get_cycles();
-		if (!atomic_load_explicit(&g_profiling_enabled,
-					  memory_order_acquire)) {
-			thrd_yield();
-			continue;
-		}
+		bool profiling = atomic_load_explicit(&g_profiling_enabled,
+						      memory_order_acquire);
+		uint64_t start_cycles = profiling ? get_cycles() : 0;
 		uint64_t head = atomic_load_explicit(&local_queue->head,
 						     memory_order_relaxed);
 		uint64_t tail = atomic_load_explicit(&local_queue->tail,
@@ -138,18 +152,30 @@ static int worker_thread_main(void *arg)
 					    &local_queue->tail, &tail, new_tail,
 					    memory_order_release,
 					    memory_order_relaxed)) {
-					g_thread_profile.stages[task.stage]
-						.task_count++;
-					uint64_t ts = get_cycles();
+					if (profiling) {
+						g_thread_profile
+							.stages[task.stage]
+							.task_count++;
+						if (task.stage ==
+						    STAGE_FRAGMENT)
+							g_thread_profile
+								.stages[STAGE_FRAGMENT]
+								.tile_jobs++;
+					}
+					uint64_t ts = profiling ? get_cycles() :
+								  0;
 					task.function(task.task_data);
-					g_thread_profile.stages[task.stage]
-						.task_cycles +=
-						get_cycles() - ts;
+					if (profiling)
+						g_thread_profile
+							.stages[task.stage]
+							.task_cycles +=
+							get_cycles() - ts;
 					idle_loops = 0;
 					continue;
 				}
-				g_thread_profile.stages[task.stage]
-					.contention_events++;
+				if (profiling)
+					g_thread_profile.stages[task.stage]
+						.contention_events++;
 			}
 		}
 		head = atomic_load_explicit(&g_global_head,
@@ -164,32 +190,52 @@ static int worker_thread_main(void *arg)
 					    &g_global_head, &head, head + 1,
 					    memory_order_release,
 					    memory_order_relaxed)) {
-					g_thread_profile.stages[task.stage]
-						.task_count++;
-					uint64_t ts = get_cycles();
+					if (profiling) {
+						g_thread_profile
+							.stages[task.stage]
+							.task_count++;
+						if (task.stage ==
+						    STAGE_FRAGMENT)
+							g_thread_profile
+								.stages[STAGE_FRAGMENT]
+								.tile_jobs++;
+					}
+					uint64_t ts = profiling ? get_cycles() :
+								  0;
 					task.function(task.task_data);
-					g_thread_profile.stages[task.stage]
-						.task_cycles +=
-						get_cycles() - ts;
+					if (profiling)
+						g_thread_profile
+							.stages[task.stage]
+							.task_cycles +=
+							get_cycles() - ts;
 					idle_loops = 0;
 					continue;
 				}
-				g_thread_profile.stages[task.stage]
-					.contention_events++;
+				if (profiling)
+					g_thread_profile.stages[task.stage]
+						.contention_events++;
 			}
 		}
 		task_t stolen;
-		if (steal_task(thread_id, &stolen)) {
-			g_thread_profile.stages[stolen.stage].task_count++;
-			uint64_t ts = get_cycles();
+		if (steal_task(thread_id, &stolen, profiling)) {
+			if (profiling) {
+				g_thread_profile.stages[stolen.stage]
+					.task_count++;
+				if (stolen.stage == STAGE_FRAGMENT)
+					g_thread_profile.stages[STAGE_FRAGMENT]
+						.tile_jobs++;
+			}
+			uint64_t ts = profiling ? get_cycles() : 0;
 			stolen.function(stolen.task_data);
-			g_thread_profile.stages[stolen.stage].task_cycles +=
-				get_cycles() - ts;
+			if (profiling)
+				g_thread_profile.stages[stolen.stage]
+					.task_cycles += get_cycles() - ts;
 			idle_loops = 0;
 			continue;
 		}
-		g_thread_profile.stages[STAGE_VERTEX].idle_cycles +=
-			get_cycles() - start_cycles;
+		if (profiling)
+			g_thread_profile.stages[STAGE_VERTEX].idle_cycles +=
+				get_cycles() - start_cycles;
 		idle_loops++;
 		if (idle_loops > 100) {
 			struct timespec ts = { 0, 50 };
@@ -209,6 +255,9 @@ void thread_pool_init(int num_threads)
 	g_num_threads = num_threads > 0 ? num_threads : 1;
 	g_worker_threads = malloc(sizeof(thrd_t) * g_num_threads);
 	g_local_queues = calloc(g_num_threads, sizeof(task_queue_t));
+	g_texture_caches = calloc(g_num_threads, sizeof(texture_cache_t));
+	for (int i = 0; i < g_num_threads; ++i)
+		texture_cache_init(&g_texture_caches[i]);
 	atomic_init(&g_global_head, 0);
 	atomic_init(&g_global_tail, 0);
 	atomic_store(&g_shutdown_flag, false);
@@ -303,6 +352,7 @@ int thread_pool_wait_timeout(uint32_t ms)
 
 void thread_pool_shutdown(void)
 {
+	thread_pool_wait();
 	thread_profile_stop();
 	atomic_store_explicit(&g_shutdown_flag, true, memory_order_release);
 	for (int i = 0; i < g_num_threads; ++i)
@@ -310,12 +360,22 @@ void thread_pool_shutdown(void)
 	thread_profile_report();
 	free(g_worker_threads);
 	free(g_local_queues);
+	free(g_texture_caches);
+}
+
+bool thread_pool_active(void)
+{
+	return !atomic_load_explicit(&g_shutdown_flag, memory_order_acquire);
 }
 
 void thread_profile_start(void)
 {
 	atomic_store_explicit(&g_profiling_enabled, true, memory_order_release);
 	g_thread_profile = (thread_profile_t){ 0 };
+	for (int i = 0; i < g_num_threads; ++i)
+		memset(&g_local_queues[i].profile_data, 0,
+		       sizeof(thread_profile_t));
+	function_profile_reset();
 }
 
 void thread_profile_stop(void)
@@ -329,7 +389,7 @@ void thread_profile_report(void)
 	LOG_INFO("Thread Pool Profiling Results:");
 	for (int stage = 0; stage < STAGE_COUNT; stage++) {
 		uint64_t t_tasks = 0, t_steals = 0, t_attempts = 0,
-			 t_contention = 0;
+			 t_contention = 0, t_tiles = 0, t_hits = 0, t_miss = 0;
 		uint64_t t_task_cycles = 0, t_idle_cycles = 0,
 			 t_steal_cycles = 0;
 		for (int i = 0; i < g_num_threads; i++) {
@@ -340,21 +400,30 @@ void thread_profile_report(void)
 			t_attempts += pd->steal_attempts;
 			t_contention += pd->contention_events;
 			t_task_cycles += pd->task_cycles;
+			t_tiles += pd->tile_jobs;
 			t_idle_cycles += pd->idle_cycles;
 			t_steal_cycles += pd->steal_cycles;
+			t_hits += pd->cache_hits;
+			t_miss += pd->cache_misses;
 		}
 		LOG_INFO("Stage %s:", stage_names[stage]);
 		LOG_INFO("  Total Tasks: %llu", t_tasks);
 		LOG_INFO("  Total Steal Attempts: %llu", t_attempts);
 		LOG_INFO("  Total Steal Successes: %llu", t_steals);
 		LOG_INFO("  Total Contention: %llu", t_contention);
+		if (stage == STAGE_FRAGMENT) {
+			LOG_INFO("  Tile Jobs: %llu", t_tiles);
+			LOG_INFO("  Cache Hits: %llu", t_hits);
+			LOG_INFO("  Cache Misses: %llu", t_miss);
+		}
 		LOG_INFO("  Avg Task Cycles: %llu",
 			 t_task_cycles / (t_tasks ? t_tasks : 1));
 		LOG_INFO("  Total Idle Cycles: %llu", t_idle_cycles);
 		LOG_INFO("  Total Steal Cycles: %llu", t_steal_cycles);
 	}
 	uint64_t g_tasks = 0, g_steals = 0, g_attempts = 0, g_contention = 0;
-	uint64_t g_task_cycles = 0, g_idle_cycles = 0, g_steal_cycles = 0;
+	uint64_t g_task_cycles = 0, g_idle_cycles = 0, g_steal_cycles = 0,
+		 g_tiles = 0, g_hits = 0, g_miss = 0;
 	for (int stage = 0; stage < STAGE_COUNT; stage++)
 		for (int i = 0; i < g_num_threads; i++) {
 			stage_profile_t *pd =
@@ -366,6 +435,9 @@ void thread_profile_report(void)
 			g_task_cycles += pd->task_cycles;
 			g_idle_cycles += pd->idle_cycles;
 			g_steal_cycles += pd->steal_cycles;
+			g_tiles += pd->tile_jobs;
+			g_hits += pd->cache_hits;
+			g_miss += pd->cache_misses;
 		}
 	LOG_INFO("Global Summary:");
 	LOG_INFO("  Total Tasks: %llu", g_tasks);
@@ -376,4 +448,50 @@ void thread_profile_report(void)
 		 g_task_cycles / (g_tasks ? g_tasks : 1));
 	LOG_INFO("  Total Idle Cycles: %llu", g_idle_cycles);
 	LOG_INFO("  Total Steal Cycles: %llu", g_steal_cycles);
+	LOG_INFO("  Total Tile Jobs: %llu", g_tiles);
+	LOG_INFO("  Total Cache Hits: %llu", g_hits);
+	LOG_INFO("  Total Cache Misses: %llu", g_miss);
+	function_profile_report();
+}
+
+texture_cache_t *thread_get_texture_cache(void)
+{
+	return tls_cache;
+}
+
+void thread_profile_cache_hit(void)
+{
+	if (atomic_load_explicit(&g_profiling_enabled, memory_order_relaxed))
+		g_thread_profile.stages[STAGE_FRAGMENT].cache_hits++;
+}
+
+void thread_profile_cache_miss(void)
+{
+	if (atomic_load_explicit(&g_profiling_enabled, memory_order_relaxed))
+		g_thread_profile.stages[STAGE_FRAGMENT].cache_misses++;
+}
+
+void thread_profile_get_cache_stats(uint64_t *hits, uint64_t *misses)
+{
+	uint64_t h = 0, m = 0;
+	for (int i = 0; i < g_num_threads; ++i) {
+		stage_profile_t *pd =
+			&g_local_queues[i].profile_data.stages[STAGE_FRAGMENT];
+		h += pd->cache_hits;
+		m += pd->cache_misses;
+	}
+	if (hits)
+		*hits = h;
+	if (misses)
+		*misses = m;
+}
+
+bool thread_profile_is_enabled(void)
+{
+	return atomic_load_explicit(&g_profiling_enabled, memory_order_relaxed);
+}
+
+uint64_t thread_get_cycles(void)
+{
+	return get_cycles();
 }

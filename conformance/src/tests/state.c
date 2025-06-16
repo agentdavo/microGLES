@@ -1,5 +1,7 @@
 #include "tests.h"
+#include "gl_context.h"
 #include <math.h>
+#include <stdatomic.h>
 
 int test_enable_disable(void)
 {
@@ -102,6 +104,8 @@ int test_depth_alpha_stencil(void)
 	return 1;
 }
 
+int test_state_flag_version(void);
+
 static const struct Test tests[] = {
 	{ "enable_disable", test_enable_disable },
 	{ "viewport", test_viewport },
@@ -110,6 +114,7 @@ static const struct Test tests[] = {
 	{ "scissor_state", test_scissor_state },
 	{ "mask_state", test_mask_state },
 	{ "depth_alpha_stencil", test_depth_alpha_stencil },
+	{ "state_flag_version", test_state_flag_version },
 };
 
 const struct Test *get_state_tests(size_t *count)

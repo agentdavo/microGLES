@@ -66,9 +66,10 @@ static VertexArrayObject *find_vao(GLuint id)
 
 static TextureOES *find_texture(GLuint id)
 {
-	for (GLuint i = 0; i < gl_state.texture_count; ++i) {
-		if (gl_state.textures[i]->id == id)
-			return gl_state.textures[i];
+	RenderContext *ctx = GetCurrentContext();
+	for (GLuint i = 0; i < ctx->texture_count; ++i) {
+		if (ctx->textures[i] && ctx->textures[i]->id == id)
+			return ctx->textures[i];
 	}
 	return NULL;
 }
@@ -81,7 +82,10 @@ const GLubyte *renderer_get_extensions(void)
 static void draw_tex_rect(GLfloat x, GLfloat y, GLfloat z, GLfloat width,
 			  GLfloat height)
 {
-	TextureOES *tex = find_texture(gl_state.bound_texture);
+	RenderContext *ctx = GetCurrentContext();
+	TextureOES *tex =
+		find_texture(ctx->texture_env[ctx->active_texture - GL_TEXTURE0]
+				     .bound_texture);
 	if (!tex) {
 		LOG_WARN("glDrawTex* called with no bound texture.");
 		return;
@@ -765,42 +769,52 @@ GL_API void GL_APIENTRY glBindVertexArrayOES(GLuint array)
 
 	gl_state.bound_vao = vao;
 
-	gl_state.vertex_array_enabled = vao->vertex_array_enabled;
-	gl_state.vertex_array_size = vao->vertex_array_size;
-	gl_state.vertex_array_type = vao->vertex_array_type;
-	gl_state.vertex_array_stride = vao->vertex_array_stride;
-	gl_state.vertex_array_pointer = vao->vertex_array_pointer;
+	RenderContext *ctx = GetCurrentContext();
 
-	gl_state.color_array_enabled = vao->color_array_enabled;
-	gl_state.color_array_size = vao->color_array_size;
-	gl_state.color_array_type = vao->color_array_type;
-	gl_state.color_array_stride = vao->color_array_stride;
-	gl_state.color_array_pointer = vao->color_array_pointer;
+	ctx->vertex_array.enabled = vao->vertex_array_enabled;
+	ctx->vertex_array.size = vao->vertex_array_size;
+	ctx->vertex_array.type = vao->vertex_array_type;
+	ctx->vertex_array.stride = vao->vertex_array_stride;
+	ctx->vertex_array.pointer = vao->vertex_array_pointer;
+	atomic_fetch_add_explicit(&ctx->vertex_array.version, 1,
+				  memory_order_relaxed);
 
-	gl_state.normal_array_enabled = vao->normal_array_enabled;
-	gl_state.normal_array_type = vao->normal_array_type;
-	gl_state.normal_array_stride = vao->normal_array_stride;
-	gl_state.normal_array_pointer = vao->normal_array_pointer;
+	ctx->color_array.enabled = vao->color_array_enabled;
+	ctx->color_array.size = vao->color_array_size;
+	ctx->color_array.type = vao->color_array_type;
+	ctx->color_array.stride = vao->color_array_stride;
+	ctx->color_array.pointer = vao->color_array_pointer;
+	atomic_fetch_add_explicit(&ctx->color_array.version, 1,
+				  memory_order_relaxed);
 
-	gl_state.texcoord_array_enabled = vao->texcoord_array_enabled;
-	gl_state.texcoord_array_size = vao->texcoord_array_size;
-	gl_state.texcoord_array_type = vao->texcoord_array_type;
-	gl_state.texcoord_array_stride = vao->texcoord_array_stride;
-	gl_state.texcoord_array_pointer = vao->texcoord_array_pointer;
+	ctx->normal_array.enabled = vao->normal_array_enabled;
+	ctx->normal_array.type = vao->normal_array_type;
+	ctx->normal_array.stride = vao->normal_array_stride;
+	ctx->normal_array.pointer = vao->normal_array_pointer;
+	atomic_fetch_add_explicit(&ctx->normal_array.version, 1,
+				  memory_order_relaxed);
 
-	gl_state.point_size_array_type = vao->point_size_array_type;
-	gl_state.point_size_array_stride = vao->point_size_array_stride;
-	gl_state.point_size_array_pointer = vao->point_size_array_pointer;
+	ctx->texcoord_array.enabled = vao->texcoord_array_enabled;
+	ctx->texcoord_array.size = vao->texcoord_array_size;
+	ctx->texcoord_array.type = vao->texcoord_array_type;
+	ctx->texcoord_array.stride = vao->texcoord_array_stride;
+	ctx->texcoord_array.pointer = vao->texcoord_array_pointer;
+	atomic_fetch_add_explicit(&ctx->texcoord_array.version, 1,
+				  memory_order_relaxed);
 
-	gl_state.matrix_index_array_size = vao->matrix_index_array_size;
-	gl_state.matrix_index_array_type = vao->matrix_index_array_type;
-	gl_state.matrix_index_array_stride = vao->matrix_index_array_stride;
-	gl_state.matrix_index_array_pointer = vao->matrix_index_array_pointer;
+	ctx->point_size_array_type = vao->point_size_array_type;
+	ctx->point_size_array_stride = vao->point_size_array_stride;
+	ctx->point_size_array_pointer = vao->point_size_array_pointer;
 
-	gl_state.weight_array_size = vao->weight_array_size;
-	gl_state.weight_array_type = vao->weight_array_type;
-	gl_state.weight_array_stride = vao->weight_array_stride;
-	gl_state.weight_array_pointer = vao->weight_array_pointer;
+	ctx->matrix_index_array_size = vao->matrix_index_array_size;
+	ctx->matrix_index_array_type = vao->matrix_index_array_type;
+	ctx->matrix_index_array_stride = vao->matrix_index_array_stride;
+	ctx->matrix_index_array_pointer = vao->matrix_index_array_pointer;
+
+	ctx->weight_array_size = vao->weight_array_size;
+	ctx->weight_array_type = vao->weight_array_type;
+	ctx->weight_array_stride = vao->weight_array_stride;
+	ctx->weight_array_pointer = vao->weight_array_pointer;
 }
 
 GL_API void GL_APIENTRY glDeleteVertexArraysOES(GLsizei n, const GLuint *arrays)

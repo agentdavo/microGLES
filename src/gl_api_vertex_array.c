@@ -1,4 +1,3 @@
-#include "gl_state.h"
 #include "gl_context.h"
 #include "gl_state_helpers.h"
 #include "gl_errors.h"
@@ -8,16 +7,10 @@ GL_API void GL_APIENTRY glEnableClientState(GLenum array)
 {
 	switch (array) {
 	case GL_VERTEX_ARRAY:
-		gl_state.vertex_array_enabled = GL_TRUE;
-		break;
 	case GL_COLOR_ARRAY:
-		gl_state.color_array_enabled = GL_TRUE;
-		break;
 	case GL_NORMAL_ARRAY:
-		gl_state.normal_array_enabled = GL_TRUE;
-		break;
 	case GL_TEXTURE_COORD_ARRAY:
-		gl_state.texcoord_array_enabled = GL_TRUE;
+	case GL_POINT_SIZE_ARRAY_OES:
 		break;
 	default:
 		glSetError(GL_INVALID_ENUM);
@@ -41,6 +34,9 @@ GL_API void GL_APIENTRY glEnableClientState(GLenum array)
 		SET_BOOL(ctx->texcoord_array.enabled, GL_TRUE,
 			 ctx->texcoord_array.version);
 		break;
+	case GL_POINT_SIZE_ARRAY_OES:
+		ctx->point_size_array_enabled = GL_TRUE;
+		break;
 	default:
 		break;
 	}
@@ -50,16 +46,9 @@ GL_API void GL_APIENTRY glDisableClientState(GLenum array)
 {
 	switch (array) {
 	case GL_VERTEX_ARRAY:
-		gl_state.vertex_array_enabled = GL_FALSE;
-		break;
 	case GL_COLOR_ARRAY:
-		gl_state.color_array_enabled = GL_FALSE;
-		break;
 	case GL_NORMAL_ARRAY:
-		gl_state.normal_array_enabled = GL_FALSE;
-		break;
 	case GL_TEXTURE_COORD_ARRAY:
-		gl_state.texcoord_array_enabled = GL_FALSE;
 		break;
 	default:
 		glSetError(GL_INVALID_ENUM);
@@ -83,6 +72,9 @@ GL_API void GL_APIENTRY glDisableClientState(GLenum array)
 		SET_BOOL(ctx->texcoord_array.enabled, GL_FALSE,
 			 ctx->texcoord_array.version);
 		break;
+	case GL_POINT_SIZE_ARRAY_OES:
+		ctx->point_size_array_enabled = GL_FALSE;
+		break;
 	default:
 		break;
 	}
@@ -90,16 +82,13 @@ GL_API void GL_APIENTRY glDisableClientState(GLenum array)
 
 GL_API void GL_APIENTRY glClientActiveTexture(GLenum texture)
 {
-	gl_state.client_active_texture = texture;
+	RenderContext *ctx = GetCurrentContext();
+	ctx->client_active_texture = texture;
 }
 
 GL_API void GL_APIENTRY glVertexPointer(GLint size, GLenum type, GLsizei stride,
 					const void *ptr)
 {
-	gl_state.vertex_array_size = size;
-	gl_state.vertex_array_type = type;
-	gl_state.vertex_array_stride = stride;
-	gl_state.vertex_array_pointer = ptr;
 	RenderContext *ctx = GetCurrentContext();
 	ctx->vertex_array.size = size;
 	ctx->vertex_array.type = type;
@@ -112,10 +101,6 @@ GL_API void GL_APIENTRY glVertexPointer(GLint size, GLenum type, GLsizei stride,
 GL_API void GL_APIENTRY glColorPointer(GLint size, GLenum type, GLsizei stride,
 				       const void *ptr)
 {
-	gl_state.color_array_size = size;
-	gl_state.color_array_type = type;
-	gl_state.color_array_stride = stride;
-	gl_state.color_array_pointer = ptr;
 	RenderContext *ctx = GetCurrentContext();
 	ctx->color_array.size = size;
 	ctx->color_array.type = type;
@@ -128,9 +113,6 @@ GL_API void GL_APIENTRY glColorPointer(GLint size, GLenum type, GLsizei stride,
 GL_API void GL_APIENTRY glNormalPointer(GLenum type, GLsizei stride,
 					const void *ptr)
 {
-	gl_state.normal_array_type = type;
-	gl_state.normal_array_stride = stride;
-	gl_state.normal_array_pointer = ptr;
 	RenderContext *ctx = GetCurrentContext();
 	ctx->normal_array.type = type;
 	ctx->normal_array.stride = stride;
@@ -142,10 +124,6 @@ GL_API void GL_APIENTRY glNormalPointer(GLenum type, GLsizei stride,
 GL_API void GL_APIENTRY glTexCoordPointer(GLint size, GLenum type,
 					  GLsizei stride, const void *ptr)
 {
-	gl_state.texcoord_array_size = size;
-	gl_state.texcoord_array_type = type;
-	gl_state.texcoord_array_stride = stride;
-	gl_state.texcoord_array_pointer = ptr;
 	RenderContext *ctx = GetCurrentContext();
 	ctx->texcoord_array.size = size;
 	ctx->texcoord_array.type = type;
