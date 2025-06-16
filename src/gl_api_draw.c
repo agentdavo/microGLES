@@ -8,6 +8,7 @@
 #include "matrix_utils.h"
 #include "gl_thread.h"
 #include "function_profile.h"
+#include <string.h>
 #include <GLES/gl.h>
 #include <stdatomic.h>
 
@@ -142,8 +143,10 @@ GL_API void GL_APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count)
 					src.point_size = *(const GLfloat *)pptr;
 			}
 			Vertex dst;
-			pipeline_transform_vertex(&dst, &src, &mvp, NULL);
-			pipeline_rasterize_point(&dst, src.point_size, fb);
+			pipeline_transform_vertex(&dst, &src, &mvp, NULL,
+						  gl_state.viewport);
+			pipeline_rasterize_point(&dst, src.point_size,
+						 gl_state.viewport, fb);
 		}
 		return;
 	}
@@ -152,6 +155,7 @@ GL_API void GL_APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count)
 		VertexJob *job = MT_ALLOC(sizeof(VertexJob), STAGE_VERTEX);
 		if (!job)
 			return;
+		memcpy(job->viewport, gl_state.viewport, sizeof(job->viewport));
 		for (int j = 0; j < 3; ++j) {
 			GLint idx = first + i + j;
 			const GLfloat *vp =
@@ -391,8 +395,10 @@ GL_API void GL_APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type,
 					src.point_size = *(const GLfloat *)pptr;
 			}
 			Vertex dst;
-			pipeline_transform_vertex(&dst, &src, &mvp, NULL);
-			pipeline_rasterize_point(&dst, src.point_size, fb);
+			pipeline_transform_vertex(&dst, &src, &mvp, NULL,
+						  gl_state.viewport);
+			pipeline_rasterize_point(&dst, src.point_size,
+						 gl_state.viewport, fb);
 		}
 		PROFILE_END("glDrawElements");
 		return;
@@ -404,6 +410,7 @@ GL_API void GL_APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type,
 			PROFILE_END("glDrawElements");
 			return;
 		}
+		memcpy(job->viewport, gl_state.viewport, sizeof(job->viewport));
 		for (int j = 0; j < 3; ++j) {
 			GLuint idx = type == GL_UNSIGNED_BYTE ?
 					     (GLuint)u8_indices[i + j] :

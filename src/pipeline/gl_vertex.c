@@ -19,14 +19,18 @@ _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
  */
 
 void pipeline_transform_vertex(Vertex *dst, const Vertex *src, const mat4 *mvp,
-			       const mat4 *normal_mat)
+			       const mat4 *normal_mat, const GLint viewport[4])
 {
 	GLfloat in[4] = { src->x, src->y, src->z, src->w };
 	GLfloat out[4];
 	mat4_transform_vec4(mvp, in, out);
-	dst->x = out[0];
-	dst->y = out[1];
-	dst->z = out[2];
+	GLfloat inv_w = out[3] != 0.0f ? 1.0f / out[3] : 1.0f;
+	GLfloat ndc_x = out[0] * inv_w;
+	GLfloat ndc_y = out[1] * inv_w;
+	GLfloat ndc_z = out[2] * inv_w;
+	dst->x = viewport[0] + (ndc_x * 0.5f + 0.5f) * viewport[2];
+	dst->y = viewport[1] + (1.0f - (ndc_y * 0.5f + 0.5f)) * viewport[3];
+	dst->z = ndc_z;
 	dst->w = out[3];
 	for (int i = 0; i < 3; ++i)
 		dst->normal[i] = src->normal[i];
@@ -146,9 +150,12 @@ void process_vertex_job(void *task_data)
 		seen_normal = mv;
 	}
 	Vertex v0, v1, v2;
-	pipeline_transform_vertex(&v0, &job->in[0], &tl_mvp, &tl_normal);
-	pipeline_transform_vertex(&v1, &job->in[1], &tl_mvp, &tl_normal);
-	pipeline_transform_vertex(&v2, &job->in[2], &tl_mvp, &tl_normal);
+	pipeline_transform_vertex(&v0, &job->in[0], &tl_mvp, &tl_normal,
+				  job->viewport);
+	pipeline_transform_vertex(&v1, &job->in[1], &tl_mvp, &tl_normal,
+				  job->viewport);
+	pipeline_transform_vertex(&v2, &job->in[2], &tl_mvp, &tl_normal,
+				  job->viewport);
 	apply_lighting(&v0);
 	apply_lighting(&v1);
 	apply_lighting(&v2);
@@ -159,6 +166,7 @@ void process_vertex_job(void *task_data)
 	pjob->verts[1] = v1;
 	pjob->verts[2] = v2;
 	pjob->fb = job->fb;
+	memcpy(pjob->viewport, job->viewport, sizeof(job->viewport));
 	MT_FREE(job, STAGE_VERTEX);
 	thread_pool_submit(process_primitive_job, pjob, STAGE_PRIMITIVE);
 }

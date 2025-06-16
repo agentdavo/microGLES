@@ -14,6 +14,7 @@ void pipeline_assemble_triangle(Triangle *dst, const Vertex *v0,
 typedef struct {
 	Vertex verts[3];
 	Framebuffer *fb;
+	GLint viewport[4];
 } PrimitiveJob;
 
 void process_primitive_job(void *task_data);
