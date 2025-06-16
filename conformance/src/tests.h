@@ -38,6 +38,7 @@ const struct Test *get_texture_cache_tests(size_t *count);
 const struct Test *get_buffer_tests(size_t *count);
 const struct Test *get_draw_tests(size_t *count);
 const struct Test *get_fbo_tests(size_t *count);
+const struct Test *get_depth_tests(size_t *count);
 const struct Test *get_extensions_tests(size_t *count);
 const struct Test *get_thread_stress_tests(size_t *count);
 const struct Test *get_autogen_tests(size_t *count);

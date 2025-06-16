@@ -198,15 +198,48 @@ void framebuffer_set_pixel(Framebuffer *fb, uint32_t x, uint32_t y,
 	bool depth_pass = false;
 	/*
          * Multiple fragment threads may attempt to write the same depth
-         * location concurrently. Compare-and-swap ensures only the closest
+         * location concurrently. Compare-and-swap ensures only the correct
          * fragment updates the buffer while losers retry with the new value.
          */
-	while (depth < current) {
+	while (true) {
+		bool pass = false;
+		switch (ctx->depth_func) {
+		case GL_NEVER:
+			pass = false;
+			break;
+		case GL_LESS:
+			pass = depth < current;
+			break;
+		case GL_LEQUAL:
+			pass = depth <= current;
+			break;
+		case GL_GREATER:
+			pass = depth > current;
+			break;
+		case GL_GEQUAL:
+			pass = depth >= current;
+			break;
+		case GL_EQUAL:
+			pass = depth == current;
+			break;
+		case GL_NOTEQUAL:
+			pass = depth != current;
+			break;
+		case GL_ALWAYS:
+			pass = true;
+			break;
+		default:
+			pass = depth < current;
+			break;
+		}
+		if (!pass)
+			break;
 		if (atomic_compare_exchange_weak(&fb->depth_buffer[idx],
 						 &current, depth)) {
 			depth_pass = true;
 			break;
 		}
+		/* current updated by atomic_compare_exchange_weak */
 	}
 	if (stencil_on) {
 		uint8_t new = stencil;
