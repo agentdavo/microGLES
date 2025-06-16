@@ -42,6 +42,10 @@ void run_pipeline_test(Framebuffer *fb, BenchmarkResult *result)
 	}
 	clock_t end = clock();
 
+	/* Ensure the FBO is still bound before generating mipmaps. Some
+         * benchmark helpers may reset the binding when syncing threads or
+         * updating lighting state. */
+	glBindFramebufferOES(GL_FRAMEBUFFER_OES, fbo);
 	glGenerateMipmapOES(GL_TEXTURE_2D);
 
 	glBindFramebufferOES(GL_FRAMEBUFFER_OES, 0);

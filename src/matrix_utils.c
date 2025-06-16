@@ -24,7 +24,10 @@ void vec3_normalize(GLfloat *x, GLfloat *y, GLfloat *z)
 		*y /= length;
 		*z /= length;
 	} else {
-		LOG_WARN("vec3_normalize: Zero-length vector encountered.");
+		/* Avoid spamming the logs when normalizing a zero vector. */
+		*x = 0.0f;
+		*y = 0.0f;
+		*z = 0.0f;
 	}
 }
 
