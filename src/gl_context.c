@@ -552,9 +552,6 @@ void context_tex_image_2d(GLenum target, GLint level, GLint internalformat,
 	if (level == 0) {
 		tex->width = width;
 		tex->height = height;
-		tex->mipmap_supported = (width > 0 && height > 0 &&
-					 (width & (width - 1)) == 0 &&
-					 (height & (height - 1)) == 0);
 	}
 	if (level > tex->current_level)
 		tex->current_level = level;

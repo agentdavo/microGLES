@@ -176,3 +176,28 @@ if(DOXYGEN_FOUND)
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Generate API documentation with Doxygen")
 endif()
+
+# RISC-V cross compilation tasks
+add_custom_target(riscv32_build
+    COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B build_rv32 -DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/cmake/riscv32-toolchain.cmake -DENABLE_PROFILE=ON
+    COMMAND ${CMAKE_COMMAND} --build build_rv32 --target benchmark
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Build benchmark for RISC-V 32")
+
+add_custom_target(riscv64_build
+    COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B build_rv64 -DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/cmake/riscv64-toolchain.cmake -DENABLE_PROFILE=ON
+    COMMAND ${CMAKE_COMMAND} --build build_rv64 --target benchmark
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Build benchmark for RISC-V 64")
+
+add_custom_target(run_rv32
+    COMMAND qemu-riscv32 ${CMAKE_SOURCE_DIR}/build_rv32/bin/benchmark > ${CMAKE_SOURCE_DIR}/benchmark/RV32.md || true
+    DEPENDS riscv32_build
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Run RISC-V32 benchmark via QEMU")
+
+add_custom_target(run_rv64
+    COMMAND qemu-riscv64 ${CMAKE_SOURCE_DIR}/build_rv64/bin/benchmark > ${CMAKE_SOURCE_DIR}/benchmark/RV64.md || true
+    DEPENDS riscv64_build
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Run RISC-V64 benchmark via QEMU")
