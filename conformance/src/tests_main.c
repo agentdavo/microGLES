@@ -75,6 +75,7 @@ int main(int argc, char **argv)
 	RUN(get_buffer_tests);
 	RUN(get_draw_tests);
 	RUN(get_fbo_tests);
+	RUN(get_depth_tests);
 	RUN(get_extensions_tests);
 	RUN(get_thread_stress_tests);
 	RUN(get_point_sprite_tests);
