@@ -7,10 +7,23 @@ _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "gl_thread.h"
 #include "command_buffer.h"
 #include "../gl_context.h"
+#include <threads.h>
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+
+static _Thread_local FramebufferTile *tls_tile = NULL;
+
+void framebuffer_enter_tile(FramebufferTile *tile)
+{
+	tls_tile = tile;
+}
+
+void framebuffer_leave_tile(void)
+{
+	tls_tile = NULL;
+}
 
 #ifndef GL_INCR_WRAP
 #define GL_INCR_WRAP 0x8507
@@ -45,6 +58,23 @@ Framebuffer *framebuffer_create(uint32_t width, uint32_t height)
 		tracked_free(fb, sizeof(Framebuffer));
 		return NULL;
 	}
+	fb->tiles_x = (width + TILE_SIZE - 1) / TILE_SIZE;
+	fb->tiles_y = (height + TILE_SIZE - 1) / TILE_SIZE;
+	size_t tile_count = (size_t)fb->tiles_x * fb->tiles_y;
+	fb->tiles = (FramebufferTile *)tracked_malloc(tile_count *
+						      sizeof(FramebufferTile));
+	if (!fb->tiles) {
+		tracked_free(fb->color_buffer, pixels * sizeof(uint32_t));
+		tracked_free(fb->depth_buffer, pixels * sizeof(float));
+		tracked_free(fb->stencil_buffer, pixels * sizeof(uint8_t));
+		tracked_free(fb, sizeof(Framebuffer));
+		return NULL;
+	}
+	for (size_t i = 0; i < tile_count; ++i) {
+		fb->tiles[i].x0 = 0;
+		fb->tiles[i].y0 = 0;
+		atomic_flag_clear(&fb->tiles[i].lock);
+	}
 	framebuffer_clear(fb, 0, 1.0f, 0);
 	return fb;
 }
@@ -59,6 +89,10 @@ void framebuffer_destroy(Framebuffer *fb)
 	tracked_free((void *)fb->depth_buffer, pixels * sizeof(_Atomic float));
 	tracked_free((void *)fb->stencil_buffer,
 		     pixels * sizeof(_Atomic uint8_t));
+	if (fb->tiles) {
+		size_t tile_count = (size_t)fb->tiles_x * fb->tiles_y;
+		tracked_free(fb->tiles, tile_count * sizeof(FramebufferTile));
+	}
 	tracked_free(fb, sizeof(Framebuffer));
 }
 
@@ -124,12 +158,25 @@ void framebuffer_set_pixel(Framebuffer *fb, uint32_t x, uint32_t y,
 {
 	if (x >= fb->width || y >= fb->height)
 		return;
-	/* TODO: Implement tiled writes for reduced contention */
-	size_t idx = (size_t)y * fb->width + x;
+
+	_Atomic uint32_t *color_buffer = fb->color_buffer;
+	_Atomic float *depth_buffer = fb->depth_buffer;
+	_Atomic uint8_t *stencil_buffer = fb->stencil_buffer;
+	size_t stride = fb->width;
+	if (tls_tile && x >= tls_tile->x0 && x < tls_tile->x0 + TILE_SIZE &&
+	    y >= tls_tile->y0 && y < tls_tile->y0 + TILE_SIZE) {
+		color_buffer = (_Atomic uint32_t *)tls_tile->color;
+		depth_buffer = (_Atomic float *)tls_tile->depth;
+		stencil_buffer = (_Atomic uint8_t *)tls_tile->stencil;
+		stride = TILE_SIZE;
+		x -= tls_tile->x0;
+		y -= tls_tile->y0;
+	}
+	size_t idx = (size_t)y * stride + x;
 	RenderContext *ctx = GetCurrentContext();
 	GLboolean stencil_on = ctx->stencil_test_enabled;
 	StencilState *ss = &ctx->stencil;
-	uint8_t stencil = atomic_load(&fb->stencil_buffer[idx]);
+	uint8_t stencil = atomic_load(&stencil_buffer[idx]);
 	if (stencil_on) {
 		uint8_t masked = stencil & ss->mask;
 		uint8_t ref = ss->ref & ss->mask;
@@ -190,11 +237,11 @@ void framebuffer_set_pixel(Framebuffer *fb, uint32_t x, uint32_t y,
 			}
 			new = (new & ss->writemask) |
 			      (stencil & ~ss->writemask);
-			atomic_store(&fb->stencil_buffer[idx], new);
+			atomic_store(&stencil_buffer[idx], new);
 			return;
 		}
 	}
-	float current = atomic_load(&fb->depth_buffer[idx]);
+	float current = atomic_load(&depth_buffer[idx]);
 	bool depth_pass = false;
 	/*
          * Multiple fragment threads may attempt to write the same depth
@@ -234,8 +281,8 @@ void framebuffer_set_pixel(Framebuffer *fb, uint32_t x, uint32_t y,
 		}
 		if (!pass)
 			break;
-		if (atomic_compare_exchange_weak(&fb->depth_buffer[idx],
-						 &current, depth)) {
+		if (atomic_compare_exchange_weak(&depth_buffer[idx], &current,
+						 depth)) {
 			depth_pass = true;
 			break;
 		}
@@ -271,10 +318,10 @@ void framebuffer_set_pixel(Framebuffer *fb, uint32_t x, uint32_t y,
 			break;
 		}
 		new = (new & ss->writemask) | (stencil & ~ss->writemask);
-		atomic_store(&fb->stencil_buffer[idx], new);
+		atomic_store(&stencil_buffer[idx], new);
 	}
 	if (depth_pass)
-		atomic_store(&fb->color_buffer[idx], color);
+		atomic_store(&color_buffer[idx], color);
 }
 
 void framebuffer_fill_rect(Framebuffer *fb, uint32_t x0, uint32_t y0,

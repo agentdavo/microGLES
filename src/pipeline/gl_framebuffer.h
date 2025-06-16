@@ -6,6 +6,17 @@
 #include <stdalign.h>
 #include <assert.h>
 #include <stdatomic.h>
+#include "gl_thread.h"
+
+#define TILE_SIZE 16
+
+typedef struct {
+	uint32_t x0, y0;
+	uint32_t color[TILE_SIZE * TILE_SIZE];
+	float depth[TILE_SIZE * TILE_SIZE];
+	uint8_t stencil[TILE_SIZE * TILE_SIZE];
+	atomic_flag lock;
+} FramebufferTile;
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,7 +28,13 @@ typedef struct Framebuffer {
 	_Atomic uint32_t *color_buffer;
 	_Atomic float *depth_buffer;
 	_Atomic uint8_t *stencil_buffer;
+	FramebufferTile *tiles;
+	uint32_t tiles_x;
+	uint32_t tiles_y;
 } Framebuffer;
+
+void framebuffer_enter_tile(FramebufferTile *tile);
+void framebuffer_leave_tile(void);
 
 static_assert(sizeof(uint32_t) == 4, "Framebuffer requires 32-bit colors");
 
