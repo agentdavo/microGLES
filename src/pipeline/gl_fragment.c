@@ -6,6 +6,7 @@
 #define PIPELINE_USE_GLSTATE 0
 _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "../gl_memory_tracker.h"
+#include "../pool.h"
 #include "../gl_types.h"
 #include "gl_framebuffer.h"
 #include "gl_raster.h"
@@ -360,5 +361,5 @@ void process_fragment_tile_job(void *task_data)
 		       &tile->stencil[row * TILE_SIZE], w * sizeof(uint8_t));
 	}
 	atomic_flag_clear(&tile->lock);
-	MT_FREE(job, STAGE_FRAGMENT);
+	tile_job_release(job);
 }

@@ -3,6 +3,7 @@
 #include "gl_memory_tracker.h"
 #include "gl_init.h"
 #include "command_buffer.h"
+#include "pool.h"
 #include "pipeline/gl_vertex.h"
 #include "pipeline/gl_raster.h"
 #include "matrix_utils.h"
@@ -152,7 +153,7 @@ GL_API void GL_APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count)
 	}
 
 	for (GLint i = 0; i + 2 < count; i += 3) {
-		VertexJob *job = MT_ALLOC(sizeof(VertexJob), STAGE_VERTEX);
+		VertexJob *job = vertex_job_acquire();
 		if (!job)
 			return;
 		memcpy(job->viewport, gl_state.viewport, sizeof(job->viewport));
@@ -405,7 +406,7 @@ GL_API void GL_APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type,
 	}
 
 	for (GLsizei i = 0; i + 2 < count; i += 3) {
-		VertexJob *job = MT_ALLOC(sizeof(VertexJob), STAGE_VERTEX);
+		VertexJob *job = vertex_job_acquire();
 		if (!job) {
 			PROFILE_END("glDrawElements");
 			return;
