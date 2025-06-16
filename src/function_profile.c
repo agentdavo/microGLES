@@ -1,5 +1,6 @@
 #include "function_profile.h"
 #include "gl_logger.h"
+#include "gl_thread.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -52,9 +53,10 @@ void function_profile_report(void)
 	      compare_profile);
 	LOG_INFO("GL Function Profiling Results:");
 	for (int i = 0; i < g_profile_count; ++i) {
-		LOG_INFO("  %s: calls=%llu cycles=%llu",
+		LOG_INFO("  %s: calls=%llu time=%lluus",
 			 g_profiles[i].name ? g_profiles[i].name : "(null)",
 			 (unsigned long long)g_profiles[i].call_count,
-			 (unsigned long long)g_profiles[i].total_cycles);
+			 (unsigned long long)thread_cycles_to_us(
+				 g_profiles[i].total_cycles));
 	}
 }

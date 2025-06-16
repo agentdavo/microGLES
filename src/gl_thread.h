@@ -42,6 +42,7 @@ void thread_profile_stop(void);
 void thread_profile_report(void);
 bool thread_profile_is_enabled(void);
 uint64_t thread_get_cycles(void);
+uint64_t thread_cycles_to_us(uint64_t cycles);
 
 /* texture cache helpers */
 texture_cache_t *thread_get_texture_cache(void);

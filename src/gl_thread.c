@@ -452,10 +452,13 @@ void thread_profile_report(void)
 			LOG_INFO("  Cache Hits: %llu", t_hits);
 			LOG_INFO("  Cache Misses: %llu", t_miss);
 		}
-		LOG_INFO("  Avg Task Cycles: %llu",
-			 t_task_cycles / (t_tasks ? t_tasks : 1));
-		LOG_INFO("  Total Idle Cycles: %llu", t_idle_cycles);
-		LOG_INFO("  Total Steal Cycles: %llu", t_steal_cycles);
+		LOG_INFO("  Avg Task Time: %llu us",
+			 thread_cycles_to_us(t_task_cycles /
+					     (t_tasks ? t_tasks : 1)));
+		LOG_INFO("  Total Idle Time: %llu us",
+			 thread_cycles_to_us(t_idle_cycles));
+		LOG_INFO("  Total Steal Time: %llu us",
+			 thread_cycles_to_us(t_steal_cycles));
 	}
 	uint64_t g_tasks = 0, g_steals = 0, g_attempts = 0, g_contention = 0;
 	uint64_t g_task_cycles = 0, g_idle_cycles = 0, g_steal_cycles = 0,
@@ -480,10 +483,12 @@ void thread_profile_report(void)
 	LOG_INFO("  Total Steal Attempts: %llu", g_attempts);
 	LOG_INFO("  Total Steal Successes: %llu", g_steals);
 	LOG_INFO("  Total Contention: %llu", g_contention);
-	LOG_INFO("  Avg Task Cycles: %llu",
-		 g_task_cycles / (g_tasks ? g_tasks : 1));
-	LOG_INFO("  Total Idle Cycles: %llu", g_idle_cycles);
-	LOG_INFO("  Total Steal Cycles: %llu", g_steal_cycles);
+	LOG_INFO("  Avg Task Time: %llu us",
+		 thread_cycles_to_us(g_task_cycles / (g_tasks ? g_tasks : 1)));
+	LOG_INFO("  Total Idle Time: %llu us",
+		 thread_cycles_to_us(g_idle_cycles));
+	LOG_INFO("  Total Steal Time: %llu us",
+		 thread_cycles_to_us(g_steal_cycles));
 	LOG_INFO("  Total Tile Jobs: %llu", g_tiles);
 	LOG_INFO("  Total Cache Hits: %llu", g_hits);
 	LOG_INFO("  Total Cache Misses: %llu", g_miss);
@@ -530,4 +535,34 @@ bool thread_profile_is_enabled(void)
 uint64_t thread_get_cycles(void)
 {
 	return get_cycles();
+}
+
+uint64_t thread_cycles_to_us(uint64_t cycles)
+{
+#if defined(HAVE_BUILTIN_READCYCLECOUNTER)
+	static double cycles_per_us = 0.0;
+	if (cycles_per_us == 0.0) {
+		struct timespec start, now;
+		uint64_t c_start, c_end;
+		clock_gettime(CLOCK_MONOTONIC, &start);
+		c_start = __builtin_readcyclecounter();
+		/* busy-wait ~10ms */
+		do {
+			clock_gettime(CLOCK_MONOTONIC, &now);
+		} while ((now.tv_sec - start.tv_sec) * 1000000000ull +
+				 (now.tv_nsec - start.tv_nsec) <
+			 10000000ull);
+		c_end = __builtin_readcyclecounter();
+		uint64_t ns =
+			(uint64_t)(now.tv_sec - start.tv_sec) * 1000000000ull +
+			(uint64_t)(now.tv_nsec - start.tv_nsec);
+		cycles_per_us =
+			(double)(c_end - c_start) / ((double)ns / 1000.0);
+		if (cycles_per_us <= 0.0)
+			cycles_per_us = 1.0;
+	}
+	return (uint64_t)((double)cycles / cycles_per_us);
+#else
+	return cycles / 1000;
+#endif
 }
