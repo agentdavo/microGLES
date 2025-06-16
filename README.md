@@ -146,6 +146,18 @@ int main(void)
 
 Compile with `-DENABLE_PROFILE` or run any program with `--profile` to record per-stage timings. Without the flag, tasks still execute but no profiling counters are recorded.
 
+## Profiling
+
+microGLES includes a lightweight profiler integrated into the thread pool. When
+profiling is enabled (either by compiling with `-DENABLE_PROFILE` or passing
+`--profile` on the command line) each worker thread measures the cycle count
+spent in every pipeline stage while processing a command buffer. At shutdown
+`thread_profile_report()` prints a table showing task counts, average cycles per
+task and cache statistics for the vertex, primitive, raster, fragment and
+framebuffer stages. The data pinpoints bottlenecks—e.g. excessive fragment time
+may suggest better texture caching or smaller tile size—allowing refinement of
+math routines and thread counts.
+
 ### Linking as a Static Library
 
 Build only the library if you want to embed microGLES in another project:
