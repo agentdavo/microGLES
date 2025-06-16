@@ -5,7 +5,7 @@
  * @brief Thread pool helpers used by the renderer.
  */
 
-#include <threads.h>
+#include "portable/c11threads.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include "texture_cache.h"

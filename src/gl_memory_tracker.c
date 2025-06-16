@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <threads.h>
+#include "portable/c11threads.h"
 
 #define INITIAL_ALLOCATIONS 1024
 
