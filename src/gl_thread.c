@@ -30,6 +30,8 @@ typedef struct {
 	uint64_t tile_jobs;
 	uint64_t cache_hits;
 	uint64_t cache_misses;
+	uint64_t max_queue_depth;
+	uint64_t max_task_cycles;
 } stage_profile_t;
 
 typedef struct {
@@ -168,11 +170,15 @@ static int worker_thread_main(void *arg)
 					uint64_t ts = profiling ? get_cycles() :
 								  0;
 					task.function(task.task_data);
-					if (profiling)
-						g_thread_profile
-							.stages[task.stage]
-							.task_cycles +=
-							get_cycles() - ts;
+					if (profiling) {
+						uint64_t c = get_cycles() - ts;
+						stage_profile_t *sp =
+							&g_thread_profile.stages
+								 [task.stage];
+						sp->task_cycles += c;
+						if (c > sp->max_task_cycles)
+							sp->max_task_cycles = c;
+					}
 					idle_loops = 0;
 					continue;
 				}
@@ -206,11 +212,15 @@ static int worker_thread_main(void *arg)
 					uint64_t ts = profiling ? get_cycles() :
 								  0;
 					task.function(task.task_data);
-					if (profiling)
-						g_thread_profile
-							.stages[task.stage]
-							.task_cycles +=
-							get_cycles() - ts;
+					if (profiling) {
+						uint64_t c = get_cycles() - ts;
+						stage_profile_t *sp =
+							&g_thread_profile.stages
+								 [task.stage];
+						sp->task_cycles += c;
+						if (c > sp->max_task_cycles)
+							sp->max_task_cycles = c;
+					}
 					idle_loops = 0;
 					continue;
 				}
@@ -230,9 +240,14 @@ static int worker_thread_main(void *arg)
 			}
 			uint64_t ts = profiling ? get_cycles() : 0;
 			stolen.function(stolen.task_data);
-			if (profiling)
-				g_thread_profile.stages[stolen.stage]
-					.task_cycles += get_cycles() - ts;
+			if (profiling) {
+				uint64_t c = get_cycles() - ts;
+				stage_profile_t *sp =
+					&g_thread_profile.stages[stolen.stage];
+				sp->task_cycles += c;
+				if (c > sp->max_task_cycles)
+					sp->max_task_cycles = c;
+			}
 			idle_loops = 0;
 			continue;
 		}
@@ -304,11 +319,15 @@ void thread_pool_submit(task_function_t func, void *task_data,
 {
 	int thread_id = (tls_tid >= 0) ? tls_tid : 0;
 	task_queue_t *local_queue = &g_local_queues[thread_id];
+	bool profiling = atomic_load_explicit(&g_profiling_enabled,
+					      memory_order_relaxed);
 	uint64_t tail =
 		atomic_load_explicit(&local_queue->tail, memory_order_relaxed);
 	uint64_t head =
 		atomic_load_explicit(&local_queue->head, memory_order_acquire);
+	uint64_t depth;
 	if (tail - head < LOCAL_QUEUE_SIZE) {
+		depth = tail - head;
 		uint64_t slot = tail % LOCAL_QUEUE_SIZE;
 		local_queue->entries[slot] = (task_t){ .function = func,
 						       .task_data = task_data,
@@ -317,8 +336,11 @@ void thread_pool_submit(task_function_t func, void *task_data,
 		atomic_store_explicit(&local_queue->tail, tail + 1,
 				      memory_order_release);
 	} else {
+		uint64_t gh = atomic_load_explicit(&g_global_head,
+						   memory_order_acquire);
 		tail = atomic_load_explicit(&g_global_tail,
 					    memory_order_relaxed);
+		depth = tail - gh;
 		uint64_t slot = tail % MAX_TASKS;
 		g_global_queue[slot] = (task_t){ .function = func,
 						 .task_data = task_data,
@@ -327,6 +349,8 @@ void thread_pool_submit(task_function_t func, void *task_data,
 		atomic_store_explicit(&g_global_tail, tail + 1,
 				      memory_order_release);
 	}
+	if (profiling && depth > g_thread_profile.stages[stage].max_queue_depth)
+		g_thread_profile.stages[stage].max_queue_depth = depth;
 	mtx_lock(&g_wakeup_mutex);
 	cnd_signal(&g_wakeup);
 	mtx_unlock(&g_wakeup_mutex);
@@ -427,7 +451,7 @@ void thread_profile_report(void)
 		uint64_t t_tasks = 0, t_steals = 0, t_attempts = 0,
 			 t_contention = 0, t_tiles = 0, t_hits = 0, t_miss = 0;
 		uint64_t t_task_cycles = 0, t_idle_cycles = 0,
-			 t_steal_cycles = 0;
+			 t_steal_cycles = 0, t_max_depth = 0, t_max_cycles = 0;
 		for (int i = 0; i < g_num_threads; i++) {
 			stage_profile_t *pd =
 				&g_local_queues[i].profile_data.stages[stage];
@@ -441,6 +465,10 @@ void thread_profile_report(void)
 			t_steal_cycles += pd->steal_cycles;
 			t_hits += pd->cache_hits;
 			t_miss += pd->cache_misses;
+			if (pd->max_queue_depth > t_max_depth)
+				t_max_depth = pd->max_queue_depth;
+			if (pd->max_task_cycles > t_max_cycles)
+				t_max_cycles = pd->max_task_cycles;
 		}
 		LOG_INFO("Stage %s:", stage_names[stage]);
 		LOG_INFO("  Total Tasks: %llu", t_tasks);
@@ -452,6 +480,9 @@ void thread_profile_report(void)
 			LOG_INFO("  Cache Hits: %llu", t_hits);
 			LOG_INFO("  Cache Misses: %llu", t_miss);
 		}
+		LOG_INFO("  Max Queue Depth: %llu", t_max_depth);
+		LOG_INFO("  Max Task Time: %llu us",
+			 thread_cycles_to_us(t_max_cycles));
 		LOG_INFO("  Avg Task Time: %llu us",
 			 thread_cycles_to_us(t_task_cycles /
 					     (t_tasks ? t_tasks : 1)));
@@ -462,7 +493,8 @@ void thread_profile_report(void)
 	}
 	uint64_t g_tasks = 0, g_steals = 0, g_attempts = 0, g_contention = 0;
 	uint64_t g_task_cycles = 0, g_idle_cycles = 0, g_steal_cycles = 0,
-		 g_tiles = 0, g_hits = 0, g_miss = 0;
+		 g_tiles = 0, g_hits = 0, g_miss = 0, g_max_depth = 0,
+		 g_max_cycles = 0;
 	for (int stage = 0; stage < STAGE_COUNT; stage++)
 		for (int i = 0; i < g_num_threads; i++) {
 			stage_profile_t *pd =
@@ -477,12 +509,18 @@ void thread_profile_report(void)
 			g_tiles += pd->tile_jobs;
 			g_hits += pd->cache_hits;
 			g_miss += pd->cache_misses;
+			if (pd->max_queue_depth > g_max_depth)
+				g_max_depth = pd->max_queue_depth;
+			if (pd->max_task_cycles > g_max_cycles)
+				g_max_cycles = pd->max_task_cycles;
 		}
 	LOG_INFO("Global Summary:");
 	LOG_INFO("  Total Tasks: %llu", g_tasks);
 	LOG_INFO("  Total Steal Attempts: %llu", g_attempts);
 	LOG_INFO("  Total Steal Successes: %llu", g_steals);
 	LOG_INFO("  Total Contention: %llu", g_contention);
+	LOG_INFO("  Max Queue Depth: %llu", g_max_depth);
+	LOG_INFO("  Max Task Time: %llu us", thread_cycles_to_us(g_max_cycles));
 	LOG_INFO("  Avg Task Time: %llu us",
 		 thread_cycles_to_us(g_task_cycles / (g_tasks ? g_tasks : 1)));
 	LOG_INFO("  Total Idle Time: %llu us",
