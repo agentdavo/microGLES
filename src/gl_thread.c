@@ -1,5 +1,6 @@
 #include "gl_thread.h"
 #include "gl_logger.h"
+#include "pool.h"
 #include "function_profile.h"
 #include <stdatomic.h>
 #include <stdint.h>
@@ -285,6 +286,7 @@ void thread_pool_init(int num_threads)
 	g_texture_caches = calloc(g_num_threads, sizeof(texture_cache_t));
 	mtx_init(&g_wakeup_mutex, mtx_plain);
 	cnd_init(&g_wakeup);
+	job_pools_init();
 	for (int i = 0; i < g_num_threads; ++i)
 		texture_cache_init(&g_texture_caches[i]);
 	atomic_init(&g_global_head, 0);
@@ -416,6 +418,7 @@ void thread_pool_shutdown(void)
 	for (int i = 0; i < g_num_threads; ++i)
 		thrd_join(g_worker_threads[i], NULL);
 	thread_profile_report();
+	job_pools_destroy();
 	free(g_worker_threads);
 	free(g_local_queues);
 	free(g_texture_caches);

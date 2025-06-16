@@ -6,6 +6,7 @@
 _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "../gl_memory_tracker.h"
 #include "../gl_thread.h"
+#include "../pool.h"
 
 static uint32_t pack_color(const GLfloat c[4])
 {
@@ -84,8 +85,7 @@ void pipeline_rasterize_triangle(const Triangle *tri, const GLint viewport[4],
 			int ey = ty + TILE_SIZE - 1;
 			if (ey > imaxy)
 				ey = imaxy;
-			FragmentTileJob *jobt = MT_ALLOC(
-				sizeof(FragmentTileJob), STAGE_FRAGMENT);
+			FragmentTileJob *jobt = tile_job_acquire();
 			if (!jobt)
 				continue;
 			jobt->x0 = tx;
@@ -156,8 +156,7 @@ void pipeline_rasterize_point(const Vertex *v, GLfloat size,
 			int ey = ty + TILE_SIZE - 1;
 			if (ey > y1)
 				ey = y1;
-			FragmentTileJob *jobt = MT_ALLOC(
-				sizeof(FragmentTileJob), STAGE_FRAGMENT);
+			FragmentTileJob *jobt = tile_job_acquire();
 			if (!jobt)
 				continue;
 			jobt->x0 = tx;
@@ -181,5 +180,5 @@ void process_raster_job(void *task_data)
 {
 	RasterJob *job = (RasterJob *)task_data;
 	pipeline_rasterize_triangle(&job->tri, job->viewport, job->fb);
-	MT_FREE(job, STAGE_RASTER);
+	raster_job_release(job);
 }

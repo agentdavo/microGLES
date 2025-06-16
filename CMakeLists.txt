@@ -48,6 +48,7 @@ set(SOURCE_FILES
     src/pipeline/gl_raster.c
     src/pipeline/gl_fragment.c
     src/matrix_utils.c
+    src/pool.c
     src/gl_memory_tracker.c
     src/gl_logger.c
 )
@@ -66,6 +67,7 @@ set(HEADER_FILES
     src/pipeline/gl_primitive.h
     src/pipeline/gl_raster.h
     src/pipeline/gl_fragment.h
+    src/pool.h
     src/gl_memory_tracker.h
     src/gl_logger.h
     src/gl_context.h

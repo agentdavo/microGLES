@@ -5,6 +5,7 @@
 _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "../gl_memory_tracker.h"
 #include "../gl_thread.h"
+#include "../pool.h"
 #include <string.h>
 #include <math.h>
 #include "../matrix_utils.h"
@@ -167,6 +168,6 @@ void process_vertex_job(void *task_data)
 	pjob->verts[2] = v2;
 	pjob->fb = job->fb;
 	memcpy(pjob->viewport, job->viewport, sizeof(job->viewport));
-	MT_FREE(job, STAGE_VERTEX);
+	vertex_job_release(job);
 	thread_pool_submit(process_primitive_job, pjob, STAGE_PRIMITIVE);
 }
