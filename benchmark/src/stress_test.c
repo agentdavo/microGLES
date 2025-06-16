@@ -2,39 +2,33 @@
 #include "gl_utils.h"
 #include "gl_logger.h"
 #include "gl_thread.h"
+#include "gl_memory_tracker.h"
 #include "matrix_utils.h"
+#include <GLES/gl.h>
 #include <stdlib.h>
-#include <math.h>
+#include <time.h>
 
-/* Simple unit cube geometry with per-face normals and texcoords */
-static const GLfloat cube_vertices[24 * 3] = {
-	/* Front */ -1,	 -1, 1,	 1,  -1, 1,  1,	 1,  1,	 -1, 1,	 1,
-	/* Back */ 1,	 -1, -1, -1, -1, -1, -1, 1,  -1, 1,  1,	 -1,
-	/* Left */ -1,	 -1, -1, -1, -1, 1,  -1, 1,  1,	 -1, 1,	 -1,
-	/* Right */ 1,	 -1, 1,	 1,  -1, -1, 1,	 1,  -1, 1,  1,	 1,
-	/* Top */ -1,	 1,  1,	 1,  1,	 1,  1,	 1,  -1, -1, 1,	 -1,
-	/* Bottom */ -1, -1, -1, 1,  -1, -1, 1,	 -1, 1,	 -1, -1, 1,
+static const GLfloat cube_vertices[] = {
+	-0.5f, -0.5f, -0.5f, 0.5f,  -0.5f, -0.5f, 0.5f,	 0.5f,	-0.5f, 0.5f,
+	-0.5f, -0.5f, -0.5f, -0.5f, 0.5f,  -0.5f, -0.5f, -0.5f, 0.5f,  -0.5f,
+	-0.5f, 0.5f,  0.5f,  -0.5f, -0.5f, 0.5f,  0.5f,	 -0.5f, 0.5f,  -0.5f,
+	0.5f,  -0.5f, 0.5f,  0.5f,  -0.5f, 0.5f,  0.5f,	 0.5f,	-0.5f, -0.5f,
+	0.5f,  -0.5f, 0.5f,  0.5f,  0.5f,  0.5f,  -0.5f, -0.5f, 0.5f,  -0.5f,
+	0.5f,  0.5f,  0.5f,  -0.5f, 0.5f,  -0.5f, -0.5f, 0.5f,	-0.5f, 0.5f,
+	0.5f,  -0.5f, 0.5f,  -0.5f, 0.5f,  -0.5f, 0.5f,	 0.5f,	0.5f,  0.5f,
+	-0.5f, 0.5f,  0.5f,  0.5f,  -0.5f, 0.5f,  0.5f,	 -0.5f, -0.5f
 };
-
-static const GLfloat cube_normals[24 * 3] = {
-	/* Front */ 0,	0,  1,	0,  0,	1,  0,	0,  1,	0,  0,	1,
-	/* Back */ 0,	0,  -1, 0,  0,	-1, 0,	0,  -1, 0,  0,	-1,
-	/* Left */ -1,	0,  0,	-1, 0,	0,  -1, 0,  0,	-1, 0,	0,
-	/* Right */ 1,	0,  0,	1,  0,	0,  1,	0,  0,	1,  0,	0,
-	/* Top */ 0,	1,  0,	0,  1,	0,  0,	1,  0,	0,  1,	0,
-	/* Bottom */ 0, -1, 0,	0,  -1, 0,  0,	-1, 0,	0,  -1, 0,
+static const GLfloat cube_normals[] = {
+	0, 0,  -1, 0, 0,  -1, 0,  0, -1, 0,  0, -1, 0,	0,  1, 0,  0,  1,
+	0, 0,  1,  0, 0,  1,  -1, 0, 0,	 -1, 0, 0,  -1, 0,  0, -1, 0,  0,
+	1, 0,  0,  1, 0,  0,  1,  0, 0,	 1,  0, 0,  0,	-1, 0, 0,  -1, 0,
+	0, -1, 0,  0, -1, 0,  0,  1, 0,	 0,  1, 0,  0,	1,  0, 0,  1,  0
 };
-
-static const GLfloat cube_tex[24 * 2] = {
-	/* Front */ 0,	0, 1, 0, 1, 1, 0, 1,
-	/* Back */ 0,	0, 1, 0, 1, 1, 0, 1,
-	/* Left */ 0,	0, 1, 0, 1, 1, 0, 1,
-	/* Right */ 0,	0, 1, 0, 1, 1, 0, 1,
-	/* Top */ 0,	0, 1, 0, 1, 1, 0, 1,
-	/* Bottom */ 0, 0, 1, 0, 1, 1, 0, 1,
-};
-
-static const GLubyte cube_indices[36] = {
+static const GLfloat cube_tex[] = { 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0,
+				    1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1,
+				    0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0,
+				    1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1 };
+static const GLubyte cube_indices[] = {
 	0,  1,	2,  0,	2,  3, /* Front */
 	4,  5,	6,  4,	6,  7, /* Back */
 	8,  9,	10, 8,	10, 11, /* Left */
