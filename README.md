@@ -156,11 +156,16 @@ microGLES includes a lightweight profiler integrated into the thread pool. When
 profiling is enabled (either by compiling with `-DENABLE_PROFILE` or passing
 `--profile` on the command line) each worker thread measures the cycle count
 spent in every pipeline stage while processing a command buffer. At shutdown
-`thread_profile_report()` prints a table showing task counts, average cycles per
-task and cache statistics for the vertex, primitive, raster, fragment, framebuffer
-and steal stages. The data pinpoints bottlenecks—e.g. excessive fragment time
-may suggest better texture caching or smaller tile size—allowing refinement of
-math routines and thread counts.
+`thread_profile_report()` prints a table showing task counts, average time per
+task (microseconds) and cache statistics for the vertex, primitive, raster,
+fragment, framebuffer and steal stages. The data pinpoints bottlenecks—e.g.
+excessive fragment time may suggest better texture caching or smaller tile
+size—allowing refinement of math routines and thread counts.
+
+The conversion from cycle counts to microseconds is platform dependent.
+Systems without a cycle counter treat the value as nanoseconds. When
+`__builtin_readcyclecounter` is available, the profiler calibrates CPU
+frequency on first use so reported times are approximations.
 
 ### Linking as a Static Library
 
