@@ -1,5 +1,9 @@
 #ifndef GL_INIT_H
 #define GL_INIT_H
+/**
+ * @file gl_init.h
+ * @brief Context initialization helpers.
+ */
 
 #include "gl_errors.h"
 #include "gl_state.h"

@@ -8,7 +8,10 @@ int ext_link_dummy_OES_draw_texture;
 static void draw_tex_rect(GLfloat x, GLfloat y, GLfloat z, GLfloat width,
 			  GLfloat height)
 {
-	TextureOES *tex = find_texture(gl_state.bound_texture);
+	RenderContext *ctx = GetCurrentContext();
+	TextureOES *tex =
+		find_texture(ctx->texture_env[ctx->active_texture - GL_TEXTURE0]
+				     .bound_texture);
 	if (!tex) {
 		LOG_WARN("glDrawTex* called with no bound texture.");
 		return;
@@ -91,7 +94,10 @@ GL_API void GL_APIENTRY glTexParameterivOES(GLenum target, GLenum pname,
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	TextureOES *tex = find_texture(gl_state.bound_texture);
+	RenderContext *ctx = GetCurrentContext();
+	TextureOES *tex =
+		find_texture(ctx->texture_env[ctx->active_texture - GL_TEXTURE0]
+				     .bound_texture);
 	if (!tex) {
 		glSetError(GL_INVALID_OPERATION);
 		return;

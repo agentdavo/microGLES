@@ -2,6 +2,7 @@
 #include <GLES/gl.h>
 #include <string.h>
 #include "../gl_state.h"
+#include "../gl_context.h"
 #include "../gl_types.h"
 static inline BufferObject *find_buffer(GLuint id)
 {
@@ -13,9 +14,10 @@ static inline BufferObject *find_buffer(GLuint id)
 }
 static inline TextureOES *find_texture(GLuint id)
 {
-	for (GLuint i = 0; i < gl_state.texture_count; ++i) {
-		if (gl_state.textures[i]->id == id)
-			return gl_state.textures[i];
+	RenderContext *ctx = GetCurrentContext();
+	for (GLuint i = 0; i < ctx->texture_count; ++i) {
+		if (ctx->textures[i] && ctx->textures[i]->id == id)
+			return ctx->textures[i];
 	}
 	return NULL;
 }

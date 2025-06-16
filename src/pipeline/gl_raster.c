@@ -64,6 +64,52 @@ void pipeline_rasterize_triangle(const Triangle *tri, Framebuffer *fb)
 			jobt->color = color;
 			jobt->depth = tri->v0.z;
 			jobt->fb = fb;
+			jobt->sprite_mode = GL_FALSE;
+			thread_pool_submit(process_fragment_tile_job, jobt,
+					   STAGE_FRAGMENT);
+		}
+	}
+}
+
+void pipeline_rasterize_point(const Vertex *v, GLfloat size, Framebuffer *fb)
+{
+	int half = (int)(size * 0.5f);
+	int x0 = (int)(v->x - half);
+	int y0 = (int)(v->y - half);
+	int x1 = (int)(v->x + half);
+	int y1 = (int)(v->y + half);
+	if (x0 < 0)
+		x0 = 0;
+	if (y0 < 0)
+		y0 = 0;
+	if (x1 >= (int)fb->width)
+		x1 = fb->width - 1;
+	if (y1 >= (int)fb->height)
+		y1 = fb->height - 1;
+	uint32_t color = pack_color(v->color);
+	for (int ty = y0; ty <= y1; ty += TILE_SIZE) {
+		for (int tx = x0; tx <= x1; tx += TILE_SIZE) {
+			int ex = tx + TILE_SIZE - 1;
+			if (ex > x1)
+				ex = x1;
+			int ey = ty + TILE_SIZE - 1;
+			if (ey > y1)
+				ey = y1;
+			FragmentTileJob *jobt = MT_ALLOC(
+				sizeof(FragmentTileJob), STAGE_FRAGMENT);
+			if (!jobt)
+				continue;
+			jobt->x0 = tx;
+			jobt->y0 = ty;
+			jobt->x1 = ex;
+			jobt->y1 = ey;
+			jobt->color = color;
+			jobt->depth = v->z;
+			jobt->fb = fb;
+			jobt->sprite_mode = GL_TRUE;
+			jobt->sprite_cx = v->x;
+			jobt->sprite_cy = v->y;
+			jobt->sprite_size = size;
 			thread_pool_submit(process_fragment_tile_job, jobt,
 					   STAGE_FRAGMENT);
 		}
@@ -75,15 +121,4 @@ void process_raster_job(void *task_data)
 	RasterJob *job = (RasterJob *)task_data;
 	pipeline_rasterize_triangle(&job->tri, job->fb);
 	MT_FREE(job, STAGE_RASTER);
-}
-
-void process_fragment_tile_job(void *task_data)
-{
-	FragmentTileJob *job = (FragmentTileJob *)task_data;
-	for (uint32_t y = job->y0; y <= job->y1; ++y)
-		for (uint32_t x = job->x0; x <= job->x1; ++x) {
-			Fragment frag = { x, y, job->color, job->depth };
-			pipeline_shade_fragment(&frag, job->fb);
-		}
-	MT_FREE(job, STAGE_FRAGMENT);
 }

@@ -43,6 +43,7 @@ void pipeline_transform_vertex(Vertex *dst, const Vertex *src, const mat4 *mvp,
 		dst->color[i] = src->color[i];
 	for (int i = 0; i < 4; ++i)
 		dst->texcoord[i] = src->texcoord[i];
+	dst->point_size = src->point_size;
 }
 
 static _Thread_local mat4 tl_mvp;

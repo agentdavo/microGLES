@@ -1,5 +1,9 @@
 #ifndef GL_API_MATRIX_H
 #define GL_API_MATRIX_H
+/**
+ * @file gl_api_matrix.h
+ * @brief Matrix manipulation API declarations.
+ */
 #include <GLES/gl.h>
 
 GL_API void GL_APIENTRY glMatrixMode(GLenum mode);

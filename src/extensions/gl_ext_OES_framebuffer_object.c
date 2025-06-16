@@ -810,9 +810,11 @@ GL_API void GL_APIENTRY glFramebufferTexture2DOES(GLenum target,
 
 	TextureOES *tex = NULL;
 	if (texture != 0) {
-		for (GLuint i = 0; i < gl_state.texture_count; ++i) {
-			if (gl_state.textures[i]->id == texture) {
-				tex = gl_state.textures[i];
+		RenderContext *ctx = GetCurrentContext();
+		for (GLuint i = 0; i < ctx->texture_count; ++i) {
+			if (ctx->textures[i] &&
+			    ctx->textures[i]->id == texture) {
+				tex = ctx->textures[i];
 				break;
 			}
 		}
