@@ -56,18 +56,18 @@ static _Thread_local thread_profile_t g_thread_profile;
 static texture_cache_t *g_texture_caches;
 static _Thread_local texture_cache_t *tls_cache;
 
-#if defined(__x86_64__)
-#include <x86intrin.h>
+/* Use builtin cycle counter where available, otherwise fall back to
+ * clock_gettime for a monotonic timestamp. */
+#if defined(__has_builtin)
+#if __has_builtin(__builtin_readcyclecounter)
+#define HAVE_BUILTIN_READCYCLECOUNTER 1
+#endif
 #endif
 
 static uint64_t get_cycles(void)
 {
-#if defined(__x86_64__)
-	return __rdtsc();
-#elif defined(__aarch64__)
-	uint64_t val;
-	asm volatile("mrs %0, cntvct_el0" : "=r"(val));
-	return val;
+#if defined(HAVE_BUILTIN_READCYCLECOUNTER)
+	return __builtin_readcyclecounter();
 #else
 	struct timespec ts;
 	clock_gettime(CLOCK_MONOTONIC, &ts);
