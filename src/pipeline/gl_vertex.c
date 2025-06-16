@@ -100,11 +100,14 @@ static void apply_lighting(Vertex *v)
 		float hx = lx;
 		float hy = ly;
 		float hz = lz + 1.0f;
-		vec3_normalize(&hx, &hy, &hz);
-		float spec_dot = nx * hx + ny * hy + nz * hz;
-		if (spec_dot < 0.0f)
-			spec_dot = 0.0f;
-		float spec = powf(spec_dot, tl_mat.shininess);
+		float spec = 0.0f;
+		if (hx != 0.0f || hy != 0.0f || hz != 0.0f) {
+			vec3_normalize(&hx, &hy, &hz);
+			float spec_dot = nx * hx + ny * hy + nz * hz;
+			if (spec_dot < 0.0f)
+				spec_dot = 0.0f;
+			spec = powf(spec_dot, tl_mat.shininess);
+		}
 		r += tl_mat.ambient[0] * lt->ambient[0] * att +
 		     tl_mat.diffuse[0] * lt->diffuse[0] * dot * att +
 		     tl_mat.specular[0] * lt->specular[0] * spec * att;
