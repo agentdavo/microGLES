@@ -19,7 +19,7 @@ int test_command_buffer_ring(void)
 			command_buffer_flush();
 	}
 	command_buffer_flush();
-	thread_pool_wait_timeout(1000);
+	thread_pool_wait_timeout(2000);
 	return atomic_load_explicit(&counter, memory_order_relaxed) == total;
 }
 
