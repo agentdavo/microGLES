@@ -2,26 +2,28 @@
 #include "gl_context.h"
 #include "gl_errors.h"
 #include "gl_utils.h"
+#include "gl_thread.h"
+#include "function_profile.h"
 #include <GLES/gl.h>
 #include <string.h>
 
 GL_API void GL_APIENTRY glActiveTexture(GLenum texture)
 {
-	gl_state.active_texture = texture;
 	context_active_texture(texture);
 }
 
 GL_API void GL_APIENTRY glBindTexture(GLenum target, GLuint texture)
 {
+	PROFILE_START("glBindTexture");
 	if (target != GL_TEXTURE_2D && target != GL_TEXTURE_EXTERNAL_OES) {
 		glSetError(GL_INVALID_ENUM);
+		PROFILE_END("glBindTexture");
 		return;
 	}
-	if (target == GL_TEXTURE_EXTERNAL_OES)
-		gl_state.bound_texture_external = texture;
-	else
-		gl_state.bound_texture = texture;
-	context_bind_texture(gl_state.active_texture - GL_TEXTURE0, texture);
+	RenderContext *ctx = GetCurrentContext();
+	context_bind_texture(ctx->active_texture - GL_TEXTURE0, target,
+			     texture);
+	PROFILE_END("glBindTexture");
 }
 
 GL_API void GL_APIENTRY glGenTextures(GLsizei n, GLuint *textures)
@@ -90,8 +92,11 @@ GL_API void GL_APIENTRY glTexImage2D(GLenum target, GLint level,
 				     GLenum format, GLenum type,
 				     const void *pixels)
 {
+	PROFILE_START("glTexImage2D");
+	(void)border;
 	context_tex_image_2d(target, level, internalformat, width, height,
 			     format, type, pixels);
+	PROFILE_END("glTexImage2D");
 }
 
 GL_API void GL_APIENTRY glTexSubImage2D(GLenum target, GLint level,
@@ -100,8 +105,10 @@ GL_API void GL_APIENTRY glTexSubImage2D(GLenum target, GLint level,
 					GLenum format, GLenum type,
 					const void *pixels)
 {
+	PROFILE_START("glTexSubImage2D");
 	context_tex_sub_image_2d(target, level, xoffset, yoffset, width, height,
 				 format, type, pixels);
+	PROFILE_END("glTexSubImage2D");
 }
 GL_API void GL_APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param)
 {
@@ -109,7 +116,7 @@ GL_API void GL_APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param)
 		glSetError(GL_INVALID_ENUM);
 		return;
 	}
-	int unit = gl_state.active_texture - GL_TEXTURE0;
+	int unit = GetCurrentContext()->active_texture - GL_TEXTURE0;
 	switch (pname) {
 	case GL_TEXTURE_ENV_MODE:
 		switch ((GLenum)param) {
@@ -119,7 +126,6 @@ GL_API void GL_APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param)
 		case GL_ADD:
 		case GL_REPLACE:
 		case GL_COMBINE:
-			gl_state.tex_env_mode[unit] = (GLenum)param;
 			break;
 		default:
 			glSetError(GL_INVALID_ENUM);
@@ -202,11 +208,9 @@ GL_API void GL_APIENTRY glTexEnvfv(GLenum target, GLenum pname,
 			glSetError(GL_INVALID_ENUM);
 		return;
 	}
-	int unit = gl_state.active_texture - GL_TEXTURE0;
+	int unit = GetCurrentContext()->active_texture - GL_TEXTURE0;
 	switch (pname) {
 	case GL_TEXTURE_ENV_COLOR:
-		memcpy(gl_state.tex_env_color[unit], params,
-		       sizeof(GLfloat) * 4);
 		context_set_texture_env(unit, pname, params);
 		break;
 	default:

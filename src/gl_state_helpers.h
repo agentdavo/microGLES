@@ -1,5 +1,9 @@
 #ifndef GL_STATE_HELPERS_H
 #define GL_STATE_HELPERS_H
+/**
+ * @file gl_state_helpers.h
+ * @brief Atomic helpers for GL state version tracking.
+ */
 
 #include <GLES/gl.h>
 #include <stdatomic.h>
