@@ -298,30 +298,26 @@ void process_fragment_tile_job(void *task_data)
 	uint32_t w = job->x1 - job->x0 + 1;
 	uint32_t h = job->y1 - job->y0 + 1;
 
-	_Atomic uint32_t local_color[TILE_SIZE * TILE_SIZE];
-	_Atomic float local_depth[TILE_SIZE * TILE_SIZE];
-	_Atomic uint8_t local_stencil[TILE_SIZE * TILE_SIZE];
-
-	Framebuffer tile_fb = {
-		.width = w,
-		.height = h,
-		.color_buffer = local_color,
-		.depth_buffer = local_depth,
-		.stencil_buffer = local_stencil,
-	};
-
 	Framebuffer *fb = job->fb;
+	uint32_t tile_x = job->x0 / TILE_SIZE;
+	uint32_t tile_y = job->y0 / TILE_SIZE;
+	FramebufferTile *tile = &fb->tiles[tile_y * fb->tiles_x + tile_x];
+	while (atomic_flag_test_and_set(&tile->lock))
+		thrd_yield();
+	tile->x0 = job->x0;
+	tile->y0 = job->y0;
+
 	for (uint32_t row = 0; row < h; ++row) {
 		size_t idx = (size_t)(job->y0 + row) * fb->width + job->x0;
-		memcpy((uint32_t *)&local_color[row * w],
-		       (uint32_t *)&fb->color_buffer[idx],
+		memcpy(&tile->color[row * TILE_SIZE], &fb->color_buffer[idx],
 		       w * sizeof(uint32_t));
-		memcpy((float *)&local_depth[row * w],
-		       (float *)&fb->depth_buffer[idx], w * sizeof(float));
-		memcpy((uint8_t *)&local_stencil[row * w],
-		       (uint8_t *)&fb->stencil_buffer[idx],
-		       w * sizeof(uint8_t));
+		memcpy(&tile->depth[row * TILE_SIZE], &fb->depth_buffer[idx],
+		       w * sizeof(float));
+		memcpy(&tile->stencil[row * TILE_SIZE],
+		       &fb->stencil_buffer[idx], w * sizeof(uint8_t));
 	}
+
+	framebuffer_enter_tile(tile);
 
 	GLboolean prev_mode = tl_sprite_mode;
 	GLfloat prev_cx = tl_sprite_cx;
@@ -342,7 +338,7 @@ void process_fragment_tile_job(void *task_data)
 				.color = job->color,
 				.depth = job->depth,
 			};
-			pipeline_shade_fragment(&frag, &tile_fb);
+			pipeline_shade_fragment(&frag, fb);
 		}
 	}
 
@@ -353,15 +349,16 @@ void process_fragment_tile_job(void *task_data)
 		tl_sprite_size = prev_size;
 	}
 
+	framebuffer_leave_tile();
 	for (uint32_t row = 0; row < h; ++row) {
 		size_t idx = (size_t)(job->y0 + row) * fb->width + job->x0;
-		memcpy((uint32_t *)&fb->color_buffer[idx],
-		       (uint32_t *)&local_color[row * w], w * sizeof(uint32_t));
-		memcpy((float *)&fb->depth_buffer[idx],
-		       (float *)&local_depth[row * w], w * sizeof(float));
-		memcpy((uint8_t *)&fb->stencil_buffer[idx],
-		       (uint8_t *)&local_stencil[row * w], w * sizeof(uint8_t));
+		memcpy(&fb->color_buffer[idx], &tile->color[row * TILE_SIZE],
+		       w * sizeof(uint32_t));
+		memcpy(&fb->depth_buffer[idx], &tile->depth[row * TILE_SIZE],
+		       w * sizeof(float));
+		memcpy(&fb->stencil_buffer[idx],
+		       &tile->stencil[row * TILE_SIZE], w * sizeof(uint8_t));
 	}
-
+	atomic_flag_clear(&tile->lock);
 	MT_FREE(job, STAGE_FRAGMENT);
 }
