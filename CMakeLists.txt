@@ -37,6 +37,7 @@ set(SOURCE_FILES
     src/gl_context.c
     src/gl_thread.c
     src/texture_cache.c
+    src/function_profile.c
     src/ktx_loader.c
     src/command_buffer.c
     src/x11_window.c

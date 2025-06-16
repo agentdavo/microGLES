@@ -1,5 +1,6 @@
 #include "gl_thread.h"
 #include "gl_logger.h"
+#include "function_profile.h"
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -374,6 +375,7 @@ void thread_profile_start(void)
 	for (int i = 0; i < g_num_threads; ++i)
 		memset(&g_local_queues[i].profile_data, 0,
 		       sizeof(thread_profile_t));
+	function_profile_reset();
 }
 
 void thread_profile_stop(void)
@@ -449,6 +451,7 @@ void thread_profile_report(void)
 	LOG_INFO("  Total Tile Jobs: %llu", g_tiles);
 	LOG_INFO("  Total Cache Hits: %llu", g_hits);
 	LOG_INFO("  Total Cache Misses: %llu", g_miss);
+	function_profile_report();
 }
 
 texture_cache_t *thread_get_texture_cache(void)
@@ -481,4 +484,14 @@ void thread_profile_get_cache_stats(uint64_t *hits, uint64_t *misses)
 		*hits = h;
 	if (misses)
 		*misses = m;
+}
+
+bool thread_profile_is_enabled(void)
+{
+	return atomic_load_explicit(&g_profiling_enabled, memory_order_relaxed);
+}
+
+uint64_t thread_get_cycles(void)
+{
+	return get_cycles();
 }
