@@ -1,7 +1,7 @@
 #ifndef POOL_H
 #define POOL_H
 #include <stddef.h>
-#include <threads.h>
+#include "portable/c11threads.h"
 #include "gl_thread.h" /* stage_tag_t */
 #include "pipeline/gl_vertex.h"
 #include "pipeline/gl_raster.h"

@@ -7,7 +7,7 @@ _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "gl_thread.h"
 #include "command_buffer.h"
 #include "../gl_context.h"
-#include <threads.h>
+#include "portable/c11threads.h"
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
