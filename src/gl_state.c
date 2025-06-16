@@ -24,9 +24,6 @@ void InitGLState(GLState *state)
 	state->bound_framebuffer = &state->default_framebuffer;
 	state->default_framebuffer.id = 0;
 
-	state->texture_count = 0;
-	state->next_texture_id = 1;
-
 	state->next_buffer_id = 1;
 	state->array_buffer_binding = 0;
 	state->element_array_buffer_binding = 0;
@@ -72,17 +69,6 @@ void InitGLState(GLState *state)
 	state->depth_func = GL_LESS;
 	state->cull_face_mode = GL_BACK;
 	state->front_face = GL_CCW;
-	state->current_color[0] = 1.0f;
-	state->current_color[1] = 1.0f;
-	state->current_color[2] = 1.0f;
-	state->current_color[3] = 1.0f;
-	state->current_normal[0] = 0.0f;
-	state->current_normal[1] = 0.0f;
-	state->current_normal[2] = 1.0f;
-	state->active_texture = GL_TEXTURE0;
-	state->client_active_texture = GL_TEXTURE0;
-	state->bound_texture = 0;
-	state->bound_texture_external = 0;
 	state->viewport[0] = 0;
 	state->viewport[1] = 0;
 	state->viewport[2] = 0;
@@ -128,11 +114,6 @@ void InitGLState(GLState *state)
 	state->point_size_max = 1.0f;
 
 	for (int i = 0; i < 8; ++i) {
-		state->tex_env_mode[i] = GL_MODULATE;
-		state->tex_env_color[i][0] = 0.0f;
-		state->tex_env_color[i][1] = 0.0f;
-		state->tex_env_color[i][2] = 0.0f;
-		state->tex_env_color[i][3] = 0.0f;
 		state->tex_env_combine_rgb[i] = GL_MODULATE;
 		state->tex_env_combine_alpha[i] = GL_MODULATE;
 		state->tex_env_src_rgb[i][0] = GL_TEXTURE;
@@ -150,10 +131,6 @@ void InitGLState(GLState *state)
 		state->tex_env_rgb_scale[i] = 1.0f;
 		state->tex_env_alpha_scale[i] = 1.0f;
 		state->tex_env_coord_replace[i] = GL_FALSE;
-		state->current_texcoord[i][0] = 0.0f;
-		state->current_texcoord[i][1] = 0.0f;
-		state->current_texcoord[i][2] = 0.0f;
-		state->current_texcoord[i][3] = 1.0f;
 	}
 	for (int i = 0; i < 4; ++i) {
 		state->tex_gen_mode[i] = 0;
@@ -174,53 +151,7 @@ void InitGLState(GLState *state)
 	state->perspective_correction_hint = GL_DONT_CARE;
 	state->point_smooth_hint = GL_DONT_CARE;
 
-	/* Capability defaults */
-	state->alpha_test_enabled = GL_FALSE;
-	state->blend_enabled = GL_FALSE;
-	state->color_logic_op_enabled = GL_FALSE;
-	state->color_material_enabled = GL_FALSE;
-	state->cull_face_enabled = GL_FALSE;
-	state->depth_test_enabled = GL_FALSE;
-	state->dither_enabled = GL_TRUE;
-	state->fog_enabled = GL_FALSE;
-	state->lighting_enabled = GL_FALSE;
-	state->line_smooth_enabled = GL_FALSE;
-	state->multisample_enabled = GL_TRUE;
-	state->normalize_enabled = GL_FALSE;
-	state->point_smooth_enabled = GL_FALSE;
-	state->point_sprite_enabled = GL_FALSE;
-	state->polygon_offset_fill_enabled = GL_FALSE;
-	state->rescale_normal_enabled = GL_FALSE;
-	state->sample_alpha_to_coverage_enabled = GL_FALSE;
-	state->sample_alpha_to_one_enabled = GL_FALSE;
-	state->sample_coverage_enabled = GL_FALSE;
-	state->scissor_test_enabled = GL_FALSE;
-	state->stencil_test_enabled = GL_FALSE;
-	for (int i = 0; i < 6; ++i)
-		state->clip_plane_enabled[i] = GL_FALSE;
-
-	state->vertex_array_enabled = GL_FALSE;
-	state->vertex_array_size = 4;
-	state->vertex_array_type = GL_FLOAT;
-	state->vertex_array_stride = 0;
-	state->vertex_array_pointer = NULL;
-
-	state->color_array_enabled = GL_FALSE;
-	state->color_array_size = 4;
-	state->color_array_type = GL_FLOAT;
-	state->color_array_stride = 0;
-	state->color_array_pointer = NULL;
-
-	state->normal_array_enabled = GL_FALSE;
-	state->normal_array_type = GL_FLOAT;
-	state->normal_array_stride = 0;
-	state->normal_array_pointer = NULL;
-
-	state->texcoord_array_enabled = GL_FALSE;
-	state->texcoord_array_size = 4;
-	state->texcoord_array_type = GL_FLOAT;
-	state->texcoord_array_stride = 0;
-	state->texcoord_array_pointer = NULL;
+	/* Capability defaults moved to RenderContext */
 
 	/* OES_point_size_array */
 	state->point_size_array_type = GL_FLOAT;
@@ -310,11 +241,6 @@ void CleanupGLState(GLState *state)
 		tracked_free(state->framebuffers[i], sizeof(FramebufferOES));
 	}
 	state->framebuffer_count = 0;
-
-	for (GLuint i = 0; i < state->texture_count; ++i) {
-		tracked_free(state->textures[i], sizeof(TextureOES));
-	}
-	state->texture_count = 0;
 
 	for (GLint i = 0; i < state->buffer_count; ++i) {
 		tracked_free(state->buffers[i]->data, state->buffers[i]->size);

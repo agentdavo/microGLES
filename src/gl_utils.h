@@ -2,6 +2,10 @@
 
 #ifndef GL_UTILS_H
 #define GL_UTILS_H
+/**
+ * @file gl_utils.h
+ * @brief Utility routines and error helpers.
+ */
 
 #include <GLES/gl.h> /* OpenGL ES 1.1 */
 #include <GLES/glext.h> /* For extension types */

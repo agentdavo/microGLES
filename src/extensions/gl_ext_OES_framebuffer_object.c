@@ -4,6 +4,7 @@
 #include "gl_state.h"
 #include "gl_types.h"
 #include "gl_utils.h"
+#include "gl_context.h"
 #include "gl_ext_common.h"
 EXT_REGISTER("GL_OES_framebuffer_object")
 int ext_link_dummy_OES_framebuffer_object;
@@ -810,9 +811,11 @@ GL_API void GL_APIENTRY glFramebufferTexture2DOES(GLenum target,
 
 	TextureOES *tex = NULL;
 	if (texture != 0) {
-		for (GLuint i = 0; i < gl_state.texture_count; ++i) {
-			if (gl_state.textures[i]->id == texture) {
-				tex = gl_state.textures[i];
+		RenderContext *ctx = GetCurrentContext();
+		for (GLuint i = 0; i < ctx->texture_count; ++i) {
+			if (ctx->textures[i] &&
+			    ctx->textures[i]->id == texture) {
+				tex = ctx->textures[i];
 				break;
 			}
 		}
@@ -996,22 +999,15 @@ GL_API void GL_APIENTRY glGenerateMipmapOES(GLenum target)
 		return;
 	}
 
-	FramebufferOES *fb = gl_state.bound_framebuffer;
-	if (fb == NULL) {
+	/* The spec operates on the texture currently bound to the active unit. */
+	RenderContext *ctx = GetCurrentContext();
+	GLuint tex_id = ctx->texture_env[ctx->active_texture - GL_TEXTURE0]
+				.bound_texture;
+	TextureOES *tex = context_find_texture(tex_id);
+	if (!tex) {
 		LOG_ERROR(
-			"glGenerateMipmapOES: No framebuffer is currently bound.");
-		glSetError(GL_INVALID_OPERATION);
-		return;
-	}
-
-	TextureOES *tex = NULL;
-	if (fb->color_attachment.type == ATTACHMENT_TEXTURE) {
-		tex = fb->color_attachment.attachment.texture;
-	}
-
-	if (tex == NULL) {
-		LOG_ERROR("glGenerateMipmapOES: No texture is attached to the "
-			  "framebuffer's color attachment.");
+			"glGenerateMipmapOES: No texture bound to active unit %d.",
+			ctx->active_texture - GL_TEXTURE0);
 		glSetError(GL_INVALID_OPERATION);
 		return;
 	}
