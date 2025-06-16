@@ -9,6 +9,10 @@
 
 GL_API void GL_APIENTRY glActiveTexture(GLenum texture)
 {
+	if (texture < GL_TEXTURE0 || texture > GL_TEXTURE1) {
+		glSetError(GL_INVALID_ENUM);
+		return;
+	}
 	context_active_texture(texture);
 }
 
