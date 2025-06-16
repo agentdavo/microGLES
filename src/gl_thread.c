@@ -55,6 +55,8 @@ static atomic_bool g_profiling_enabled = false;
 static _Thread_local thread_profile_t g_thread_profile;
 static texture_cache_t *g_texture_caches;
 static _Thread_local texture_cache_t *tls_cache;
+static cnd_t g_wakeup;
+static mtx_t g_wakeup_mutex;
 
 #if defined(__x86_64__)
 #include <x86intrin.h>
@@ -233,15 +235,32 @@ static int worker_thread_main(void *arg)
 			idle_loops = 0;
 			continue;
 		}
-		if (profiling)
+		if (profiling) {
 			g_thread_profile.stages[STAGE_VERTEX].idle_cycles +=
 				get_cycles() - start_cycles;
-		idle_loops++;
-		if (idle_loops > 100) {
-			struct timespec ts = { 0, 50 };
-			thrd_sleep(&ts, NULL);
+			mtx_lock(&g_wakeup_mutex);
+			uint64_t lh = atomic_load_explicit(
+				&local_queue->head, memory_order_relaxed);
+			uint64_t lt = atomic_load_explicit(
+				&local_queue->tail, memory_order_acquire);
+			uint64_t gh = atomic_load_explicit(
+				&g_global_head, memory_order_relaxed);
+			uint64_t gt = atomic_load_explicit(
+				&g_global_tail, memory_order_acquire);
+			if (lh >= lt && gh >= gt &&
+			    !atomic_load_explicit(&g_shutdown_flag,
+						  memory_order_relaxed))
+				cnd_wait(&g_wakeup, &g_wakeup_mutex);
+			mtx_unlock(&g_wakeup_mutex);
+			idle_loops = 0;
 		} else {
-			thrd_yield();
+			idle_loops++;
+			if (idle_loops > 100) {
+				struct timespec ts = { 0, 50 };
+				thrd_sleep(&ts, NULL);
+			} else {
+				thrd_yield();
+			}
 		}
 	}
 	for (int s = 0; s < STAGE_COUNT; ++s)
@@ -256,6 +275,8 @@ void thread_pool_init(int num_threads)
 	g_worker_threads = malloc(sizeof(thrd_t) * g_num_threads);
 	g_local_queues = calloc(g_num_threads, sizeof(task_queue_t));
 	g_texture_caches = calloc(g_num_threads, sizeof(texture_cache_t));
+	mtx_init(&g_wakeup_mutex, mtx_plain);
+	cnd_init(&g_wakeup);
 	for (int i = 0; i < g_num_threads; ++i)
 		texture_cache_init(&g_texture_caches[i]);
 	atomic_init(&g_global_head, 0);
@@ -299,6 +320,9 @@ void thread_pool_submit(task_function_t func, void *task_data,
 		atomic_store_explicit(&g_global_tail, tail + 1,
 				      memory_order_release);
 	}
+	mtx_lock(&g_wakeup_mutex);
+	cnd_signal(&g_wakeup);
+	mtx_unlock(&g_wakeup_mutex);
 }
 
 void thread_pool_wait(void)
@@ -355,12 +379,17 @@ void thread_pool_shutdown(void)
 	thread_pool_wait();
 	thread_profile_stop();
 	atomic_store_explicit(&g_shutdown_flag, true, memory_order_release);
+	mtx_lock(&g_wakeup_mutex);
+	cnd_broadcast(&g_wakeup);
+	mtx_unlock(&g_wakeup_mutex);
 	for (int i = 0; i < g_num_threads; ++i)
 		thrd_join(g_worker_threads[i], NULL);
 	thread_profile_report();
 	free(g_worker_threads);
 	free(g_local_queues);
 	free(g_texture_caches);
+	cnd_destroy(&g_wakeup);
+	mtx_destroy(&g_wakeup_mutex);
 }
 
 bool thread_pool_active(void)
