@@ -1,6 +1,7 @@
 #include "gl_primitive.h"
 #include "gl_raster.h"
 #include "../gl_thread.h"
+#include "../pool.h"
 #define PIPELINE_USE_GLSTATE 0
 _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "../gl_memory_tracker.h"
@@ -27,7 +28,7 @@ void process_primitive_job(void *task_data)
 		MT_FREE(job, STAGE_PRIMITIVE);
 		return; // culled
 	}
-	RasterJob *rjob = MT_ALLOC(sizeof(RasterJob), STAGE_RASTER);
+	RasterJob *rjob = raster_job_acquire();
 	if (!rjob) {
 		MT_FREE(job, STAGE_PRIMITIVE);
 		return;
