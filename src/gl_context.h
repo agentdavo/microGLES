@@ -8,7 +8,7 @@
 #include "matrix_utils.h"
 #include <GLES/gl.h>
 #include <stdatomic.h>
-#include <threads.h>
+#include "portable/c11threads.h"
 #include "gl_types.h"
 
 #ifdef __cplusplus

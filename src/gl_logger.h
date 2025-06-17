@@ -6,7 +6,7 @@
  */
 
 #include <stdarg.h>
-#include <threads.h>
+#include "portable/c11threads.h"
 #include <stdatomic.h>
 
 #ifdef __cplusplus
@@ -21,6 +21,13 @@ typedef enum {
 	LOG_LEVEL_FATAL
 } LogLevel;
 
+/**
+ * Initialize the logger.
+ *
+ * @param path  File to append logs to, or NULL for stdout only.
+ * @param level Minimum severity to record.
+ * @return 1 on success, 0 on failure.
+ */
 int logger_init(const char *path, LogLevel level);
 void logger_shutdown(void);
 void LogMessage(LogLevel level, const char *format, ...);
