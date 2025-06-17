@@ -2,6 +2,7 @@
 #include "gl_context.h"
 #include "gl_errors.h"
 #include <GLES/gl.h>
+#include "gl_utils.h"
 
 GL_API void GL_APIENTRY glClearDepthf(GLfloat d)
 {
@@ -44,6 +45,11 @@ GL_API void GL_APIENTRY glPolygonOffset(GLfloat factor, GLfloat units)
 {
 	gl_state.polygon_offset_factor = factor;
 	gl_state.polygon_offset_units = units;
+}
+
+GL_API void GL_APIENTRY glPolygonOffsetx(GLfixed factor, GLfixed units)
+{
+	glPolygonOffset(FIXED_TO_FLOAT(factor), FIXED_TO_FLOAT(units));
 }
 
 GL_API void GL_APIENTRY glClearStencil(GLint s)

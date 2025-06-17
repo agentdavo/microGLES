@@ -57,6 +57,13 @@ int test_all_entrypoints(void)
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	GLfloat wrap = (GLfloat)GL_CLAMP_TO_EDGE;
 	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, &wrap);
+	glTexParameterx(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, FIX(1));
+	GLint ip = GL_NEAREST_MIPMAP_LINEAR;
+	glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, &ip);
+	GLfixed xv[4] = { FIX(0.f), FIX(0.f), FIX(0.f), FIX(0.f) };
+	glTexParameterxv(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, xv);
+	GLint out;
+	glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, &out);
 	glTranslatef(1.f, 2.f, 3.f);
 	glActiveTexture(GL_TEXTURE0);
 	glAlphaFuncx(GL_ALWAYS, FIX(0.5));
@@ -69,11 +76,16 @@ int test_all_entrypoints(void)
 	glClearDepthx(FIX(1));
 	glClearStencil(0);
 	glClientActiveTexture(GL_TEXTURE0);
-	/* fixed-point wrappers not implemented: skip glClipPlanex, glColor4ub */
+	/* fixed-point wrapper glClipPlanex still missing */
+	glColor4ub(255, 255, 255, 255);
 	glColor4x(FIX(1), FIX(1), FIX(1), FIX(1));
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	glColorPointer(4, GL_FLOAT, 0, color);
-	/* copy tex image functions not implemented */
+	glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 8, 8, 0, 0, NULL);
+	glCompressedTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8, 8, GL_RGB, 0,
+				  NULL);
+	glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, 1, 1, 0);
+	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, 1, 1);
 	glCullFace(GL_BACK);
 	glDeleteBuffers(1, &buf);
 	glDeleteTextures(1, &tex);
