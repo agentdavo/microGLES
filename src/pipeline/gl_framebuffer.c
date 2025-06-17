@@ -7,7 +7,7 @@ _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "gl_thread.h"
 #include "command_buffer.h"
 #include "../gl_context.h"
-#include <threads.h>
+#include "portable/c11threads.h"
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -83,6 +83,10 @@ void framebuffer_destroy(Framebuffer *fb)
 {
 	if (!fb)
 		return;
+	if (thread_pool_active()) {
+		command_buffer_flush();
+		thread_pool_wait();
+	}
 	size_t pixels = (size_t)fb->width * fb->height;
 	tracked_free((void *)fb->color_buffer,
 		     pixels * sizeof(_Atomic uint32_t));

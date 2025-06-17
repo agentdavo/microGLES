@@ -3,7 +3,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <threads.h>
+#include "portable/c11threads.h"
+
+static char *dup_cstring(const char *src)
+{
+	size_t len = strlen(src) + 1;
+	char *dst = malloc(len);
+	if (dst)
+		memcpy(dst, src, len);
+	return dst;
+}
 
 #define INITIAL_ALLOCATIONS 1024
 
@@ -43,9 +52,9 @@ static void record_alloc(void *ptr, size_t size, stage_tag_t stage,
 {
 	for (size_t i = 0; i < g_capacity; ++i) {
 		if (!g_allocs[i].active) {
-			g_allocs[i] =
-				(allocation_t){ ptr,	      size, stage,
-						strdup(type), line, true };
+			g_allocs[i] = (allocation_t){ ptr,   size,
+						      stage, dup_cstring(type),
+						      line,  true };
 			g_current += size;
 			g_stage_current[stage] += size;
 			if (g_current > g_peak)
@@ -67,8 +76,8 @@ static void record_alloc(void *ptr, size_t size, stage_tag_t stage,
 	g_allocs = new_allocs;
 	size_t idx = g_capacity;
 	g_capacity = new_cap;
-	g_allocs[idx] =
-		(allocation_t){ ptr, size, stage, strdup(type), line, true };
+	g_allocs[idx] = (allocation_t){ ptr,  size, stage, dup_cstring(type),
+					line, true };
 	g_current += size;
 	g_stage_current[stage] += size;
 	if (g_current > g_peak)
@@ -123,9 +132,8 @@ void *memory_tracker_realloc(void *ptr, size_t size, stage_tag_t stage,
 		g_current -= rec->size;
 		g_stage_current[rec->stage] -= rec->size;
 		free(rec->type);
-		*rec =
-			(allocation_t){ np,	      size, stage,
-					strdup(type), line, true };
+		*rec = (allocation_t){ np,   size, stage, dup_cstring(type),
+				       line, true };
 	} else {
 		record_alloc(np, size, stage, type, line);
 		mtx_unlock(&g_mutex);
