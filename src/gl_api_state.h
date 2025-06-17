@@ -8,7 +8,7 @@
 
 GL_API void GL_APIENTRY glEnable(GLenum cap);
 GL_API void GL_APIENTRY glDisable(GLenum cap);
-GLboolean glIsEnabled(GLenum cap);
+GL_API GLboolean GL_APIENTRY glIsEnabled(GLenum cap);
 GL_API void GL_APIENTRY glEnableClientState(GLenum array);
 GL_API void GL_APIENTRY glDisableClientState(GLenum array);
 GL_API void GL_APIENTRY glClientActiveTexture(GLenum texture);
@@ -22,9 +22,10 @@ GL_API void GL_APIENTRY glScissor(GLint x, GLint y, GLsizei width,
 				  GLsizei height);
 GL_API void GL_APIENTRY glGetBooleanv(GLenum pname, GLboolean *data);
 GL_API void GL_APIENTRY glGetFloatv(GLenum pname, GLfloat *data);
+GL_API void GL_APIENTRY glGetFixedv(GLenum pname, GLfixed *data);
 GL_API void GL_APIENTRY glGetIntegerv(GLenum pname, GLint *data);
 GL_API void GL_APIENTRY glGetPointerv(GLenum pname, void **params);
-GLboolean glIsBuffer(GLuint buffer);
-GLboolean glIsTexture(GLuint texture);
+GL_API GLboolean GL_APIENTRY glIsBuffer(GLuint buffer);
+GL_API GLboolean GL_APIENTRY glIsTexture(GLuint texture);
 
 #endif /* GL_API_STATE_H */
