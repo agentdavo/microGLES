@@ -52,6 +52,12 @@ set(SOURCE_FILES
     src/gl_memory_tracker.c
     src/gl_logger.c
 )
+
+include(CheckIncludeFile)
+check_include_file(threads.h HAVE_THREADS_H)
+if(NOT HAVE_THREADS_H)
+    list(APPEND SOURCE_FILES src/portable/tinycthread.c)
+endif()
 set(RENDERER_MAIN src/main.c)
 
 # Define header files (for IDE visibility, optional)
