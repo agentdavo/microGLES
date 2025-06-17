@@ -4,7 +4,7 @@
 #include <GLES/glext.h>
 
 EXT_REGISTER("GL_OES_EGL_image")
-int ext_link_dummy_OES_egl_image;
+__attribute__((used)) int ext_link_dummy_OES_egl_image = 0;
 
 GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES(GLenum target,
 						     GLeglImageOES image)

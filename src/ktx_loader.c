@@ -311,7 +311,15 @@ KTXError load_ktx_texture(const char *filename, GLuint *texture_id)
 	size_t size;
 	if (!parse_ascii_file(filename, &buf, &size))
 		return KTX_INVALID_HEADER;
+#ifdef NO_FMEMOPEN
+	FILE *mem = tmpfile();
+	if (mem) {
+		fwrite(buf, 1, size, mem);
+		rewind(mem);
+	}
+#else
 	FILE *mem = fmemopen(buf, size, "rb");
+#endif
 	if (!mem) {
 		free(buf);
 		return KTX_INVALID_HEADER;

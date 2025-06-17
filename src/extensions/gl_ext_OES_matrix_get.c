@@ -2,7 +2,7 @@
 #include <GLES/glext.h>
 #include <math.h>
 EXT_REGISTER("GL_OES_matrix_get")
-int ext_link_dummy_OES_matrix_get;
+__attribute__((used)) int ext_link_dummy_OES_matrix_get = 0;
 
 GLbitfield glQueryMatrixxOES(GLfixed *mantissa, GLint *exponent)
 {
