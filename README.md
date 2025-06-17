@@ -42,6 +42,7 @@ src/
 docs/            # HTML docs & migration notes
 benchmark/       # Perf micro-benchmarks
 conformance/     # Spec-validation tests
+lv_lib_uGLES/    # LVGL integration demo library
 ```
 
 All public symbols are declared by `#include <GLES/gl.h>` and `<GLES/glext.h>`. No additional headers are installed.
@@ -222,7 +223,6 @@ Each stage increments its own profiling counters (`thread_profile_report()`).
 - Keep each `gl_api_*.c` focused on a single spec chapter.
 - Prefer `MT_ALLOC/MT_FREE` and `thread_pool_submit()` over raw `malloc/thrd_create`.
 - Document non-obvious algorithms (e.g., atomic depth CAS loop) inline.
-- See [`docs/PORTABILITY.md`](docs/PORTABILITY.md) for cross-platform guidelines.
 
 Pull requests that break conformance or style are rejected automatically.
 

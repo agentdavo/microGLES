@@ -4,6 +4,9 @@ cmake_minimum_required(VERSION 3.10)
 # Project name and version
 project(OpenGLES_Renderer VERSION 1.0 LANGUAGES C)
 
+# Optional LVGL integration library
+option(BUILD_LV_LIB_U_GLES "Build LVGL integration library" OFF)
+
 
 # Set C standard
 set(CMAKE_C_STANDARD 11)
@@ -111,10 +114,9 @@ if(NOT GLESv1_CM_LIBRARY OR NOT EGL_LIBRARY)
     set(EGL_LIBRARY "")
 endif()
 
-# Optional POSIX thread library
-if(NOT WIN32)
-    list(APPEND EXTRA_LIBS pthread)
-endif()
+# Find pthread
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 find_package(X11)
 if(X11_FOUND)
     target_compile_definitions(renderer_lib PUBLIC HAVE_X11)
@@ -127,8 +129,9 @@ target_link_libraries(renderer PRIVATE
     renderer_lib
     ${GLESv1_CM_LIBRARY}
     ${EGL_LIBRARY}
-    ${EXTRA_LIBS}
+    Threads::Threads
     m # Math library
+    ${EXTRA_LIBS}
 )
 
 # Set output directories
@@ -162,7 +165,8 @@ add_custom_target(run
 file(GLOB_RECURSE SOURCES
     "src/*.h" "src/*.c"
     "benchmark/*.h" "benchmark/*.c"
-    "conformance/*.h" "conformance/*.c")
+    "conformance/*.h" "conformance/*.c"
+    "lv_lib_uGLES/*.h" "lv_lib_uGLES/*.c")
 list(FILTER SOURCES EXCLUDE REGEX "CMakeLists.txt")
 list(FILTER SOURCES EXCLUDE REGEX "\\.md$")
 find_program(CLANG_FORMAT clang-format)
@@ -175,6 +179,9 @@ endif()
 
 add_subdirectory(benchmark)
 add_subdirectory(conformance)
+if(BUILD_LV_LIB_U_GLES)
+    add_subdirectory(lv_lib_uGLES)
+endif()
 
 enable_testing()
 add_test(
