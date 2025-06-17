@@ -31,7 +31,7 @@ void run_spinning_gears(Framebuffer *fb, BenchmarkResult *result);
 void run_spinning_cubes(Framebuffer *fb, BenchmarkResult *result);
 void run_multitexture_demo(Framebuffer *fb, BenchmarkResult *result);
 void run_alpha_blend_demo(Framebuffer *fb, BenchmarkResult *result);
-void run_miletostone1(Framebuffer *fb, BenchmarkResult *result);
+void run_milestone1(Framebuffer *fb, BenchmarkResult *result);
 void run_milestone2(Framebuffer *fb, BenchmarkResult *result);
 void run_texture_stream(Framebuffer *fb, BenchmarkResult *result);
 void run_toggle_blend(Framebuffer *fb, BenchmarkResult *result);

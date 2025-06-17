@@ -36,7 +36,7 @@ add_executable(renderer_conformance ${CONFORMANCE_SOURCES})
  )
 
 # Link with renderer library
- target_link_libraries(renderer_conformance PRIVATE renderer_lib Threads::Threads m)
+ target_link_libraries(renderer_conformance PRIVATE renderer_lib pthread m)
 
 set_target_properties(renderer_conformance PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin

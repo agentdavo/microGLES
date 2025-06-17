@@ -3,8 +3,7 @@
 
 #if defined(__STDC_NO_THREADS__)
 #include "tinycthread.h"
-#else
-#if defined(__has_include)
+#elif defined(__has_include)
 #if __has_include(<threads.h>)
 #include <threads.h>
 #else
@@ -12,7 +11,6 @@
 #endif
 #else
 #include <threads.h>
-#endif
 #endif
 
 #endif /* C11THREADS_H */

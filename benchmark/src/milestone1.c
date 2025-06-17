@@ -5,7 +5,7 @@
 #include "gl_context.h"
 #include <string.h>
 
-void run_miletostone1(Framebuffer *fb, BenchmarkResult *result)
+void run_milestone1(Framebuffer *fb, BenchmarkResult *result)
 {
 	GLfloat verts[] = { -0.5f, -0.5f, 0.0f, 0.5f,  -0.5f, 0.0f,
 			    0.5f,  0.5f,  0.0f, -0.5f, -0.5f, 0.0f,
@@ -40,6 +40,7 @@ void run_miletostone1(Framebuffer *fb, BenchmarkResult *result)
 	thread_pool_wait();
 
 	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT0);
 	glLightfv(GL_LIGHT0, GL_DIFFUSE, (GLfloat[]){ 1.f, 1.f, 1.f, 1.f });
 	glEnable(GL_FOG);
 	glFogf(GL_FOG_MODE, GL_LINEAR);
@@ -63,7 +64,16 @@ void run_miletostone1(Framebuffer *fb, BenchmarkResult *result)
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glDeleteTextures(2, tex);
 
+	/* Reset feature state for later benchmarks */
+	glDisable(GL_FOG);
+	glDisable(GL_BLEND);
+	glDisable(GL_LIGHTING);
+	glDisable(GL_TEXTURE_2D);
+
 	compute_result(start, end, result);
-	LOG_INFO("miletostone1: %.2f FPS, %.2f ms/frame", result->fps,
+	GLenum err = glGetError();
+	if (err != GL_NO_ERROR)
+		LOG_ERROR("milestone1 GL error 0x%X", err);
+	LOG_INFO("milestone1: %.2f FPS, %.2f ms/frame", result->fps,
 		 result->cpu_time_ms);
 }

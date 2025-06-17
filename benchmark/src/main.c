@@ -87,7 +87,7 @@ int main(int argc, char **argv)
 #ifdef DEBUG
 	assert(glGetError() == GL_NO_ERROR);
 #endif
-	run_miletostone1(fb, &result);
+	run_milestone1(fb, &result);
 #ifdef DEBUG
 	assert(glGetError() == GL_NO_ERROR);
 #endif
