@@ -3,7 +3,7 @@
 #include "gl_ext_common.h"
 #include <GLES/glext.h>
 EXT_REGISTER("GL_OES_draw_texture")
-int ext_link_dummy_OES_draw_texture;
+__attribute__((used)) int ext_link_dummy_OES_draw_texture = 0;
 
 static void draw_tex_rect(GLfloat x, GLfloat y, GLfloat z, GLfloat width,
 			  GLfloat height)
