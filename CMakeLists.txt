@@ -58,6 +58,13 @@ check_include_file(threads.h HAVE_THREADS_H)
 if(NOT HAVE_THREADS_H)
     list(APPEND SOURCE_FILES src/portable/tinycthread.c)
 endif()
+
+include(CheckFunctionExists)
+check_function_exists(fmemopen HAVE_FMEMOPEN)
+if(NOT HAVE_FMEMOPEN)
+    add_definitions(-DNO_FMEMOPEN)
+endif()
+
 set(RENDERER_MAIN src/main.c)
 
 # Define header files (for IDE visibility, optional)

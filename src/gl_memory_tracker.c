@@ -7,6 +7,8 @@
 
 static char *dup_cstring(const char *src)
 {
+	if (!src)
+		return NULL;
 	size_t len = strlen(src) + 1;
 	char *dst = malloc(len);
 	if (dst)
