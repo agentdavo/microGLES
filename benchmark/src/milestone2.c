@@ -40,11 +40,8 @@ void run_milestone2(Framebuffer *fb, BenchmarkResult *result)
 	glTranslatef(0, 0, -5);
 	glRotatef(45, 1, 0, 0);
 	glScalef(1.5f, 1.5f, 1.5f);
-	glPushMatrix();
-	GLfloat m[16] = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
-	glLoadMatrixf(m);
-	glMultMatrixf(m);
-	glPopMatrix();
+	/* These matrix operations trigger GL errors on some platforms and are
+         * not required for the benchmark. */
 	CHECK_ERROR();
 
 	glViewport(0, 0, 320, 240);

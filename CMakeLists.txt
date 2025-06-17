@@ -64,7 +64,6 @@ check_function_exists(fmemopen HAVE_FMEMOPEN)
 if(NOT HAVE_FMEMOPEN)
     add_definitions(-DNO_FMEMOPEN)
 endif()
-
 set(RENDERER_MAIN src/main.c)
 
 # Define header files (for IDE visibility, optional)

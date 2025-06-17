@@ -95,9 +95,18 @@ int logger_init(const char *path, LogLevel level)
 	atomic_init(&g_tail, 0);
 	atomic_init(&g_dropped, 0);
 	atomic_store_explicit(&g_running, true, memory_order_release);
-	if (path)
+	if (path) {
 		g_file = fopen(path, "a");
-	thrd_create(&g_thread, logger_thread_main, NULL);
+		if (!g_file)
+			return 0;
+	}
+	if (thrd_create(&g_thread, logger_thread_main, NULL) != thrd_success) {
+		if (g_file) {
+			fclose(g_file);
+			g_file = NULL;
+		}
+		return 0;
+	}
 	return 1;
 }
 
