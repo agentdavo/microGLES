@@ -68,9 +68,9 @@ extern "C" {
 #if !defined(_GNU_SOURCE)
 #define _GNU_SOURCE
 #endif
-#if !defined(_POSIX_C_SOURCE) || ((_POSIX_C_SOURCE - 0) < 199309L)
+#if !defined(_POSIX_C_SOURCE) || ((_POSIX_C_SOURCE - 0) < 200809L)
 #undef _POSIX_C_SOURCE
-#define _POSIX_C_SOURCE 199309L
+#define _POSIX_C_SOURCE 200809L
 #endif
 #if !defined(_XOPEN_SOURCE) || ((_XOPEN_SOURCE - 0) < 500)
 #undef _XOPEN_SOURCE
