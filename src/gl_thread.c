@@ -372,12 +372,11 @@ int thread_pool_init_from_env(void)
 		val = sysconf(_SC_NPROCESSORS_ONLN);
 #endif
 	}
-	if (val <= 0)
-		val = 1;
+	if (val <= 1)
+		val = 2;
 	if (val > 64)
 		val = 64;
-	thread_pool_init((int)val);
-	return (int)val;
+	return thread_pool_init((int)val);
 }
 
 void thread_pool_submit(task_function_t func, void *task_data,

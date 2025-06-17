@@ -3,7 +3,7 @@
 #include "../gl_utils.h"
 
 EXT_REGISTER("GL_OES_blend_equation_separate")
-int ext_link_dummy_OES_blend_eq_sep;
+__attribute__((used)) int ext_link_dummy_OES_blend_eq_sep = 0;
 
 static GLboolean valid_blend_equation(GLenum mode)
 {

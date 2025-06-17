@@ -2,7 +2,7 @@
 #include <GLES/glext.h>
 
 EXT_REGISTER("GL_OES_required_internalformat")
-int ext_link_dummy_OES_required_internalformat;
+__attribute__((used)) int ext_link_dummy_OES_required_internalformat = 0;
 
 static const GLenum required_formats[] = { GL_ALPHA8_OES,
 					   GL_LUMINANCE4_ALPHA4_OES,
