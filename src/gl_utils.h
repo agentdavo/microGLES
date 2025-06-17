@@ -26,6 +26,7 @@ void glSetError(GLenum error_code);
 GLenum glGetErrorAndClear(void);
 
 #define FIXED_TO_FLOAT(x) ((GLfloat)(x) / 65536.0f)
+#define FLOAT_TO_FIXED(x) ((GLfixed)((x) * 65536.0f))
 
 /* Utility function to validate framebuffer completeness */
 GLboolean ValidateFramebufferCompleteness(void);

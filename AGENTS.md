@@ -13,6 +13,7 @@ _Last updated 2025-06-11_
 | 5 | **Zero leaks** and **zero GL errors** after conformance run. |
 | 6 | **No public headers added** beyond Khronos `<GLES/*.h>`. |
 | 7 | **Commit messages** follow “<72 char summary> + wrapped body”. |
+| 8 | **Every GLES 1.1 entry point must exist.** | 145 stubs/impls required. |
 
 ### Build invocations
 

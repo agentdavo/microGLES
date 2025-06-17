@@ -3,6 +3,7 @@
 #include "gl_state_helpers.h"
 #include "gl_errors.h"
 #include "gl_thread.h"
+#include "gl_utils.h"
 #include "function_profile.h"
 #include <GLES/gl.h>
 #include <string.h>
@@ -305,7 +306,7 @@ GL_API void GL_APIENTRY glDisable(GLenum cap)
 	PROFILE_END("glDisable");
 }
 
-GLboolean glIsEnabled(GLenum cap)
+GL_API GLboolean GL_APIENTRY glIsEnabled(GLenum cap)
 {
 	switch (cap) {
 	case GL_ALPHA_TEST:
@@ -543,6 +544,16 @@ GL_API void GL_APIENTRY glGetFloatv(GLenum pname, GLfloat *data)
 	}
 }
 
+GL_API void GL_APIENTRY glGetFixedv(GLenum pname, GLfixed *params)
+{
+	if (!params)
+		return;
+	GLfloat tmp[16] = { 0 };
+	glGetFloatv(pname, tmp);
+	for (int i = 0; i < 16; ++i)
+		params[i] = FLOAT_TO_FIXED(tmp[i]);
+}
+
 GL_API void GL_APIENTRY glGetIntegerv(GLenum pname, GLint *data)
 {
 	if (!data)
@@ -680,7 +691,7 @@ GL_API void GL_APIENTRY glGetPointerv(GLenum pname, void **params)
 	}
 }
 
-GLboolean glIsBuffer(GLuint buffer)
+GL_API GLboolean GL_APIENTRY glIsBuffer(GLuint buffer)
 {
 	for (GLint i = 0; i < gl_state.buffer_count; ++i) {
 		if (gl_state.buffers[i]->id == buffer)
@@ -689,7 +700,7 @@ GLboolean glIsBuffer(GLuint buffer)
 	return GL_FALSE;
 }
 
-GLboolean glIsTexture(GLuint texture)
+GL_API GLboolean GL_APIENTRY glIsTexture(GLuint texture)
 {
 	return context_find_texture(texture) != NULL;
 }

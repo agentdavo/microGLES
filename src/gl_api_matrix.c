@@ -4,6 +4,7 @@
 #include <GLES/gl.h>
 #include <string.h>
 #include "matrix_utils.h"
+#include "gl_utils.h"
 #include "gl_thread.h"
 #include "function_profile.h"
 
@@ -178,6 +179,17 @@ GL_API void GL_APIENTRY glLoadMatrixf(const GLfloat *m)
 	PROFILE_END("glLoadMatrixf");
 }
 
+GL_API void GL_APIENTRY glLoadMatrixx(const GLfixed *m)
+{
+	if (!m) {
+		return;
+	}
+	GLfloat mf[16];
+	for (int i = 0; i < 16; ++i)
+		mf[i] = FIXED_TO_FLOAT(m[i]);
+	glLoadMatrixf(mf);
+}
+
 GL_API void GL_APIENTRY glMultMatrixf(const GLfloat *m)
 {
 	PROFILE_START("glMultMatrixf");
@@ -191,6 +203,17 @@ GL_API void GL_APIENTRY glMultMatrixf(const GLfloat *m)
 	mat4_copy(current_matrix_ptr(), &result);
 	sync_current_matrix();
 	PROFILE_END("glMultMatrixf");
+}
+
+GL_API void GL_APIENTRY glMultMatrixx(const GLfixed *m)
+{
+	if (!m) {
+		return;
+	}
+	GLfloat mf[16];
+	for (int i = 0; i < 16; ++i)
+		mf[i] = FIXED_TO_FLOAT(m[i]);
+	glMultMatrixf(mf);
 }
 
 GL_API void GL_APIENTRY glTranslatef(GLfloat x, GLfloat y, GLfloat z)

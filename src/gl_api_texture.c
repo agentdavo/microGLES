@@ -60,6 +60,36 @@ GL_API void GL_APIENTRY glTexParameterfv(GLenum target, GLenum pname,
 	glTexParameteri(target, pname, (GLint)params[0]);
 }
 
+GL_API void GL_APIENTRY glTexParameterx(GLenum target, GLenum pname,
+					GLfixed param)
+{
+	glTexParameterf(target, pname, FIXED_TO_FLOAT(param));
+}
+
+GL_API void GL_APIENTRY glTexParameteriv(GLenum target, GLenum pname,
+					 const GLint *params)
+{
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	glTexParameteri(target, pname, params[0]);
+}
+
+GL_API void GL_APIENTRY glTexParameterxv(GLenum target, GLenum pname,
+					 const GLfixed *params)
+{
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat vals[4] = { FIXED_TO_FLOAT(params[0]),
+			    FIXED_TO_FLOAT(params[1]),
+			    FIXED_TO_FLOAT(params[2]),
+			    FIXED_TO_FLOAT(params[3]) };
+	glTexParameterfv(target, pname, vals);
+}
+
 GL_API void GL_APIENTRY glTexParameterxOES(GLenum target, GLenum pname,
 					   GLfixed param)
 {
@@ -113,6 +143,71 @@ GL_API void GL_APIENTRY glTexSubImage2D(GLenum target, GLint level,
 	context_tex_sub_image_2d(target, level, xoffset, yoffset, width, height,
 				 format, type, pixels);
 	PROFILE_END("glTexSubImage2D");
+}
+
+GL_API void GL_APIENTRY glCompressedTexImage2D(GLenum target, GLint level,
+					       GLenum internalformat,
+					       GLsizei width, GLsizei height,
+					       GLint border, GLsizei imageSize,
+					       const void *data)
+{
+	(void)target;
+	(void)level;
+	(void)internalformat;
+	(void)width;
+	(void)height;
+	(void)border;
+	(void)imageSize;
+	(void)data;
+	glSetError(GL_INVALID_OPERATION);
+}
+
+GL_API void GL_APIENTRY glCompressedTexSubImage2D(
+	GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width,
+	GLsizei height, GLenum format, GLsizei imageSize, const void *data)
+{
+	(void)target;
+	(void)level;
+	(void)xoffset;
+	(void)yoffset;
+	(void)width;
+	(void)height;
+	(void)format;
+	(void)imageSize;
+	(void)data;
+	glSetError(GL_INVALID_OPERATION);
+}
+
+GL_API void GL_APIENTRY glCopyTexImage2D(GLenum target, GLint level,
+					 GLenum internalformat, GLint x,
+					 GLint y, GLsizei width, GLsizei height,
+					 GLint border)
+{
+	(void)target;
+	(void)level;
+	(void)internalformat;
+	(void)x;
+	(void)y;
+	(void)width;
+	(void)height;
+	(void)border;
+	glSetError(GL_INVALID_OPERATION);
+}
+
+GL_API void GL_APIENTRY glCopyTexSubImage2D(GLenum target, GLint level,
+					    GLint xoffset, GLint yoffset,
+					    GLint x, GLint y, GLsizei width,
+					    GLsizei height)
+{
+	(void)target;
+	(void)level;
+	(void)xoffset;
+	(void)yoffset;
+	(void)x;
+	(void)y;
+	(void)width;
+	(void)height;
+	glSetError(GL_INVALID_OPERATION);
 }
 GL_API void GL_APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param)
 {
@@ -228,6 +323,11 @@ GL_API void GL_APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param)
 	glTexEnvf(target, pname, (GLfloat)param);
 }
 
+GL_API void GL_APIENTRY glTexEnvx(GLenum target, GLenum pname, GLfixed param)
+{
+	glTexEnvf(target, pname, FIXED_TO_FLOAT(param));
+}
+
 GL_API void GL_APIENTRY glTexEnviv(GLenum target, GLenum pname,
 				   const GLint *params)
 {
@@ -236,6 +336,20 @@ GL_API void GL_APIENTRY glTexEnviv(GLenum target, GLenum pname,
 		return;
 	}
 	glTexEnvi(target, pname, params[0]);
+}
+
+GL_API void GL_APIENTRY glTexEnvxv(GLenum target, GLenum pname,
+				   const GLfixed *params)
+{
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat vals[4] = { FIXED_TO_FLOAT(params[0]),
+			    FIXED_TO_FLOAT(params[1]),
+			    FIXED_TO_FLOAT(params[2]),
+			    FIXED_TO_FLOAT(params[3]) };
+	glTexEnvfv(target, pname, vals);
 }
 
 GL_API void GL_APIENTRY glTexEnvxOES(GLenum target, GLenum pname, GLfixed param)

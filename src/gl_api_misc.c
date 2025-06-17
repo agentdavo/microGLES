@@ -6,6 +6,7 @@
 #include "gl_utils.h"
 #include "gl_thread.h"
 #include "command_buffer.h"
+#include "extensions/gl_ext_common.h"
 
 GL_API void GL_APIENTRY glClipPlanef(GLenum plane, const GLfloat *equation)
 {
@@ -21,10 +22,40 @@ GL_API void GL_APIENTRY glClipPlanef(GLenum plane, const GLfloat *equation)
 	       sizeof(GLfloat) * 4);
 }
 
+GL_API void GL_APIENTRY glClipPlanex(GLenum plane, const GLfixed *equation)
+{
+	if (!equation) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat eq[4] = { FIXED_TO_FLOAT(equation[0]),
+			  FIXED_TO_FLOAT(equation[1]),
+			  FIXED_TO_FLOAT(equation[2]),
+			  FIXED_TO_FLOAT(equation[3]) };
+	glClipPlanef(plane, eq);
+}
+
 GL_API void GL_APIENTRY glFogf(GLenum pname, GLfloat param)
 {
 	GLfloat tmp[4] = { param, 0, 0, 0 };
 	glFogfv(pname, tmp);
+}
+
+GL_API void GL_APIENTRY glFogx(GLenum pname, GLfixed param)
+{
+	glFogf(pname, FIXED_TO_FLOAT(param));
+}
+
+GL_API void GL_APIENTRY glFogxv(GLenum pname, const GLfixed *param)
+{
+	if (!param) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat vals[4] = { FIXED_TO_FLOAT(param[0]), FIXED_TO_FLOAT(param[1]),
+			    FIXED_TO_FLOAT(param[2]),
+			    FIXED_TO_FLOAT(param[3]) };
+	glFogfv(pname, vals);
 }
 
 GL_API void GL_APIENTRY glFogfv(GLenum pname, const GLfloat *params)
@@ -73,6 +104,18 @@ GL_API void GL_APIENTRY glGetClipPlanef(GLenum plane, GLfloat *equation)
 	       sizeof(GLfloat) * 4);
 }
 
+GL_API void GL_APIENTRY glGetClipPlanex(GLenum plane, GLfixed *equation)
+{
+	if (!equation) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat eq[4];
+	glGetClipPlanef(plane, eq);
+	for (int i = 0; i < 4; ++i)
+		equation[i] = FLOAT_TO_FIXED(eq[i]);
+}
+
 GL_API void GL_APIENTRY glGetLightfv(GLenum light, GLenum pname,
 				     GLfloat *params)
 {
@@ -102,6 +145,19 @@ GL_API void GL_APIENTRY glGetLightfv(GLenum light, GLenum pname,
 		glSetError(GL_INVALID_ENUM);
 		break;
 	}
+}
+
+GL_API void GL_APIENTRY glGetLightxv(GLenum light, GLenum pname,
+				     GLfixed *params)
+{
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat tmp[4];
+	glGetLightfv(light, pname, tmp);
+	for (int i = 0; i < 4; ++i)
+		params[i] = FLOAT_TO_FIXED(tmp[i]);
 }
 
 GL_API void GL_APIENTRY glGetMaterialfv(GLenum face, GLenum pname,
@@ -150,6 +206,19 @@ GL_API void GL_APIENTRY glGetMaterialfv(GLenum face, GLenum pname,
 	}
 }
 
+GL_API void GL_APIENTRY glGetMaterialxv(GLenum face, GLenum pname,
+					GLfixed *params)
+{
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat tmp[4];
+	glGetMaterialfv(face, pname, tmp);
+	for (int i = 0; i < 4; ++i)
+		params[i] = FLOAT_TO_FIXED(tmp[i]);
+}
+
 GL_API void GL_APIENTRY glGetTexEnvfv(GLenum target, GLenum pname,
 				      GLfloat *params)
 {
@@ -172,6 +241,31 @@ GL_API void GL_APIENTRY glGetTexEnvfv(GLenum target, GLenum pname,
 		glSetError(GL_INVALID_ENUM);
 		break;
 	}
+}
+
+GL_API void GL_APIENTRY glGetTexEnviv(GLenum target, GLenum pname,
+				      GLint *params)
+{
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat tmp[4];
+	glGetTexEnvfv(target, pname, tmp);
+	params[0] = (GLint)tmp[0];
+}
+
+GL_API void GL_APIENTRY glGetTexEnvxv(GLenum target, GLenum pname,
+				      GLfixed *params)
+{
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat tmp[4];
+	glGetTexEnvfv(target, pname, tmp);
+	for (int i = 0; i < 4; ++i)
+		params[i] = FLOAT_TO_FIXED(tmp[i]);
 }
 
 GL_API void GL_APIENTRY glGetTexParameterfv(GLenum target, GLenum pname,
@@ -220,6 +314,12 @@ GL_API void GL_APIENTRY glAlphaFuncx(GLenum func, GLfixed ref)
 GL_API void GL_APIENTRY glClearDepthx(GLfixed depth)
 {
 	glClearDepthf(FIXED_TO_FLOAT(depth));
+}
+
+GL_API void GL_APIENTRY glColor4ub(GLubyte red, GLubyte green, GLubyte blue,
+				   GLubyte alpha)
+{
+	glColor4f(red / 255.0f, green / 255.0f, blue / 255.0f, alpha / 255.0f);
 }
 
 GL_API void GL_APIENTRY glColor4x(GLfixed r, GLfixed g, GLfixed b, GLfixed a)
@@ -278,12 +378,24 @@ GL_API void GL_APIENTRY glMultiTexCoord4f(GLenum target, GLfloat s, GLfloat t,
 	coord[3] = q;
 }
 
+GL_API void GL_APIENTRY glMultiTexCoord4x(GLenum texture, GLfixed s, GLfixed t,
+					  GLfixed r, GLfixed q)
+{
+	glMultiTexCoord4f(texture, FIXED_TO_FLOAT(s), FIXED_TO_FLOAT(t),
+			  FIXED_TO_FLOAT(r), FIXED_TO_FLOAT(q));
+}
+
 GL_API void GL_APIENTRY glNormal3f(GLfloat nx, GLfloat ny, GLfloat nz)
 {
 	RenderContext *ctx = GetCurrentContext();
 	ctx->current_normal[0] = nx;
 	ctx->current_normal[1] = ny;
 	ctx->current_normal[2] = nz;
+}
+
+GL_API void GL_APIENTRY glNormal3x(GLfixed nx, GLfixed ny, GLfixed nz)
+{
+	glNormal3f(FIXED_TO_FLOAT(nx), FIXED_TO_FLOAT(ny), FIXED_TO_FLOAT(nz));
 }
 
 GL_API void GL_APIENTRY glOrthox(GLfixed l, GLfixed r, GLfixed b, GLfixed t,
@@ -310,6 +422,11 @@ GL_API void GL_APIENTRY glSampleCoverage(GLclampf value, GLboolean invert)
 	gl_state.sample_coverage_invert = invert;
 }
 
+GL_API void GL_APIENTRY glSampleCoveragex(GLclampx value, GLboolean invert)
+{
+	glSampleCoverage(FIXED_TO_FLOAT(value), invert);
+}
+
 GL_API void GL_APIENTRY glScalex(GLfixed x, GLfixed y, GLfixed z)
 {
 	glScalef(FIXED_TO_FLOAT(x), FIXED_TO_FLOAT(y), FIXED_TO_FLOAT(z));
@@ -334,4 +451,45 @@ GL_API void GL_APIENTRY glFlush(void)
 GLenum glGetError(void)
 {
 	return glGetErrorAndClear();
+}
+
+GL_API const GLubyte *GL_APIENTRY glGetString(GLenum name)
+{
+	switch (name) {
+	case GL_VENDOR:
+		return (const GLubyte *)"microGLES";
+	case GL_RENDERER:
+		return (const GLubyte *)"microGLES Software Renderer";
+	case GL_VERSION:
+		return (const GLubyte *)"OpenGL ES 1.1";
+	case GL_EXTENSIONS:
+		return renderer_get_extensions();
+	default:
+		glSetError(GL_INVALID_ENUM);
+		return NULL;
+	}
+}
+
+GL_API void GL_APIENTRY glGetTexParameteriv(GLenum target, GLenum pname,
+					    GLint *params)
+{
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat tmp;
+	glGetTexParameterfv(target, pname, &tmp);
+	*params = (GLint)tmp;
+}
+
+GL_API void GL_APIENTRY glGetTexParameterxv(GLenum target, GLenum pname,
+					    GLfixed *params)
+{
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	GLfloat tmp;
+	glGetTexParameterfv(target, pname, &tmp);
+	*params = (GLfixed)(tmp * 65536.0f);
 }
