@@ -24,6 +24,7 @@ No SIMD intrinsics or platform APIs are required; only a C11 toolchain is needed
 | **State model**     | ✔ Versioned `RenderContext`; worker threads clone only dirtied chunks. RenderContext holds all dynamic flags (see `docs/migration/state.md`) |
 | **Diagnostics**     | ✔ Early-init memory tracker, async logger, built-in perf counters    |
 | **Tooling**         | ✔ Release + ASAN builds, style check (`clang-format`), benchmarks, conformance harness |
+| **API Coverage**    | ✔ All 145 OpenGL ES 1.1 entry points implemented |
 
 Note: Rasterization now discards fragments outside the scissor box when `GL_SCISSOR_TEST` is enabled.
 

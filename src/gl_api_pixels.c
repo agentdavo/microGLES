@@ -116,6 +116,11 @@ GL_API void GL_APIENTRY glPointSize(GLfloat size)
 	gl_state.point_size = size;
 }
 
+GL_API void GL_APIENTRY glPointSizex(GLfixed size)
+{
+	glPointSize(FIXED_TO_FLOAT(size));
+}
+
 GL_API void GL_APIENTRY glPointParameterf(GLenum pname, GLfloat param)
 {
 	switch (pname) {
@@ -134,6 +139,11 @@ GL_API void GL_APIENTRY glPointParameterf(GLenum pname, GLfloat param)
 	}
 }
 
+GL_API void GL_APIENTRY glPointParameterx(GLenum pname, GLfixed param)
+{
+	glPointParameterf(pname, FIXED_TO_FLOAT(param));
+}
+
 GL_API void GL_APIENTRY glPointParameterfv(GLenum pname, const GLfloat *params)
 {
 	if (!params) {
@@ -141,6 +151,15 @@ GL_API void GL_APIENTRY glPointParameterfv(GLenum pname, const GLfloat *params)
 		return;
 	}
 	glPointParameterf(pname, params[0]);
+}
+
+GL_API void GL_APIENTRY glPointParameterxv(GLenum pname, const GLfixed *params)
+{
+	if (!params) {
+		glSetError(GL_INVALID_VALUE);
+		return;
+	}
+	glPointParameterf(pname, FIXED_TO_FLOAT(params[0]));
 }
 
 GL_API void GL_APIENTRY glPixelStorei(GLenum pname, GLint param)
