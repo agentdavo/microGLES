@@ -3,7 +3,7 @@
 #include "../gl_logger.h"
 #include <GLES/glext.h>
 EXT_REGISTER("GL_OES_point_size_array")
-int ext_link_dummy_OES_point_size_array;
+__attribute__((used)) int ext_link_dummy_OES_point_size_array = 0;
 
 GL_API void GL_APIENTRY glPointSizePointerOES(GLenum type, GLsizei stride,
 					      const void *pointer)

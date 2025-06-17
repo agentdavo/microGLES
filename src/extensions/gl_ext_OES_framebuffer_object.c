@@ -7,7 +7,7 @@
 #include "gl_context.h"
 #include "gl_ext_common.h"
 EXT_REGISTER("GL_OES_framebuffer_object")
-int ext_link_dummy_OES_framebuffer_object;
+__attribute__((used)) int ext_link_dummy_OES_framebuffer_object = 0;
 #include "gl_logger.h"
 #include "gl_memory_tracker.h"
 #include <GLES/gl.h> // Core OpenGL ES 1.1
