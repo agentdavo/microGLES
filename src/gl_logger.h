@@ -6,7 +6,7 @@
  */
 
 #include <stdarg.h>
-#include <threads.h>
+#include "portable/c11threads.h"
 #include <stdatomic.h>
 
 #ifdef __cplusplus

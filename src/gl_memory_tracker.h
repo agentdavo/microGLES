@@ -6,7 +6,7 @@
  */
 
 #include <stddef.h>
-#include <threads.h>
+#include "portable/c11threads.h"
 #include "gl_thread.h" /* for stage_tag_t */
 
 #ifdef __cplusplus
