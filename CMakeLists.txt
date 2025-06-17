@@ -111,9 +111,10 @@ if(NOT GLESv1_CM_LIBRARY OR NOT EGL_LIBRARY)
     set(EGL_LIBRARY "")
 endif()
 
-# Find pthread
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
+# Optional POSIX thread library
+if(NOT WIN32)
+    list(APPEND EXTRA_LIBS pthread)
+endif()
 find_package(X11)
 if(X11_FOUND)
     target_compile_definitions(renderer_lib PUBLIC HAVE_X11)
@@ -126,9 +127,8 @@ target_link_libraries(renderer PRIVATE
     renderer_lib
     ${GLESv1_CM_LIBRARY}
     ${EGL_LIBRARY}
-    Threads::Threads
-    m # Math library
     ${EXTRA_LIBS}
+    m # Math library
 )
 
 # Set output directories

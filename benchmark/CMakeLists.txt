@@ -11,7 +11,7 @@ set(BENCH_SOURCES
     src/spinning_cubes.c
     src/multitexture_demo.c
     src/alpha_blend_demo.c
-    src/miletostone1.c
+    src/milestone1.c
     src/milestone2.c
     src/texture_stream.c
     src/toggle_blend.c
@@ -33,7 +33,7 @@ target_include_directories(stress_test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-target_link_libraries(stress_test PRIVATE renderer_lib Threads::Threads m)
+target_link_libraries(stress_test PRIVATE renderer_lib pthread m)
 
 set_target_properties(stress_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
@@ -47,7 +47,7 @@ set_target_properties(stress_test PROPERTIES
  )
 
 # Link with renderer library
- target_link_libraries(benchmark PRIVATE renderer_lib Threads::Threads m)
+ target_link_libraries(benchmark PRIVATE renderer_lib pthread m)
 
 set_target_properties(benchmark PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
