@@ -318,8 +318,11 @@ bool x11_window_has_non_monochrome(const X11Window *w)
 int x11_window_save_bmp(const X11Window *w, const char *path)
 {
 	if (!w || !path) {
+		LOG_ERROR("x11_window_save_bmp: invalid arguments");
 		return 0;
 	}
+
+	LOG_DEBUG("Saving window contents to %s", path);
 
 	pthread_mutex_lock(&x11_mutex);
 	XImage *img = XGetImage(w->display, w->window, 0, 0, w->width,
@@ -355,6 +358,11 @@ int x11_window_save_bmp(const X11Window *w, const char *path)
 	}
 
 	int ret = framebuffer_write_bmp(fb, path);
+	if (!ret) {
+		LOG_ERROR("x11_window_save_bmp: failed to write %s", path);
+	} else {
+		LOG_INFO("x11_window_save_bmp: wrote %s", path);
+	}
 	framebuffer_destroy(fb);
 	XDestroyImage(img);
 	pthread_mutex_unlock(&x11_mutex);

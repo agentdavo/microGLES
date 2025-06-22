@@ -167,7 +167,11 @@ static bool check_fb_content(const Framebuffer *fb)
 
 static void usage(const char *prog)
 {
-	printf("Usage: %s [--profile]\n", prog);
+	printf("Usage: %s [--profile] [--log-level=<lvl>] [--help]\n", prog);
+	printf("  --profile           Enable per-thread profiling.\n");
+	printf("  --log-level=<lvl>   Set log level: debug, info, warn,\n");
+	printf("                      error, or fatal. Default is info.\n");
+	printf("  --help              Show this help and exit.\n");
 	printf("Set MICROGLES_THREADS to control worker thread count.\n");
 }
 
@@ -177,7 +181,10 @@ int main(int argc, char **argv)
 	bool profile = false;
 	for (int i = 1; i < argc; ++i) {
 		const char *arg = argv[i];
-		if (strcmp(arg, "--profile") == 0) {
+		if (strcmp(arg, "--help") == 0) {
+			usage(argv[0]);
+			return 0;
+		} else if (strcmp(arg, "--profile") == 0) {
 			profile = true;
 		} else if (strncmp(arg, "--log-level=", 12) == 0) {
 			const char *lvl = arg + 12;

@@ -155,17 +155,24 @@ void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
 		char fb_path[64];
 		snprintf(fb_path, sizeof(fb_path), "framebuffer_%d.bmp",
 			 dump_counter);
-		framebuffer_write_bmp(fb, fb_path);
-		uint32_t c = framebuffer_get_pixel(fb, 0, 0);
-		LOG_INFO("Saved %s first pixel 0x%08X", fb_path, c);
+		LOG_DEBUG("Attempting to save %s", fb_path);
+		if (!framebuffer_write_bmp(fb, fb_path)) {
+			LOG_ERROR("Failed to save %s", fb_path);
+		} else {
+			uint32_t c = framebuffer_get_pixel(fb, 0, 0);
+			LOG_INFO("Saved %s first pixel 0x%08X", fb_path, c);
+		}
 
 		char win_path[64];
 		snprintf(win_path, sizeof(win_path), "window_%d.bmp",
 			 dump_counter);
-		x11_window_save_bmp(current_ctx->win, win_path);
+		LOG_DEBUG("Attempting to save %s", win_path);
+		if (!x11_window_save_bmp(current_ctx->win, win_path)) {
+			LOG_ERROR("Failed to save %s", win_path);
+		}
 		++dump_counter;
 	}
-  
+
 	x11_window_show_image(current_ctx->win, fb);
 	pthread_mutex_unlock(&ctx_mutex);
 }
