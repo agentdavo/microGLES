@@ -551,7 +551,7 @@ GL_API void GL_APIENTRY glGetFixedv(GLenum pname, GLfixed *params)
 	GLfloat tmp[16] = { 0 };
 	glGetFloatv(pname, tmp);
 	for (int i = 0; i < 16; ++i)
-		params[i] = FLOAT_TO_FIXED(tmp[i]);
+		params[i] = float_to_fixed(tmp[i]);
 }
 
 GL_API void GL_APIENTRY glGetIntegerv(GLenum pname, GLint *data)

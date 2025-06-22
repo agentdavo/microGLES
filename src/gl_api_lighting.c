@@ -62,7 +62,7 @@ GL_API void GL_APIENTRY glLightf(GLenum light, GLenum pname, GLfloat param)
 
 GL_API void GL_APIENTRY glLightx(GLenum light, GLenum pname, GLfixed param)
 {
-	glLightf(light, pname, FIXED_TO_FLOAT(param));
+	glLightf(light, pname, fixed_to_float(param));
 }
 
 GL_API void GL_APIENTRY glLightfv(GLenum light, GLenum pname,
@@ -123,10 +123,10 @@ GL_API void GL_APIENTRY glLightxv(GLenum light, GLenum pname,
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	GLfloat vals[4] = { FIXED_TO_FLOAT(params[0]),
-			    FIXED_TO_FLOAT(params[1]),
-			    FIXED_TO_FLOAT(params[2]),
-			    FIXED_TO_FLOAT(params[3]) };
+	GLfloat vals[4] = { fixed_to_float(params[0]),
+			    fixed_to_float(params[1]),
+			    fixed_to_float(params[2]),
+			    fixed_to_float(params[3]) };
 	glLightfv(light, pname, vals);
 }
 
@@ -141,7 +141,7 @@ GL_API void GL_APIENTRY glLightModelf(GLenum pname, GLfloat param)
 
 GL_API void GL_APIENTRY glLightModelx(GLenum pname, GLfixed param)
 {
-	glLightModelf(pname, FIXED_TO_FLOAT(param));
+	glLightModelf(pname, fixed_to_float(param));
 }
 
 GL_API void GL_APIENTRY glLightModelfv(GLenum pname, const GLfloat *params)
@@ -170,9 +170,9 @@ GL_API void GL_APIENTRY glLightModelxv(GLenum pname, const GLfixed *param)
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	GLfloat vals[4] = { FIXED_TO_FLOAT(param[0]), FIXED_TO_FLOAT(param[1]),
-			    FIXED_TO_FLOAT(param[2]),
-			    FIXED_TO_FLOAT(param[3]) };
+	GLfloat vals[4] = { fixed_to_float(param[0]), fixed_to_float(param[1]),
+			    fixed_to_float(param[2]),
+			    fixed_to_float(param[3]) };
 	glLightModelfv(pname, vals);
 }
 
@@ -201,7 +201,7 @@ GL_API void GL_APIENTRY glMaterialf(GLenum face, GLenum pname, GLfloat param)
 
 GL_API void GL_APIENTRY glMaterialx(GLenum face, GLenum pname, GLfixed param)
 {
-	glMaterialf(face, pname, FIXED_TO_FLOAT(param));
+	glMaterialf(face, pname, fixed_to_float(param));
 }
 
 GL_API void GL_APIENTRY glMaterialfv(GLenum face, GLenum pname,
@@ -268,8 +268,8 @@ GL_API void GL_APIENTRY glMaterialxv(GLenum face, GLenum pname,
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	GLfloat vals[4] = { FIXED_TO_FLOAT(param[0]), FIXED_TO_FLOAT(param[1]),
-			    FIXED_TO_FLOAT(param[2]),
-			    FIXED_TO_FLOAT(param[3]) };
+	GLfloat vals[4] = { fixed_to_float(param[0]), fixed_to_float(param[1]),
+			    fixed_to_float(param[2]),
+			    fixed_to_float(param[3]) };
 	glMaterialfv(face, pname, vals);
 }
