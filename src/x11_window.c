@@ -52,11 +52,8 @@ void x11_window_destroy(X11Window *w)
 {
 	if (!w)
 		return;
-	if (w->image) {
-		free(w->image->data);
-		w->image->data = NULL;
+	if (w->image)
 		XDestroyImage(w->image);
-	}
 	XFreeGC(w->display, w->gc);
 	XDestroyWindow(w->display, w->window);
 	XCloseDisplay(w->display);
