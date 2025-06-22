@@ -196,18 +196,33 @@ int main(int argc, char **argv)
 	} else {
 		LOG_INFO("x11_window_create succeeded");
 	}
-
 	Display *dpy = NULL;
-
 	GLXContext glx_ctx = NULL;
 	if (win) {
 		dpy = x11_window_get_display(win);
-		glx_ctx = glXCreateContext(dpy, NULL, NULL, False);
+		int glx_major = 0, glx_minor = 0;
+		if (!glXQueryVersion(dpy, &glx_major, &glx_minor)) {
+			LOG_ERROR("glXQueryVersion failed");
+		} else {
+			LOG_INFO("GLX %d.%d available", glx_major, glx_minor);
+		}
+		static int visual_attr[] = { GLX_RGBA, GLX_DEPTH_SIZE, 24,
+					     GLX_DOUBLEBUFFER, None };
+		XVisualInfo *vi =
+			glXChooseVisual(dpy, DefaultScreen(dpy), visual_attr);
+		if (!vi) {
+			LOG_ERROR("glXChooseVisual failed");
+		} else {
+			LOG_INFO("glXChooseVisual succeeded");
+		}
+		glx_ctx = glXCreateContext(dpy, vi, NULL, True);
 		if (glx_ctx) {
 			LOG_INFO("glXCreateContext succeeded");
 		} else {
 			LOG_ERROR("glXCreateContext failed");
 		}
+		if (vi)
+			XFree(vi);
 		if (glx_ctx &&
 		    glXMakeCurrent(dpy, (GLXDrawable)(uintptr_t)win, glx_ctx)) {
 			LOG_INFO("glXMakeCurrent succeeded");
