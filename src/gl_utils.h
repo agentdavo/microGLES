@@ -4,7 +4,7 @@
 #define GL_UTILS_H
 /**
  * @file gl_utils.h
- * @brief Utility routines and error helpers.
+ * @brief Utility routines.
  */
 
 #include <GLES/gl.h> /* OpenGL ES 1.1 */
@@ -18,12 +18,6 @@ extern "C" {
 /* Memory tracking functions */
 void *tracked_malloc(size_t size);
 void tracked_free(void *ptr, size_t size);
-
-/* Error handling function */
-void glSetError(GLenum error_code);
-
-/* Function to retrieve and clear error */
-GLenum glGetErrorAndClear(void);
 
 #define FIXED_TO_FLOAT(x) ((GLfloat)(x) / 65536.0f)
 #define FLOAT_TO_FIXED(x) ((GLfixed)((x) * 65536.0f))

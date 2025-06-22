@@ -448,11 +448,6 @@ GL_API void GL_APIENTRY glFlush(void)
 	command_buffer_flush();
 }
 
-GLenum glGetError(void)
-{
-	return glGetErrorAndClear();
-}
-
 GL_API const GLubyte *GL_APIENTRY glGetString(GLenum name)
 {
 	switch (name) {

@@ -2,6 +2,7 @@
 #include "gl_context.h"
 #include "gl_memory_tracker.h"
 #include "gl_init.h"
+#include "gl_errors.h"
 #include "command_buffer.h"
 #include "pool.h"
 #include "pipeline/gl_vertex.h"

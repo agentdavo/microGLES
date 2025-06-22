@@ -1,4 +1,5 @@
 #include "gl_ext_common.h"
+#include "gl_errors.h"
 #include "../gl_state.h"
 #include "../gl_utils.h"
 
