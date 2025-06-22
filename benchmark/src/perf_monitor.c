@@ -247,9 +247,16 @@ int main(int argc, char **argv)
 					       (GLXDrawable)(uintptr_t)win);
 #endif
 			if (frame_idx < 2) {
-				bool ok = check_fb_content(fb);
-				printf("Framebuffer frame %d %s\n",
-				       frame_idx + 1, ok ? "PASS" : "FAIL");
+				bool fb_ok = check_fb_content(fb);
+#ifdef HAVE_X11
+				bool win_ok =
+					x11_window_has_non_monochrome(win);
+#else
+				bool win_ok = fb_ok;
+#endif
+				printf("Framebuffer frame %d %s (window %s)\n",
+				       frame_idx + 1, fb_ok ? "PASS" : "FAIL",
+				       win_ok ? "PASS" : "FAIL");
 				++frame_idx;
 			}
 			clock_gettime(CLOCK_MONOTONIC, &now);

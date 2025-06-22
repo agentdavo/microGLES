@@ -14,5 +14,6 @@ X11Window *x11_window_create(unsigned width, unsigned height,
 void x11_window_destroy(X11Window *win);
 void x11_window_show_image(X11Window *win, const struct Framebuffer *fb);
 Display *x11_window_get_display(const X11Window *win);
+bool x11_window_has_non_monochrome(const X11Window *win);
 
 #endif /* X11_WINDOW_H */
