@@ -40,6 +40,7 @@ bool thread_pool_active(void);
 void thread_profile_start(void);
 void thread_profile_stop(void);
 void thread_profile_report(void);
+void thread_realtime_report(void);
 bool thread_profile_is_enabled(void);
 uint64_t thread_get_cycles(void);
 uint64_t thread_cycles_to_us(uint64_t cycles);

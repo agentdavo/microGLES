@@ -144,10 +144,16 @@ int main(int argc, char **argv)
 		double cpu_us = thread_cycles_to_us(cend - cstart);
 		double cpu_pct = wall > 0.0 ? (cpu_us / (wall * 1e6)) * 100.0 :
 					      0.0;
-		printf("TID %ld | Mem %zu KB | CPU %5.1f%% | Poly %6.2f MP/s | Pix %6.2f MP/s\n",
-		       get_tid(), memory_tracker_current() / 1024, cpu_pct,
+		static bool header_printed = false;
+		if (!header_printed) {
+			printf("%-7s %-10s %-6s %-11s %-11s\n", "TID",
+			       "Mem(KB)", "CPU%", "Poly(MP/s)", "Pix(MP/s)");
+			header_printed = true;
+		}
+		printf("%7ld %10zu %6.1f %11.2f %11.2f\n", get_tid(),
+		       memory_tracker_current() / 1024, cpu_pct,
 		       polys / wall / 1e6, pix / wall / 1e6);
-		thread_profile_report();
+		thread_realtime_report();
 		thread_profile_start();
 	}
 #ifdef HAVE_X11
