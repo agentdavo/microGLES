@@ -514,6 +514,8 @@ int framebuffer_write_bmp(const Framebuffer *fb, const char *path)
 		return 0;
 	}
 
+	LOG_DEBUG("framebuffer_write_bmp: writing %s", path);
+
 	FILE *f = fopen(path, "wb");
 	if (!f) {
 		LOG_ERROR("framebuffer_write_bmp: Failed to open %s", path);
