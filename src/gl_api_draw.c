@@ -14,6 +14,42 @@
 #include <GLES/gl.h>
 #include <stdatomic.h>
 
+static _Thread_local ArrayState tl_vertex_array;
+static _Thread_local unsigned tl_vertex_ver;
+static _Thread_local ArrayState tl_color_array;
+static _Thread_local unsigned tl_color_ver;
+static _Thread_local ArrayState tl_normal_array;
+static _Thread_local unsigned tl_normal_ver;
+static _Thread_local ArrayState tl_texcoord_array;
+static _Thread_local unsigned tl_texcoord_ver;
+
+static inline void refresh_vertex_arrays(void)
+{
+	RenderContext *ctx = GetCurrentContext();
+	unsigned v = atomic_load(&ctx->vertex_array.version);
+	if (v != tl_vertex_ver) {
+		memcpy(&tl_vertex_array, &ctx->vertex_array,
+		       sizeof(ArrayState));
+		tl_vertex_ver = v;
+	}
+	unsigned c = atomic_load(&ctx->color_array.version);
+	if (c != tl_color_ver) {
+		memcpy(&tl_color_array, &ctx->color_array, sizeof(ArrayState));
+		tl_color_ver = c;
+	}
+	unsigned n = atomic_load(&ctx->normal_array.version);
+	if (n != tl_normal_ver) {
+		memcpy(&tl_normal_array, &ctx->normal_array,
+		       sizeof(ArrayState));
+		tl_normal_ver = n;
+	}
+	unsigned t = atomic_load(&ctx->texcoord_array.version);
+	if (t != tl_texcoord_ver) {
+		memcpy(&tl_texcoord_array, &ctx->texcoord_array,
+		       sizeof(ArrayState));
+		tl_texcoord_ver = t;
+	}
+}
 /* Helper from gl_functions.c */
 static BufferObject *find_buffer(GLuint id)
 {
@@ -50,6 +86,7 @@ GL_API void GL_APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count)
 		return;
 	}
 	RenderContext *ctx = GetCurrentContext();
+	refresh_vertex_arrays();
 	unsigned bver = atomic_load(&ctx->blend.version);
 	unsigned dver = atomic_load(&ctx->version_depth);
 	unsigned fver = atomic_load(&ctx->fog.version);
@@ -63,7 +100,7 @@ GL_API void GL_APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count)
 		ctx->validated_fog_version = fver;
 		ctx->validated_cull_version = cver;
 	}
-	if (!ctx->vertex_array.enabled) {
+	if (!tl_vertex_array.enabled) {
 		glSetError(GL_INVALID_OPERATION);
 		PROFILE_END("glDrawArrays");
 		return;
@@ -80,27 +117,27 @@ GL_API void GL_APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count)
 	}
 
 	GLsizei vstride =
-		ctx->vertex_array.stride ?
-			ctx->vertex_array.stride :
-			(GLsizei)(ctx->vertex_array.size * sizeof(GLfloat));
-	GLsizei nstride = ctx->normal_array.stride ?
-				  ctx->normal_array.stride :
+		tl_vertex_array.stride ?
+			tl_vertex_array.stride :
+			(GLsizei)(tl_vertex_array.size * sizeof(GLfloat));
+	GLsizei nstride = tl_normal_array.stride ?
+				  tl_normal_array.stride :
 				  (GLsizei)(3 * sizeof(GLfloat));
-	GLsizei cstride = ctx->color_array.stride ?
-				  ctx->color_array.stride :
-				  (GLsizei)(ctx->color_array.size *
-					    (ctx->color_array.type == GL_FLOAT ?
+	GLsizei cstride = tl_color_array.stride ?
+				  tl_color_array.stride :
+				  (GLsizei)(tl_color_array.size *
+					    (tl_color_array.type == GL_FLOAT ?
 						     sizeof(GLfloat) :
 						     sizeof(GLubyte)));
 	GLsizei tstride =
-		ctx->texcoord_array.stride ?
-			ctx->texcoord_array.stride :
-			(GLsizei)(ctx->texcoord_array.size * sizeof(GLfloat));
+		tl_texcoord_array.stride ?
+			tl_texcoord_array.stride :
+			(GLsizei)(tl_texcoord_array.size * sizeof(GLfloat));
 
-	const uint8_t *vptr = (const uint8_t *)ctx->vertex_array.pointer;
-	const uint8_t *nptr = (const uint8_t *)ctx->normal_array.pointer;
-	const uint8_t *cptr = (const uint8_t *)ctx->color_array.pointer;
-	const uint8_t *tptr = (const uint8_t *)ctx->texcoord_array.pointer;
+	const uint8_t *vptr = (const uint8_t *)tl_vertex_array.pointer;
+	const uint8_t *nptr = (const uint8_t *)tl_normal_array.pointer;
+	const uint8_t *cptr = (const uint8_t *)tl_color_array.pointer;
+	const uint8_t *tptr = (const uint8_t *)tl_texcoord_array.pointer;
 
 	if (gl_state.array_buffer_binding) {
 		BufferObject *obj = find_buffer(gl_state.array_buffer_binding);
@@ -124,9 +161,9 @@ GL_API void GL_APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count)
 				(const GLfloat *)(vptr + (size_t)idx * vstride);
 			Vertex src = { 0 };
 			src.x = vp[0];
-			src.y = ctx->vertex_array.size > 1 ? vp[1] : 0.0f;
-			src.z = ctx->vertex_array.size > 2 ? vp[2] : 0.0f;
-			src.w = ctx->vertex_array.size > 3 ? vp[3] : 1.0f;
+			src.y = tl_vertex_array.size > 1 ? vp[1] : 0.0f;
+			src.z = tl_vertex_array.size > 2 ? vp[2] : 0.0f;
+			src.w = tl_vertex_array.size > 3 ? vp[3] : 1.0f;
 			for (int k = 0; k < 3; ++k)
 				src.normal[k] = ctx->current_normal[k];
 			for (int k = 0; k < 4; ++k)
@@ -164,10 +201,10 @@ GL_API void GL_APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count)
 				(const GLfloat *)(vptr + (size_t)idx * vstride);
 			Vertex *dst = &job->in[j];
 			dst->x = vp[0];
-			dst->y = ctx->vertex_array.size > 1 ? vp[1] : 0.0f;
-			dst->z = ctx->vertex_array.size > 2 ? vp[2] : 0.0f;
-			dst->w = ctx->vertex_array.size > 3 ? vp[3] : 1.0f;
-			if (ctx->normal_array.enabled) {
+			dst->y = tl_vertex_array.size > 1 ? vp[1] : 0.0f;
+			dst->z = tl_vertex_array.size > 2 ? vp[2] : 0.0f;
+			dst->w = tl_vertex_array.size > 3 ? vp[3] : 1.0f;
+			if (tl_normal_array.enabled) {
 				const GLfloat *np =
 					(const GLfloat *)(nptr +
 							  (size_t)idx *
@@ -180,39 +217,37 @@ GL_API void GL_APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count)
 				dst->normal[1] = ctx->current_normal[1];
 				dst->normal[2] = ctx->current_normal[2];
 			}
-			if (ctx->color_array.enabled) {
-				if (ctx->color_array.type == GL_FLOAT) {
+			if (tl_color_array.enabled) {
+				if (tl_color_array.type == GL_FLOAT) {
 					const GLfloat *cp =
 						(const GLfloat
 							 *)(cptr +
 							    (size_t)idx *
 								    cstride);
-					for (int k = 0;
-					     k < ctx->color_array.size; ++k)
+					for (int k = 0; k < tl_color_array.size;
+					     ++k)
 						dst->color[k] = cp[k];
 				} else {
 					const GLubyte *cp =
 						cptr + (size_t)idx * cstride;
-					for (int k = 0;
-					     k < ctx->color_array.size; ++k)
+					for (int k = 0; k < tl_color_array.size;
+					     ++k)
 						dst->color[k] = cp[k] / 255.0f;
 				}
-				if (ctx->color_array.size == 3)
+				if (tl_color_array.size == 3)
 					dst->color[3] = 1.0f;
 			} else {
 				for (int k = 0; k < 4; ++k)
 					dst->color[k] = ctx->current_color[k];
 			}
-			if (ctx->texcoord_array.enabled) {
+			if (tl_texcoord_array.enabled) {
 				const GLfloat *tp =
 					(const GLfloat *)(tptr +
 							  (size_t)idx *
 								  tstride);
-				for (int k = 0; k < ctx->texcoord_array.size;
-				     ++k)
+				for (int k = 0; k < tl_texcoord_array.size; ++k)
 					dst->texcoord[k] = tp[k];
-				for (int k = ctx->texcoord_array.size; k < 4;
-				     ++k)
+				for (int k = tl_texcoord_array.size; k < 4; ++k)
 					dst->texcoord[k] = k == 3 ? 1.0f : 0.0f;
 			} else {
 				for (int k = 0; k < 4; ++k)
@@ -295,34 +330,35 @@ GL_API void GL_APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type,
 	}
 
 	RenderContext *ctx = GetCurrentContext();
-	if (!ctx->vertex_array.enabled) {
+	refresh_vertex_arrays();
+	if (!tl_vertex_array.enabled) {
 		glSetError(GL_INVALID_OPERATION);
 		PROFILE_END("glDrawElements");
 		return;
 	}
 
 	GLsizei vstride =
-		ctx->vertex_array.stride ?
-			ctx->vertex_array.stride :
-			(GLsizei)(ctx->vertex_array.size * sizeof(GLfloat));
-	GLsizei nstride = ctx->normal_array.stride ?
-				  ctx->normal_array.stride :
+		tl_vertex_array.stride ?
+			tl_vertex_array.stride :
+			(GLsizei)(tl_vertex_array.size * sizeof(GLfloat));
+	GLsizei nstride = tl_normal_array.stride ?
+				  tl_normal_array.stride :
 				  (GLsizei)(3 * sizeof(GLfloat));
-	GLsizei cstride = ctx->color_array.stride ?
-				  ctx->color_array.stride :
-				  (GLsizei)(ctx->color_array.size *
-					    (ctx->color_array.type == GL_FLOAT ?
+	GLsizei cstride = tl_color_array.stride ?
+				  tl_color_array.stride :
+				  (GLsizei)(tl_color_array.size *
+					    (tl_color_array.type == GL_FLOAT ?
 						     sizeof(GLfloat) :
 						     sizeof(GLubyte)));
 	GLsizei tstride =
-		ctx->texcoord_array.stride ?
-			ctx->texcoord_array.stride :
-			(GLsizei)(ctx->texcoord_array.size * sizeof(GLfloat));
+		tl_texcoord_array.stride ?
+			tl_texcoord_array.stride :
+			(GLsizei)(tl_texcoord_array.size * sizeof(GLfloat));
 
-	const uint8_t *vptr = (const uint8_t *)ctx->vertex_array.pointer;
-	const uint8_t *nptr = (const uint8_t *)ctx->normal_array.pointer;
-	const uint8_t *cptr = (const uint8_t *)ctx->color_array.pointer;
-	const uint8_t *tptr = (const uint8_t *)ctx->texcoord_array.pointer;
+	const uint8_t *vptr = (const uint8_t *)tl_vertex_array.pointer;
+	const uint8_t *nptr = (const uint8_t *)tl_normal_array.pointer;
+	const uint8_t *cptr = (const uint8_t *)tl_color_array.pointer;
+	const uint8_t *tptr = (const uint8_t *)tl_texcoord_array.pointer;
 
 	BufferObject *array_obj = NULL;
 	if (gl_state.array_buffer_binding) {
@@ -340,7 +376,7 @@ GL_API void GL_APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type,
 			if (idx > max_idx)
 				max_idx = idx;
 		}
-		size_t needed = (size_t)ctx->vertex_array.pointer +
+		size_t needed = (size_t)tl_vertex_array.pointer +
 				(size_t)(max_idx + 1) * vstride;
 		if (needed > (size_t)array_obj->size) {
 			glSetError(GL_INVALID_OPERATION);
@@ -376,9 +412,9 @@ GL_API void GL_APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type,
 				(const GLfloat *)(vptr + (size_t)idx * vstride);
 			Vertex src = { 0 };
 			src.x = vp[0];
-			src.y = ctx->vertex_array.size > 1 ? vp[1] : 0.0f;
-			src.z = ctx->vertex_array.size > 2 ? vp[2] : 0.0f;
-			src.w = ctx->vertex_array.size > 3 ? vp[3] : 1.0f;
+			src.y = tl_vertex_array.size > 1 ? vp[1] : 0.0f;
+			src.z = tl_vertex_array.size > 2 ? vp[2] : 0.0f;
+			src.w = tl_vertex_array.size > 3 ? vp[3] : 1.0f;
 			for (int k = 0; k < 3; ++k)
 				src.normal[k] = ctx->current_normal[k];
 			for (int k = 0; k < 4; ++k)
@@ -421,10 +457,10 @@ GL_API void GL_APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type,
 				(const GLfloat *)(vptr + (size_t)idx * vstride);
 			Vertex *dst = &job->in[j];
 			dst->x = vp[0];
-			dst->y = ctx->vertex_array.size > 1 ? vp[1] : 0.0f;
-			dst->z = ctx->vertex_array.size > 2 ? vp[2] : 0.0f;
-			dst->w = ctx->vertex_array.size > 3 ? vp[3] : 1.0f;
-			if (ctx->normal_array.enabled) {
+			dst->y = tl_vertex_array.size > 1 ? vp[1] : 0.0f;
+			dst->z = tl_vertex_array.size > 2 ? vp[2] : 0.0f;
+			dst->w = tl_vertex_array.size > 3 ? vp[3] : 1.0f;
+			if (tl_normal_array.enabled) {
 				const GLfloat *np =
 					(const GLfloat *)(nptr +
 							  (size_t)idx *
@@ -437,39 +473,37 @@ GL_API void GL_APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type,
 				dst->normal[1] = ctx->current_normal[1];
 				dst->normal[2] = ctx->current_normal[2];
 			}
-			if (ctx->color_array.enabled) {
-				if (ctx->color_array.type == GL_FLOAT) {
+			if (tl_color_array.enabled) {
+				if (tl_color_array.type == GL_FLOAT) {
 					const GLfloat *cp =
 						(const GLfloat
 							 *)(cptr +
 							    (size_t)idx *
 								    cstride);
-					for (int k = 0;
-					     k < ctx->color_array.size; ++k)
+					for (int k = 0; k < tl_color_array.size;
+					     ++k)
 						dst->color[k] = cp[k];
 				} else {
 					const GLubyte *cp =
 						cptr + (size_t)idx * cstride;
-					for (int k = 0;
-					     k < ctx->color_array.size; ++k)
+					for (int k = 0; k < tl_color_array.size;
+					     ++k)
 						dst->color[k] = cp[k] / 255.0f;
 				}
-				if (ctx->color_array.size == 3)
+				if (tl_color_array.size == 3)
 					dst->color[3] = 1.0f;
 			} else {
 				for (int k = 0; k < 4; ++k)
 					dst->color[k] = ctx->current_color[k];
 			}
-			if (ctx->texcoord_array.enabled) {
+			if (tl_texcoord_array.enabled) {
 				const GLfloat *tp =
 					(const GLfloat *)(tptr +
 							  (size_t)idx *
 								  tstride);
-				for (int k = 0; k < ctx->texcoord_array.size;
-				     ++k)
+				for (int k = 0; k < tl_texcoord_array.size; ++k)
 					dst->texcoord[k] = tp[k];
-				for (int k = ctx->texcoord_array.size; k < 4;
-				     ++k)
+				for (int k = tl_texcoord_array.size; k < 4; ++k)
 					dst->texcoord[k] = k == 3 ? 1.0f : 0.0f;
 			} else {
 				for (int k = 0; k < 4; ++k)
