@@ -1,11 +1,20 @@
 #include "command_buffer.h"
 #include <stdatomic.h>
+#include <stdalign.h>
 
 #define COMMAND_RING_SIZE 1024
 
-static GLCommand g_ring[COMMAND_RING_SIZE];
+#ifdef USE_TLS_COMMAND_RING
+static _Thread_local _Alignas(64) GLCommand g_ring[COMMAND_RING_SIZE];
+static _Thread_local atomic_uint g_head;
+static _Thread_local atomic_uint g_tail;
+#else
+static _Alignas(64) GLCommand g_ring[COMMAND_RING_SIZE];
 static atomic_uint g_head;
 static atomic_uint g_tail;
+#endif
+
+_Static_assert(__alignof__(g_ring) >= 64, "g_ring must be 64-byte aligned");
 
 void command_buffer_init(void)
 {
