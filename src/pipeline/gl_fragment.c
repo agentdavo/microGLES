@@ -13,6 +13,7 @@ _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include <string.h>
 #include <math.h>
 #include <stdbool.h>
+#include "../c11_opt.h"
 
 static uint32_t modulate(uint32_t a, uint32_t c)
 {
@@ -123,21 +124,18 @@ void pipeline_shade_fragment(Fragment *frag, Framebuffer *fb)
 		if (tex->wrap_s == GL_REPEAT)
 			u -= floorf(u);
 		else
-			u = fminf(fmaxf(u, 0.0f), 1.0f);
+			u = GL_CLAMP(u, 0.0f, 1.0f);
 		if (tex->wrap_t == GL_REPEAT)
 			v -= floorf(v);
 		else
-			v = fminf(fmaxf(v, 0.0f), 1.0f);
+			v = GL_CLAMP(v, 0.0f, 1.0f);
 		unsigned level = 0;
 		if (tex->min_filter >= GL_NEAREST_MIPMAP_NEAREST) {
 			float ratio =
-				fmaxf((float)tex->mip_width[0] / fb->width,
-				      (float)tex->mip_height[0] / fb->height);
+				GL_MAX((float)tex->mip_width[0] / fb->width,
+				       (float)tex->mip_height[0] / fb->height);
 			float lod = log2f(ratio);
-			if (lod < 0.0f)
-				lod = 0.0f;
-			if (lod > tex->current_level)
-				lod = tex->current_level;
+			lod = GL_CLAMP(lod, 0.0f, tex->current_level);
 			level = (unsigned)lod;
 		}
 		if (!tex->levels[level])
@@ -207,14 +205,11 @@ void pipeline_shade_fragment(Fragment *frag, Framebuffer *fb)
 				      frag->depth * frag->depth);
 			break;
 		}
-		if (factor < 0.0f)
-			factor = 0.0f;
-		if (factor > 1.0f)
-			factor = 1.0f;
+		factor = GL_CLAMP(factor, 0.0f, 1.0f);
 		for (int i = 0; i < 3; ++i)
 			((float *)&frag->color)[i] =
-				((float *)&frag->color)[i] * factor +
-				local_fog.color[i] * (1.0f - factor);
+				GL_LERP(local_fog.color[i],
+					((float *)&frag->color)[i], factor);
 	}
 	RenderContext *ctx = GetCurrentContext();
 	if (ctx->alpha_test.enabled) {
@@ -267,11 +262,8 @@ void pipeline_shade_fragment(Fragment *frag, Framebuffer *fb)
 						dstc[i], srcA, dstA);
 			float df = blend_factor(local_blend.dst_factor, src[i],
 						dstc[i], srcA, dstA);
-			out[i] = src[i] * sf + dstc[i] * df;
-			if (out[i] < 0.0f)
-				out[i] = 0.0f;
-			if (out[i] > 1.0f)
-				out[i] = 1.0f;
+			out[i] = GL_CLAMP(src[i] * sf + dstc[i] * df, 0.0f,
+					  1.0f);
 		}
 		float af = blend_factor(local_blend.src_factor, srcA, dstA,
 					srcA, dstA);
