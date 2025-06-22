@@ -14,6 +14,31 @@ _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include <string.h>
 
 static _Thread_local FramebufferTile *tls_tile = NULL;
+static _Thread_local StencilState tl_stencil;
+static _Thread_local unsigned tl_stencil_ver;
+static _Thread_local GLboolean tl_stencil_on;
+static _Thread_local GLenum tl_depth_func;
+static _Thread_local unsigned tl_depth_ver;
+static _Thread_local GLboolean tl_depth_test;
+
+static inline void refresh_depth_stencil(void)
+{
+	RenderContext *ctx = GetCurrentContext();
+	unsigned sv = atomic_load(&ctx->stencil.version);
+	if (sv != tl_stencil_ver) {
+		memcpy(&tl_stencil, &ctx->stencil, sizeof(StencilState));
+		tl_stencil_ver = sv;
+	}
+	tl_stencil_on = ctx->stencil_test_enabled;
+	unsigned dv = atomic_load(&ctx->version_depth);
+	if (dv != tl_depth_ver) {
+		tl_depth_func = ctx->depth_func;
+		tl_depth_test = ctx->depth_test_enabled;
+		tl_depth_ver = dv;
+	} else {
+		tl_depth_test = ctx->depth_test_enabled;
+	}
+}
 
 void framebuffer_enter_tile(FramebufferTile *tile)
 {
@@ -200,9 +225,9 @@ void framebuffer_set_pixel(Framebuffer *restrict fb, uint32_t x, uint32_t y,
 		y -= tls_tile->y0;
 	}
 	size_t idx = (size_t)y * stride + x;
-	RenderContext *ctx = GetCurrentContext();
-	GLboolean stencil_on = ctx->stencil_test_enabled;
-	StencilState *ss = &ctx->stencil;
+	refresh_depth_stencil();
+	GLboolean stencil_on = tl_stencil_on;
+	StencilState *ss = &tl_stencil;
 	uint8_t stencil = atomic_load(&stencil_buffer[idx]);
 	if (stencil_on) {
 		uint8_t masked = stencil & ss->mask;
@@ -275,45 +300,49 @@ void framebuffer_set_pixel(Framebuffer *restrict fb, uint32_t x, uint32_t y,
          * location concurrently. Compare-and-swap ensures only the correct
          * fragment updates the buffer while losers retry with the new value.
          */
-	while (true) {
-		bool pass = false;
-		switch (ctx->depth_func) {
-		case GL_NEVER:
-			pass = false;
-			break;
-		case GL_LESS:
-			pass = depth < current;
-			break;
-		case GL_LEQUAL:
-			pass = depth <= current;
-			break;
-		case GL_GREATER:
-			pass = depth > current;
-			break;
-		case GL_GEQUAL:
-			pass = depth >= current;
-			break;
-		case GL_EQUAL:
-			pass = depth == current;
-			break;
-		case GL_NOTEQUAL:
-			pass = depth != current;
-			break;
-		case GL_ALWAYS:
-			pass = true;
-			break;
-		default:
-			pass = depth < current;
-			break;
+	if (!tl_depth_test) {
+		depth_pass = true;
+	} else {
+		while (true) {
+			bool pass = false;
+			switch (tl_depth_func) {
+			case GL_NEVER:
+				pass = false;
+				break;
+			case GL_LESS:
+				pass = depth < current;
+				break;
+			case GL_LEQUAL:
+				pass = depth <= current;
+				break;
+			case GL_GREATER:
+				pass = depth > current;
+				break;
+			case GL_GEQUAL:
+				pass = depth >= current;
+				break;
+			case GL_EQUAL:
+				pass = depth == current;
+				break;
+			case GL_NOTEQUAL:
+				pass = depth != current;
+				break;
+			case GL_ALWAYS:
+				pass = true;
+				break;
+			default:
+				pass = depth < current;
+				break;
+			}
+			if (!pass)
+				break;
+			if (atomic_compare_exchange_weak(&depth_buffer[idx],
+							 &current, depth)) {
+				depth_pass = true;
+				break;
+			}
+			/* current updated by atomic_compare_exchange_weak */
 		}
-		if (!pass)
-			break;
-		if (atomic_compare_exchange_weak(&depth_buffer[idx], &current,
-						 depth)) {
-			depth_pass = true;
-			break;
-		}
-		/* current updated by atomic_compare_exchange_weak */
 	}
 	if (stencil_on) {
 		uint8_t new = stencil;
