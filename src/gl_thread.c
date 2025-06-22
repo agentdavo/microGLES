@@ -599,6 +599,30 @@ void thread_profile_report(void)
 	function_profile_report();
 }
 
+void thread_realtime_report(void)
+{
+	static bool header_printed = false;
+	uint64_t gq =
+		atomic_load_explicit(&g_global_tail, memory_order_relaxed) -
+		atomic_load_explicit(&g_global_head, memory_order_relaxed);
+	if (!header_printed) {
+		printf("%-8s", "GQueue");
+		for (int i = 0; i < g_num_threads; ++i)
+			printf(" LQ%d ", i);
+		printf("\n");
+		header_printed = true;
+	}
+	printf("%8llu", (unsigned long long)gq);
+	for (int i = 0; i < g_num_threads; ++i) {
+		uint64_t depth = atomic_load_explicit(&g_local_queues[i].tail,
+						      memory_order_relaxed) -
+				 atomic_load_explicit(&g_local_queues[i].head,
+						      memory_order_relaxed);
+		printf(" %4llu", (unsigned long long)depth);
+	}
+	printf("\n");
+}
+
 texture_cache_t *thread_get_texture_cache(void)
 {
 	return tls_cache;
