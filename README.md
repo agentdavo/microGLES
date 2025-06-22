@@ -64,7 +64,7 @@ cmake --build build
 Set `MICROGLES_THREADS` to specify the number of worker threads (defaults to the
 number of online CPUs).
 
-To gather per-stage timings at runtime, pass `--profile` to the benchmark or conformance executables. The stress_test program also accepts `--profile` for analyzing the million-cube scene. Pass `--stream-fb` to stress_test to pipe the framebuffer as raw RGBA to stdout for tools like `ffmpeg`. Use `--x11-window --width=640 --height=480` to display the framebuffer in an X11 window. The command buffer recorder is always enabled, so no extra build flags are required.
+To gather per-stage timings at runtime, pass `--profile` to the benchmark or conformance executables. The stress_test program also accepts `--profile` for analyzing the million-cube scene. Pass `--stream-fb` to stress_test to pipe the framebuffer as raw RGBA to stdout for tools like `ffmpeg`. Use `--x11-window --width=640 --height=480` to display the framebuffer in an X11 window. The command buffer recorder is always enabled, so no extra build flags are required. The `perf_monitor` tool shows CPU and memory usage while spinning 1,000 pyramids; set `MICROGLES_THREADS` to adjust the worker thread count.
 
 ### Debug / Sanitizer
 
