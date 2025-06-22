@@ -173,8 +173,13 @@ static void usage(const char *prog)
 int main(int argc, char **argv)
 {
 	LogLevel log_level = LOG_LEVEL_INFO;
+	bool profile = false;
 	for (int i = 1; i < argc; ++i) {
 		const char *arg = argv[i];
+		if (strcmp(arg, "--profile") == 0) {
+			profile = true;
+			continue;
+		}
 		if (strncmp(arg, "--log-level=", 12) == 0) {
 			const char *lvl = arg + 12;
 			if (strcmp(lvl, "debug") == 0)
