@@ -32,9 +32,10 @@ void pool_init(ObjectPool *pool, size_t obj_size, unsigned capacity,
 	pool->capacity = capacity;
 	pool->stage = stage;
 	mtx_init(&pool->mutex, mtx_plain);
+	size_t alignment = obj_size >= 64 ? 64 : 16;
 	for (unsigned i = 0; i < capacity; ++i) {
-		struct PoolNode *node =
-			MT_ALLOC(sizeof(struct PoolNode) + obj_size, stage);
+		struct PoolNode *node = MT_ALIGNED_ALLOC(
+			alignment, sizeof(struct PoolNode) + obj_size, stage);
 		if (!node)
 			break;
 		node->next_free = pool->free_list;

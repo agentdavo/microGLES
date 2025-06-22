@@ -11,12 +11,16 @@
 #define TILE_SIZE 16
 
 typedef struct {
-	uint32_t x0, y0;
+	alignas(64) uint32_t x0, y0;
 	uint32_t color[TILE_SIZE * TILE_SIZE];
 	float depth[TILE_SIZE * TILE_SIZE];
 	uint8_t stencil[TILE_SIZE * TILE_SIZE];
 	atomic_flag lock;
 } FramebufferTile;
+_Static_assert(sizeof(FramebufferTile) == 2432,
+	       "FramebufferTile size must be 2432 bytes");
+_Static_assert(alignof(FramebufferTile) >= 64,
+	       "FramebufferTile must be 64-byte aligned");
 
 #ifdef __cplusplus
 extern "C" {

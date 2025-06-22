@@ -23,6 +23,9 @@ void *memory_tracker_realloc(void *ptr, size_t size, stage_tag_t stage,
 			     const char *type, int line);
 void memory_tracker_free(void *ptr, stage_tag_t stage, const char *type,
 			 int line);
+void *memory_tracker_alloc_aligned(size_t alignment, size_t size,
+				   stage_tag_t stage, const char *type,
+				   int line);
 size_t memory_tracker_current(void);
 size_t memory_tracker_peak(void);
 void memory_tracker_report(void);
@@ -34,6 +37,8 @@ void memory_tracker_report(void);
 #define MT_REALLOC(p, sz, stage) \
 	memory_tracker_realloc((p), (sz), (stage), __func__, __LINE__)
 #define MT_FREE(p, stage) memory_tracker_free((p), (stage), __func__, __LINE__)
+#define MT_ALIGNED_ALLOC(al, sz, stage) \
+	memory_tracker_alloc_aligned((al), (sz), (stage), __func__, __LINE__)
 
 #ifdef __cplusplus
 }

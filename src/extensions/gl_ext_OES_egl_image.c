@@ -2,6 +2,7 @@
 #include "gl_ext_common.h"
 #include "../gl_logger.h"
 #include "../gl_utils.h"
+#include <GLES/gl.h>
 #include <GLES/glext.h>
 
 EXT_REGISTER("GL_OES_EGL_image")
