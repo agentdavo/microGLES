@@ -80,6 +80,7 @@ int main(int argc, char **argv)
 	RUN(get_fbo_tests);
 	RUN(get_depth_tests);
 	RUN(get_extensions_tests);
+	RUN(get_fixed_point_tests);
 	RUN(get_thread_stress_tests);
 	RUN(get_point_sprite_tests);
 	RUN(get_autogen_tests);
