@@ -81,9 +81,17 @@ GL_API void GL_APIENTRY glFogfv(GLenum pname, const GLfloat *params)
 		gl_state.fog_end = params[0];
 		context_set_fog(pname, params);
 		break;
-	case GL_FOG_MODE:
-		gl_state.fog_mode = (GLenum)params[0];
+	case GL_FOG_MODE: {
+		GLenum mode = (GLenum)(int)params[0];
+		if (mode != GL_LINEAR && mode != GL_EXP && mode != GL_EXP2) {
+			glSetError(GL_INVALID_ENUM);
+			break;
+		}
+		gl_state.fog_mode = mode;
+		GLfloat mval = (GLfloat)mode;
+		context_set_fog(pname, &mval);
 		break;
+	}
 	default:
 		glSetError(GL_INVALID_ENUM);
 		break;
