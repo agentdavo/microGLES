@@ -7,6 +7,7 @@
 #include "command_buffer.h"
 #include "matrix_utils.h"
 #include "gl_utils.h"
+#include "pipeline/gl_framebuffer.h"
 #ifdef HAVE_X11
 #include "x11_window.h"
 #include <GL/glx.h>
@@ -144,6 +145,25 @@ static void render_scene(void)
 	}
 }
 
+static bool check_fb_content(const Framebuffer *fb)
+{
+	bool has_non_white = false;
+	bool has_non_black = false;
+	for (uint32_t y = 0; y < fb->height; ++y) {
+		for (uint32_t x = 0; x < fb->width; ++x) {
+			uint32_t c = framebuffer_get_pixel(fb, x, y) &
+				     0x00FFFFFFu;
+			if (c != 0xFFFFFFu)
+				has_non_white = true;
+			if (c != 0x000000u)
+				has_non_black = true;
+			if (has_non_white && has_non_black)
+				return true;
+		}
+	}
+	return has_non_white && has_non_black;
+}
+
 int main(int argc, char **argv)
 {
 	(void)argc;
@@ -182,6 +202,7 @@ int main(int argc, char **argv)
 
 	init_gl();
 	generate_pyramid_geometry();
+	LOG_INFO("Pyramid geometry generated");
 	for (int i = 0; i < NUM_PYRAMIDS; ++i) {
 		pyramids[i].position.x = (float)(rand() % 300) - 150.0f;
 		pyramids[i].position.y = (float)(rand() % 300) - 150.0f;
@@ -196,8 +217,11 @@ int main(int argc, char **argv)
 		pyramids[i].rotationSpeed.z =
 			((float)rand() / RAND_MAX - 0.5f) * 60.0f;
 	}
+	LOG_INFO("Entering render loop");
 	const int face_pixels = 64 * 64;
+	int frame_idx = 0;
 	for (int sec = 0; sec < 10; ++sec) {
+		LOG_INFO("Starting second %d", sec + 1);
 		struct timespec start, now;
 		uint64_t cstart, cend;
 		clock_gettime(CLOCK_MONOTONIC, &start);
@@ -222,6 +246,19 @@ int main(int argc, char **argv)
 				glXSwapBuffers(NULL,
 					       (GLXDrawable)(uintptr_t)win);
 #endif
+			if (frame_idx < 2) {
+				bool fb_ok = check_fb_content(fb);
+#ifdef HAVE_X11
+				bool win_ok =
+					x11_window_has_non_monochrome(win);
+#else
+				bool win_ok = fb_ok;
+#endif
+				printf("Framebuffer frame %d %s (window %s)\n",
+				       frame_idx + 1, fb_ok ? "PASS" : "FAIL",
+				       win_ok ? "PASS" : "FAIL");
+				++frame_idx;
+			}
 			clock_gettime(CLOCK_MONOTONIC, &now);
 		} while (ts_diff(&now, &start) < 1.0);
 		cend = thread_get_cycles();
@@ -238,6 +275,8 @@ int main(int argc, char **argv)
 		printf("%7ld %10zu %6.1f %11.2f %11.2f\n", get_tid(),
 		       memory_tracker_current() / 1024, cpu_pct,
 		       polys / wall / 1e6, pix / wall / 1e6);
+		LOG_INFO("Second %d summary: %.2f MP/s polys, %.2f MP/s pixels",
+			 sec + 1, polys / wall / 1e6, pix / wall / 1e6);
 		thread_realtime_report();
 		thread_profile_start();
 	}
@@ -249,6 +288,7 @@ int main(int argc, char **argv)
 	if (win)
 		x11_window_destroy(win);
 #endif
+	LOG_INFO("Render loop complete. Cleaning up");
 	thread_pool_wait();
 	command_buffer_shutdown();
 	thread_pool_shutdown();
