@@ -19,6 +19,7 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <stdlib.h>
+#include <stdbool.h>
 /* Pyramid benchmark parameters */
 #define SCREEN_WIDTH 1024
 #define SCREEN_HEIGHT 768
@@ -173,9 +174,12 @@ static void usage(const char *prog)
 int main(int argc, char **argv)
 {
 	LogLevel log_level = LOG_LEVEL_INFO;
+	bool profile = false;
 	for (int i = 1; i < argc; ++i) {
 		const char *arg = argv[i];
-		if (strncmp(arg, "--log-level=", 12) == 0) {
+		if (strcmp(arg, "--profile") == 0) {
+			profile = true;
+		} else if (strncmp(arg, "--log-level=", 12) == 0) {
 			const char *lvl = arg + 12;
 			if (strcmp(lvl, "debug") == 0)
 				log_level = LOG_LEVEL_DEBUG;
