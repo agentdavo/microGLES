@@ -1,5 +1,5 @@
 # Minimum CMake version required
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.20)
 
 # Project name and version
 project(OpenGLES_Renderer VERSION 1.0 LANGUAGES C)
