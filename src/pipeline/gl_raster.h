@@ -8,10 +8,12 @@
 extern "C" {
 #endif
 
-void pipeline_rasterize_triangle(const Triangle *tri, const GLint viewport[4],
-				 Framebuffer *fb);
-void pipeline_rasterize_point(const Vertex *v, GLfloat size,
-			      const GLint viewport[4], Framebuffer *fb);
+void pipeline_rasterize_triangle(const Triangle *restrict tri,
+				 const GLint *restrict viewport,
+				 Framebuffer *restrict fb);
+void pipeline_rasterize_point(const Vertex *restrict v, GLfloat size,
+			      const GLint *restrict viewport,
+			      Framebuffer *restrict fb);
 
 #define TILE_SIZE 16
 

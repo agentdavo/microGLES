@@ -19,8 +19,10 @@ _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
  * This file performs object->clip transformations and lighting.
  */
 
-void pipeline_transform_vertex(Vertex *dst, const Vertex *src, const mat4 *mvp,
-			       const mat4 *normal_mat, const GLint viewport[4])
+void pipeline_transform_vertex(Vertex *restrict dst, const Vertex *restrict src,
+			       const mat4 *restrict mvp,
+			       const mat4 *restrict normal_mat,
+			       const GLint *restrict viewport)
 {
 	GLfloat in[4] = { src->x, src->y, src->z, src->w };
 	GLfloat out[4];
