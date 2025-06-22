@@ -202,6 +202,7 @@ int main(int argc, char **argv)
 
 	init_gl();
 	generate_pyramid_geometry();
+	LOG_INFO("Pyramid geometry generated");
 	for (int i = 0; i < NUM_PYRAMIDS; ++i) {
 		pyramids[i].position.x = (float)(rand() % 300) - 150.0f;
 		pyramids[i].position.y = (float)(rand() % 300) - 150.0f;
@@ -216,9 +217,11 @@ int main(int argc, char **argv)
 		pyramids[i].rotationSpeed.z =
 			((float)rand() / RAND_MAX - 0.5f) * 60.0f;
 	}
+	LOG_INFO("Entering render loop");
 	const int face_pixels = 64 * 64;
 	int frame_idx = 0;
 	for (int sec = 0; sec < 10; ++sec) {
+		LOG_INFO("Starting second %d", sec + 1);
 		struct timespec start, now;
 		uint64_t cstart, cend;
 		clock_gettime(CLOCK_MONOTONIC, &start);
@@ -265,6 +268,8 @@ int main(int argc, char **argv)
 		printf("%7ld %10zu %6.1f %11.2f %11.2f\n", get_tid(),
 		       memory_tracker_current() / 1024, cpu_pct,
 		       polys / wall / 1e6, pix / wall / 1e6);
+		LOG_INFO("Second %d summary: %.2f MP/s polys, %.2f MP/s pixels",
+			 sec + 1, polys / wall / 1e6, pix / wall / 1e6);
 		thread_realtime_report();
 		thread_profile_start();
 	}
@@ -276,6 +281,7 @@ int main(int argc, char **argv)
 	if (win)
 		x11_window_destroy(win);
 #endif
+	LOG_INFO("Render loop complete. Cleaning up");
 	thread_pool_wait();
 	command_buffer_shutdown();
 	thread_pool_shutdown();
