@@ -25,6 +25,7 @@ set(SOURCE_FILES
     src/gl_api_buffer.c
     src/gl_state.c
     src/gl_utils.c
+    src/gl_errors.c
     src/extensions/gl_ext_common.c
     src/extensions/gl_ext_OES_draw_texture.c
     src/extensions/gl_ext_OES_matrix_get.c

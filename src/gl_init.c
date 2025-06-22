@@ -1,6 +1,7 @@
 #include "gl_init.h"
 #include "gl_logger.h"
 #include "gl_context.h"
+#include "gl_errors.h"
 #include "matrix_utils.h"
 #include "pipeline/gl_framebuffer.h"
 #include <GLES/gl.h>
