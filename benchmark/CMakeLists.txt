@@ -27,6 +27,22 @@ add_executable(stress_test
     src/stress_main.c
 )
 
+add_executable(perf_monitor
+    src/perf_monitor.c
+)
+
+target_include_directories(perf_monitor PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_link_libraries(perf_monitor PRIVATE renderer_lib ${EXTRA_LIBS} m)
+
+set_target_properties(perf_monitor PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+
 target_include_directories(stress_test PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/include
