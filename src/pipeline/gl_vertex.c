@@ -7,7 +7,7 @@ _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "../gl_thread.h"
 #include "../pool.h"
 #include <string.h>
-#include <math.h>
+#include "../c11_opt.h"
 #include "../matrix_utils.h"
 
 /*
@@ -90,7 +90,7 @@ static void apply_lighting(Vertex *v)
 		float lx = -lt->position[0];
 		float ly = -lt->position[1];
 		float lz = -lt->position[2];
-		float dist = sqrtf(lx * lx + ly * ly + lz * lz);
+		float dist = GL_SQRT(lx * lx + ly * ly + lz * lz);
 		if (dist > 0.0f) {
 			lx /= dist;
 			ly /= dist;
@@ -111,7 +111,7 @@ static void apply_lighting(Vertex *v)
 			float spec_dot = nx * hx + ny * hy + nz * hz;
 			if (spec_dot < 0.0f)
 				spec_dot = 0.0f;
-			spec = powf(spec_dot, tl_mat.shininess);
+			spec = GL_POW(spec_dot, tl_mat.shininess);
 		}
 		r += tl_mat.ambient[0] * lt->ambient[0] * att +
 		     tl_mat.diffuse[0] * lt->diffuse[0] * dot * att +
