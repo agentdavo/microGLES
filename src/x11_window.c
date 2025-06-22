@@ -1,5 +1,6 @@
 #include "x11_window.h"
 #include "pipeline/gl_framebuffer.h"
+#include "gl_logger.h"
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <stdlib.h>
@@ -20,8 +21,10 @@ struct X11Window {
 X11Window *x11_window_create(unsigned width, unsigned height, const char *title)
 {
 	Display *dpy = XOpenDisplay(NULL);
-	if (!dpy)
+	if (!dpy) {
+		LOG_ERROR("XOpenDisplay failed. DISPLAY=%s", getenv("DISPLAY"));
 		return NULL;
+	}
 	int screen = DefaultScreen(dpy);
 	Window win = XCreateSimpleWindow(dpy, RootWindow(dpy, screen), 0, 0,
 					 width, height, 0,
@@ -45,6 +48,7 @@ X11Window *x11_window_create(unsigned width, unsigned height, const char *title)
 				malloc(width * height * 4), width, height, 32,
 				0);
 	if (!w->image) {
+		LOG_ERROR("XCreateImage failed");
 		free(w);
 		return NULL;
 	}
