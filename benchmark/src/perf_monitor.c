@@ -316,7 +316,11 @@ int main(int argc, char **argv)
 			if (!thread_pool_wait_timeout(2000)) {
 				LOG_WARN("thread_pool_wait timed out");
 				thread_pool_dump_queues();
-				thread_pool_wait();
+				if (!thread_pool_wait_timeout(1000)) {
+					LOG_WARN(
+						"thread_pool_wait timed out again; breaking render loop");
+					break;
+				}
 			}
 			LOG_DEBUG("after thread_pool_wait");
 #ifdef HAVE_X11
