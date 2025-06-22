@@ -190,11 +190,27 @@ int main(int argc, char **argv)
 	}
 #ifdef HAVE_X11
 	X11Window *win = x11_window_create(1024, 768, "microGLES Perf");
+	if (!win) {
+		LOG_ERROR("x11_window_create failed. DISPLAY=%s",
+			  getenv("DISPLAY"));
+	} else {
+		LOG_INFO("x11_window_create succeeded");
+	}
 	GLXContext glx_ctx = NULL;
 	if (win) {
 		Display *dpy = x11_window_get_display(win);
 		glx_ctx = glXCreateContext(dpy, NULL, NULL, False);
-		glXMakeCurrent(dpy, (GLXDrawable)(uintptr_t)win, glx_ctx);
+		if (glx_ctx) {
+			LOG_INFO("glXCreateContext succeeded");
+		} else {
+			LOG_ERROR("glXCreateContext failed");
+		}
+		if (glx_ctx &&
+		    glXMakeCurrent(dpy, (GLXDrawable)(uintptr_t)win, glx_ctx)) {
+			LOG_INFO("glXMakeCurrent succeeded");
+		} else if (glx_ctx) {
+			LOG_ERROR("glXMakeCurrent failed");
+		}
 	}
 #else
 	X11Window *win = NULL;
