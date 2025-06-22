@@ -2,6 +2,7 @@
 #include "gl_ext_common.h"
 #include "../gl_utils.h"
 #include "../gl_logger.h"
+#include <GLES/gl.h>
 #include <GLES/glext.h>
 EXT_REGISTER("GL_OES_point_size_array")
 __attribute__((used)) int ext_link_dummy_OES_point_size_array = 0;

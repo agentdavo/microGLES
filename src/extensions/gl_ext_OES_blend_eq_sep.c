@@ -2,6 +2,8 @@
 #include "gl_errors.h"
 #include "../gl_state.h"
 #include "../gl_utils.h"
+#include <GLES/gl.h>
+#include <GLES/glext.h>
 
 EXT_REGISTER("GL_OES_blend_equation_separate")
 __attribute__((used)) int ext_link_dummy_OES_blend_eq_sep = 0;

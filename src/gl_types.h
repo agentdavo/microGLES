@@ -7,29 +7,38 @@
 
 #include <GLES/gl.h>
 #include <stdatomic.h>
+#include <stdalign.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef struct {
-	GLfloat x, y, z, w;
+	alignas(16) GLfloat x;
+	GLfloat y, z, w;
 	GLfloat normal[3];
 	GLfloat color[4];
 	GLfloat texcoord[4];
 	GLfloat point_size;
 } Vertex;
+_Static_assert(sizeof(Vertex) == 64, "Vertex size must be 64 bytes");
+_Static_assert(alignof(Vertex) >= 16, "Vertex must be 16-byte aligned");
 
 typedef struct {
-	Vertex v0, v1, v2;
+	alignas(16) Vertex v0, v1, v2;
 } Triangle;
+_Static_assert(sizeof(Triangle) == sizeof(Vertex) * 3,
+	       "Triangle size mismatch");
+_Static_assert(alignof(Triangle) >= 16, "Triangle must be 16-byte aligned");
 
 typedef struct {
-	uint32_t x;
+	alignas(16) uint32_t x;
 	uint32_t y;
 	GLuint color;
 	float depth;
 } Fragment;
+_Static_assert(sizeof(Fragment) == 16, "Fragment size must be 16 bytes");
+_Static_assert(alignof(Fragment) >= 16, "Fragment must be 16-byte aligned");
 
 typedef struct {
 	GLenum func;

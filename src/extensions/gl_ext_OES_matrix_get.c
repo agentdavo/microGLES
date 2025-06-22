@@ -1,4 +1,5 @@
 #include "gl_ext_common.h"
+#include <GLES/gl.h>
 #include <GLES/glext.h>
 #include <math.h>
 #include "../gl_utils.h"

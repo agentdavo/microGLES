@@ -112,6 +112,19 @@ void *memory_tracker_calloc(size_t n, size_t size, stage_tag_t stage,
 	return p;
 }
 
+void *memory_tracker_alloc_aligned(size_t alignment, size_t size,
+				   stage_tag_t stage, const char *type,
+				   int line)
+{
+	void *p = NULL;
+	if (posix_memalign(&p, alignment, size) != 0)
+		return NULL;
+	mtx_lock(&g_mutex);
+	record_alloc(p, size, stage, type, line);
+	mtx_unlock(&g_mutex);
+	return p;
+}
+
 void *memory_tracker_realloc(void *ptr, size_t size, stage_tag_t stage,
 			     const char *type, int line)
 {

@@ -1,4 +1,5 @@
 #include "gl_ext_common.h"
+#include <GLES/gl.h>
 #include <GLES/glext.h>
 
 EXT_REGISTER("GL_OES_required_internalformat")
