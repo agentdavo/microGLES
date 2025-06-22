@@ -2,6 +2,10 @@
 #include "gl_errors.h"
 #include "gl_logger.h"
 #include "gl_memory_tracker.h"
+#include "gl_context.h"          // For gl_state
+#include "pipeline/gl_framebuffer.h" // For Framebuffer
+#include <GLES/gl.h>
+#include <GLES/glext.h>          // For GL_INVALID_FRAMEBUFFER_OPERATION_OES
 #include <stdalign.h>
 #include <stddef.h>
 #include <pthread.h>
@@ -75,14 +79,14 @@ GLboolean ValidateFramebufferCompleteness(void)
     Framebuffer *fb = gl_state.bound_framebuffer ? gl_state.bound_framebuffer->fb : NULL;
     if (!fb) {
         LOG_ERROR("ValidateFramebufferCompleteness: No framebuffer bound");
-        glSetError(GL_INVALID_FRAMEBUFFER_OPERATION);
+        glSetError(GL_INVALID_FRAMEBUFFER_OPERATION_OES);
         return GL_FALSE;
     }
 
     // Check dimensions
     if (fb->width == 0 || fb->height == 0) {
         LOG_ERROR("ValidateFramebufferCompleteness: Invalid framebuffer dimensions");
-        glSetError(GL_INVALID_FRAMEBUFFER_OPERATION);
+        glSetError(GL_INVALID_FRAMEBUFFER_OPERATION_OES);
         return GL_FALSE;
     }
 
