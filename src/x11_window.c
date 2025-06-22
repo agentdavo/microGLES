@@ -77,6 +77,7 @@ void x11_window_show_image(X11Window *w, const struct Framebuffer *fb)
 			dst[1] = (pixel >> 8) & 0xFF; // G
 			dst[2] = (pixel >> 16) & 0xFF; // B
 			dst[3] = (pixel >> 24) & 0xFF; // alpha
+			dst[3] = 0xFF; // alpha
 		}
 	}
 	XPutImage(w->display, w->window, w->gc, w->image, 0, 0, 0, 0, width,
