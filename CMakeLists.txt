@@ -35,6 +35,7 @@ set(SOURCE_FILES
     src/extensions/gl_ext_OES_egl_image_external.c
     src/extensions/gl_ext_OES_required_internalformat.c
     src/extensions/gl_ext_OES_blend_eq_sep.c
+    src/extensions/gl_ext_OES_fixed_point.c
     src/gl_context.c
     src/gl_thread.c
     src/texture_cache.c

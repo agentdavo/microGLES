@@ -10,6 +10,7 @@ extern int ext_link_dummy_OES_egl_image;
 extern int ext_link_dummy_OES_egl_image_external;
 extern int ext_link_dummy_OES_required_internalformat;
 extern int ext_link_dummy_OES_blend_eq_sep;
+extern int ext_link_dummy_OES_fixed_point;
 __attribute__((used)) static void *force_link[] = {
 	&ext_link_dummy_OES_draw_texture,
 	&ext_link_dummy_OES_matrix_get,
@@ -19,7 +20,8 @@ __attribute__((used)) static void *force_link[] = {
 	&ext_link_dummy_OES_egl_image,
 	&ext_link_dummy_OES_egl_image_external,
 	&ext_link_dummy_OES_required_internalformat,
-	&ext_link_dummy_OES_blend_eq_sep
+	&ext_link_dummy_OES_blend_eq_sep,
+	&ext_link_dummy_OES_fixed_point
 };
 static char ext_string[512] = "";
 static size_t ext_len = 0;
