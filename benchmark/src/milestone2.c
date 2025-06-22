@@ -166,6 +166,7 @@ void run_milestone2(Framebuffer *fb, BenchmarkResult *result)
 	glBindFramebufferOES(GL_FRAMEBUFFER_OES, 0);
 	CHECK_ERROR();
 
+	clock_t start = clock();
 	glDrawTexiOES(100, 100, 0, 32, 32);
 	glDrawTexfvOES((GLfloat[]){ 100, 100, 0, 32, 32 });
 	CHECK_ERROR();
@@ -199,6 +200,9 @@ void run_milestone2(Framebuffer *fb, BenchmarkResult *result)
 	uint32_t pixel = framebuffer_get_pixel(fb, 160, 160);
 	LogMessage(LOG_LEVEL_INFO, "Center pixel: 0x%08X", pixel);
 
-	(void)fb;
-	(void)result;
+	thread_pool_wait();
+	clock_t end = clock();
+	compute_result(start, end, result);
+	LOG_INFO("milestone2: %.2f FPS, %.2f ms/frame", result->fps,
+		 result->cpu_time_ms);
 }
