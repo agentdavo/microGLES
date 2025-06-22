@@ -172,8 +172,9 @@ int main(int argc, char **argv)
 	X11Window *win = x11_window_create(1024, 768, "microGLES Perf");
 	GLXContext glx_ctx = NULL;
 	if (win) {
-		glx_ctx = glXCreateContext(NULL, NULL, NULL, False);
-		glXMakeCurrent(NULL, (GLXDrawable)(uintptr_t)win, glx_ctx);
+		Display *dpy = x11_window_get_display(win);
+		glx_ctx = glXCreateContext(dpy, NULL, NULL, False);
+		glXMakeCurrent(dpy, (GLXDrawable)(uintptr_t)win, glx_ctx);
 	}
 #else
 	X11Window *win = NULL;
