@@ -186,7 +186,7 @@ GL_API void GL_APIENTRY glLoadMatrixx(const GLfixed *m)
 	}
 	GLfloat mf[16];
 	for (int i = 0; i < 16; ++i)
-		mf[i] = FIXED_TO_FLOAT(m[i]);
+		mf[i] = fixed_to_float(m[i]);
 	glLoadMatrixf(mf);
 }
 
@@ -212,7 +212,7 @@ GL_API void GL_APIENTRY glMultMatrixx(const GLfixed *m)
 	}
 	GLfloat mf[16];
 	for (int i = 0; i < 16; ++i)
-		mf[i] = FIXED_TO_FLOAT(m[i]);
+		mf[i] = fixed_to_float(m[i]);
 	glMultMatrixf(mf);
 }
 
