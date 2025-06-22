@@ -20,6 +20,28 @@ void *tracked_malloc(size_t size)
 	return ptr;
 }
 
+/* Function to allocate aligned memory with tracking */
+void *tracked_aligned_alloc(size_t alignment, size_t size)
+{
+	void *ptr = MT_ALIGNED_ALLOC(alignment, size, STAGE_FRAMEBUFFER);
+	if (!ptr) {
+		LOG_WARN(
+			"tracked_aligned_alloc: falling back to unaligned malloc");
+		ptr = MT_ALLOC(size, STAGE_FRAMEBUFFER);
+		if (!ptr) {
+			LOG_ERROR(
+				"tracked_aligned_alloc: Failed to allocate %zu bytes.",
+				size);
+			glSetError(GL_OUT_OF_MEMORY);
+		}
+	} else {
+		LOG_DEBUG(
+			"tracked_aligned_alloc: Allocated %zu bytes (al %zu) at %p.",
+			size, alignment, ptr);
+	}
+	return ptr;
+}
+
 /* Function to free memory with tracking */
 void tracked_free(void *ptr, size_t size)
 {

@@ -18,6 +18,7 @@ extern "C" {
 
 /* Memory tracking functions */
 void *tracked_malloc(size_t size);
+void *tracked_aligned_alloc(size_t alignment, size_t size);
 void tracked_free(void *ptr, size_t size);
 
 /* Utility function to validate framebuffer completeness */

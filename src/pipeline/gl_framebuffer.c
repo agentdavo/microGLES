@@ -41,12 +41,12 @@ Framebuffer *framebuffer_create(uint32_t width, uint32_t height)
 	fb->height = height;
 	atomic_init(&fb->ref_count, 1);
 	size_t pixels = (size_t)width * height;
-	fb->color_buffer = (_Atomic uint32_t *)tracked_malloc(
-		pixels * sizeof(_Atomic uint32_t));
-	fb->depth_buffer =
-		(_Atomic float *)tracked_malloc(pixels * sizeof(_Atomic float));
-	fb->stencil_buffer = (_Atomic uint8_t *)tracked_malloc(
-		pixels * sizeof(_Atomic uint8_t));
+	fb->color_buffer = (_Atomic uint32_t *)tracked_aligned_alloc(
+		64, pixels * sizeof(_Atomic uint32_t));
+	fb->depth_buffer = (_Atomic float *)tracked_aligned_alloc(
+		64, pixels * sizeof(_Atomic float));
+	fb->stencil_buffer = (_Atomic uint8_t *)tracked_aligned_alloc(
+		64, pixels * sizeof(_Atomic uint8_t));
 	if (!fb->color_buffer || !fb->depth_buffer || !fb->stencil_buffer) {
 		if (fb->color_buffer)
 			tracked_free(fb->color_buffer,
