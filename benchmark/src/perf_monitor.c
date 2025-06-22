@@ -164,6 +164,12 @@ static bool check_fb_content(const Framebuffer *fb)
 	return has_non_white && has_non_black;
 }
 
+static void usage(const char *prog)
+{
+	printf("Usage: %s [--profile]\n", prog);
+	printf("Set MICROGLES_THREADS to control worker thread count.\n");
+}
+
 int main(int argc, char **argv)
 {
 	LogLevel log_level = LOG_LEVEL_INFO;
@@ -196,7 +202,8 @@ int main(int argc, char **argv)
 		return -1;
 	}
 	command_buffer_init();
-	thread_profile_start();
+	if (profile)
+		thread_profile_start();
 	InitGLState(&gl_state);
 	Framebuffer *fb = GL_init_with_framebuffer(1024, 768);
 	if (!fb) {
@@ -340,7 +347,8 @@ int main(int argc, char **argv)
 		LOG_INFO("Second %d summary: %.2f MP/s polys, %.2f MP/s pixels",
 			 sec + 1, polys / wall / 1e6, pix / wall / 1e6);
 		thread_realtime_report();
-		thread_profile_start();
+		if (profile)
+			thread_profile_start();
 	}
 #ifdef HAVE_X11
 	if (glx_ctx) {
