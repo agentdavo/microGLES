@@ -17,8 +17,9 @@ static uint32_t pack_color(const GLfloat c[4])
 	return (a << 24) | (b << 16) | (g << 8) | r;
 }
 
-void pipeline_rasterize_triangle(const Triangle *tri, const GLint viewport[4],
-				 Framebuffer *fb)
+void pipeline_rasterize_triangle(const Triangle *restrict tri,
+				 const GLint *restrict viewport,
+				 Framebuffer *restrict fb)
 {
 	float minx = tri->v0.x;
 	float maxx = tri->v0.x;
@@ -102,8 +103,9 @@ void pipeline_rasterize_triangle(const Triangle *tri, const GLint viewport[4],
 	}
 }
 
-void pipeline_rasterize_point(const Vertex *v, GLfloat size,
-			      const GLint viewport[4], Framebuffer *fb)
+void pipeline_rasterize_point(const Vertex *restrict v, GLfloat size,
+			      const GLint *restrict viewport,
+			      Framebuffer *restrict fb)
 {
 	int half = (int)(size * 0.5f);
 	int x0 = (int)(v->x - half);

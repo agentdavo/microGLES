@@ -121,8 +121,8 @@ void framebuffer_destroy(Framebuffer *fb)
 	framebuffer_release(fb);
 }
 
-void framebuffer_clear(Framebuffer *fb, uint32_t clear_color, float clear_depth,
-		       uint8_t clear_stencil)
+void framebuffer_clear(Framebuffer *restrict fb, uint32_t clear_color,
+		       float clear_depth, uint8_t clear_stencil)
 {
 	size_t total = (size_t)fb->width * fb->height;
 	size_t i = 0;
@@ -180,7 +180,7 @@ void framebuffer_clear_async(Framebuffer *fb, uint32_t clear_color,
 	command_buffer_record_task(clear_task_func, task, STAGE_FRAMEBUFFER);
 }
 
-void framebuffer_set_pixel(Framebuffer *fb, uint32_t x, uint32_t y,
+void framebuffer_set_pixel(Framebuffer *restrict fb, uint32_t x, uint32_t y,
 			   uint32_t color, float depth)
 {
 	if (x >= fb->width || y >= fb->height)

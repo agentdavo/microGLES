@@ -43,9 +43,9 @@ Framebuffer *framebuffer_create(uint32_t width, uint32_t height);
 void framebuffer_destroy(Framebuffer *fb);
 void framebuffer_retain(Framebuffer *fb);
 void framebuffer_release(Framebuffer *fb);
-void framebuffer_clear(Framebuffer *fb, uint32_t clear_color, float clear_depth,
-		       uint8_t clear_stencil);
-void framebuffer_set_pixel(Framebuffer *fb, uint32_t x, uint32_t y,
+void framebuffer_clear(Framebuffer *restrict fb, uint32_t clear_color,
+		       float clear_depth, uint8_t clear_stencil);
+void framebuffer_set_pixel(Framebuffer *restrict fb, uint32_t x, uint32_t y,
 			   uint32_t color, float depth);
 void framebuffer_fill_rect(Framebuffer *fb, uint32_t x0, uint32_t y0,
 			   uint32_t x1, uint32_t y1, uint32_t color,

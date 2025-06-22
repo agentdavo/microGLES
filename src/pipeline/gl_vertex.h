@@ -15,8 +15,10 @@ typedef struct {
 	GLint viewport[4];
 } VertexJob;
 
-void pipeline_transform_vertex(Vertex *dst, const Vertex *src, const mat4 *mvp,
-			       const mat4 *normal_mat, const GLint viewport[4]);
+void pipeline_transform_vertex(Vertex *restrict dst, const Vertex *restrict src,
+			       const mat4 *restrict mvp,
+			       const mat4 *restrict normal_mat,
+			       const GLint *restrict viewport);
 void process_vertex_job(void *task_data);
 
 #ifdef __cplusplus
