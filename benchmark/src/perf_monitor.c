@@ -172,19 +172,24 @@ static void usage(const char *prog)
 
 int main(int argc, char **argv)
 {
-	bool profile = false;
+	LogLevel log_level = LOG_LEVEL_INFO;
 	for (int i = 1; i < argc; ++i) {
-		if (strcmp(argv[i], "--profile") == 0) {
-			profile = true;
-		} else if (strcmp(argv[i], "--help") == 0) {
-			usage(argv[0]);
-			return 0;
-		} else {
-			usage(argv[0]);
-			return 1;
+		const char *arg = argv[i];
+		if (strncmp(arg, "--log-level=", 12) == 0) {
+			const char *lvl = arg + 12;
+			if (strcmp(lvl, "debug") == 0)
+				log_level = LOG_LEVEL_DEBUG;
+			else if (strcmp(lvl, "info") == 0)
+				log_level = LOG_LEVEL_INFO;
+			else if (strcmp(lvl, "warn") == 0)
+				log_level = LOG_LEVEL_WARN;
+			else if (strcmp(lvl, "error") == 0)
+				log_level = LOG_LEVEL_ERROR;
+			else if (strcmp(lvl, "fatal") == 0)
+				log_level = LOG_LEVEL_FATAL;
 		}
 	}
-	if (!logger_init("perf_monitor.log", LOG_LEVEL_INFO)) {
+	if (!logger_init("perf_monitor.log", log_level)) {
 		fprintf(stderr, "Failed to initialize logger.\n");
 		return -1;
 	}
@@ -279,8 +284,13 @@ int main(int argc, char **argv)
 		cstart = thread_get_cycles();
 		double polys = 0.0, pix = 0.0;
 		do {
+			LOG_DEBUG("before render_scene");
 			render_scene();
+			LOG_DEBUG("after render_scene");
+
+			LOG_DEBUG("before glFinish");
 			glFinish();
+			LOG_DEBUG("after glFinish");
 			for (int i = 0; i < NUM_PYRAMIDS; ++i) {
 				pyramids[i].rotation.x +=
 					pyramids[i].rotationSpeed.x * 0.016f;
@@ -291,13 +301,18 @@ int main(int argc, char **argv)
 			}
 			polys += NUM_PYRAMIDS * 6.0f;
 			pix += NUM_PYRAMIDS * 6.0f * face_pixels;
+			LOG_DEBUG("before thread_pool_wait");
 			thread_pool_wait();
+			LOG_DEBUG("after thread_pool_wait");
 #ifdef HAVE_X11
-			if (win)
+			if (win) {
+				LOG_DEBUG("before glXSwapBuffers");
 				glXSwapBuffers(dpy,
 					       (GLXDrawable)(uintptr_t)win);
+				LOG_DEBUG("after glXSwapBuffers");
+			}
 #endif
-			if (frame_idx < 2) {
+			{
 				bool fb_ok = check_fb_content(fb);
 #ifdef HAVE_X11
 				bool win_ok =
@@ -305,6 +320,9 @@ int main(int argc, char **argv)
 #else
 				bool win_ok = fb_ok;
 #endif
+				LOG_INFO("Framebuffer frame %d %s (window %s)",
+					 frame_idx + 1, fb_ok ? "PASS" : "FAIL",
+					 win_ok ? "PASS" : "FAIL");
 				printf("Framebuffer frame %d %s (window %s)\n",
 				       frame_idx + 1, fb_ok ? "PASS" : "FAIL",
 				       win_ok ? "PASS" : "FAIL");
