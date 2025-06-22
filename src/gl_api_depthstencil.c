@@ -49,7 +49,7 @@ GL_API void GL_APIENTRY glPolygonOffset(GLfloat factor, GLfloat units)
 
 GL_API void GL_APIENTRY glPolygonOffsetx(GLfixed factor, GLfixed units)
 {
-	glPolygonOffset(FIXED_TO_FLOAT(factor), FIXED_TO_FLOAT(units));
+	glPolygonOffset(fixed_to_float(factor), fixed_to_float(units));
 }
 
 GL_API void GL_APIENTRY glClearStencil(GLint s)

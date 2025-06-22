@@ -28,10 +28,10 @@ GL_API void GL_APIENTRY glClipPlanex(GLenum plane, const GLfixed *equation)
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	GLfloat eq[4] = { FIXED_TO_FLOAT(equation[0]),
-			  FIXED_TO_FLOAT(equation[1]),
-			  FIXED_TO_FLOAT(equation[2]),
-			  FIXED_TO_FLOAT(equation[3]) };
+	GLfloat eq[4] = { fixed_to_float(equation[0]),
+			  fixed_to_float(equation[1]),
+			  fixed_to_float(equation[2]),
+			  fixed_to_float(equation[3]) };
 	glClipPlanef(plane, eq);
 }
 
@@ -43,7 +43,7 @@ GL_API void GL_APIENTRY glFogf(GLenum pname, GLfloat param)
 
 GL_API void GL_APIENTRY glFogx(GLenum pname, GLfixed param)
 {
-	glFogf(pname, FIXED_TO_FLOAT(param));
+	glFogf(pname, fixed_to_float(param));
 }
 
 GL_API void GL_APIENTRY glFogxv(GLenum pname, const GLfixed *param)
@@ -52,9 +52,9 @@ GL_API void GL_APIENTRY glFogxv(GLenum pname, const GLfixed *param)
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	GLfloat vals[4] = { FIXED_TO_FLOAT(param[0]), FIXED_TO_FLOAT(param[1]),
-			    FIXED_TO_FLOAT(param[2]),
-			    FIXED_TO_FLOAT(param[3]) };
+	GLfloat vals[4] = { fixed_to_float(param[0]), fixed_to_float(param[1]),
+			    fixed_to_float(param[2]),
+			    fixed_to_float(param[3]) };
 	glFogfv(pname, vals);
 }
 
@@ -113,7 +113,7 @@ GL_API void GL_APIENTRY glGetClipPlanex(GLenum plane, GLfixed *equation)
 	GLfloat eq[4];
 	glGetClipPlanef(plane, eq);
 	for (int i = 0; i < 4; ++i)
-		equation[i] = FLOAT_TO_FIXED(eq[i]);
+		equation[i] = float_to_fixed(eq[i]);
 }
 
 GL_API void GL_APIENTRY glGetLightfv(GLenum light, GLenum pname,
@@ -157,7 +157,7 @@ GL_API void GL_APIENTRY glGetLightxv(GLenum light, GLenum pname,
 	GLfloat tmp[4];
 	glGetLightfv(light, pname, tmp);
 	for (int i = 0; i < 4; ++i)
-		params[i] = FLOAT_TO_FIXED(tmp[i]);
+		params[i] = float_to_fixed(tmp[i]);
 }
 
 GL_API void GL_APIENTRY glGetMaterialfv(GLenum face, GLenum pname,
@@ -216,7 +216,7 @@ GL_API void GL_APIENTRY glGetMaterialxv(GLenum face, GLenum pname,
 	GLfloat tmp[4];
 	glGetMaterialfv(face, pname, tmp);
 	for (int i = 0; i < 4; ++i)
-		params[i] = FLOAT_TO_FIXED(tmp[i]);
+		params[i] = float_to_fixed(tmp[i]);
 }
 
 GL_API void GL_APIENTRY glGetTexEnvfv(GLenum target, GLenum pname,
@@ -265,7 +265,7 @@ GL_API void GL_APIENTRY glGetTexEnvxv(GLenum target, GLenum pname,
 	GLfloat tmp[4];
 	glGetTexEnvfv(target, pname, tmp);
 	for (int i = 0; i < 4; ++i)
-		params[i] = FLOAT_TO_FIXED(tmp[i]);
+		params[i] = float_to_fixed(tmp[i]);
 }
 
 GL_API void GL_APIENTRY glGetTexParameterfv(GLenum target, GLenum pname,
@@ -308,12 +308,12 @@ GL_API void GL_APIENTRY glGetTexParameterfv(GLenum target, GLenum pname,
 
 GL_API void GL_APIENTRY glAlphaFuncx(GLenum func, GLfixed ref)
 {
-	glAlphaFunc(func, FIXED_TO_FLOAT(ref));
+	glAlphaFunc(func, fixed_to_float(ref));
 }
 
 GL_API void GL_APIENTRY glClearDepthx(GLfixed depth)
 {
-	glClearDepthf(FIXED_TO_FLOAT(depth));
+	glClearDepthf(fixed_to_float(depth));
 }
 
 GL_API void GL_APIENTRY glColor4ub(GLubyte red, GLubyte green, GLubyte blue,
@@ -324,8 +324,8 @@ GL_API void GL_APIENTRY glColor4ub(GLubyte red, GLubyte green, GLubyte blue,
 
 GL_API void GL_APIENTRY glColor4x(GLfixed r, GLfixed g, GLfixed b, GLfixed a)
 {
-	glColor4f(FIXED_TO_FLOAT(r), FIXED_TO_FLOAT(g), FIXED_TO_FLOAT(b),
-		  FIXED_TO_FLOAT(a));
+	glColor4f(fixed_to_float(r), fixed_to_float(g), fixed_to_float(b),
+		  fixed_to_float(a));
 }
 
 GL_API void GL_APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
@@ -339,19 +339,19 @@ GL_API void GL_APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 
 GL_API void GL_APIENTRY glDepthRangex(GLfixed n, GLfixed f)
 {
-	glDepthRangef(FIXED_TO_FLOAT(n), FIXED_TO_FLOAT(f));
+	glDepthRangef(fixed_to_float(n), fixed_to_float(f));
 }
 
 GL_API void GL_APIENTRY glFrustumx(GLfixed l, GLfixed r, GLfixed b, GLfixed t,
 				   GLfixed n, GLfixed f)
 {
-	glFrustumf(FIXED_TO_FLOAT(l), FIXED_TO_FLOAT(r), FIXED_TO_FLOAT(b),
-		   FIXED_TO_FLOAT(t), FIXED_TO_FLOAT(n), FIXED_TO_FLOAT(f));
+	glFrustumf(fixed_to_float(l), fixed_to_float(r), fixed_to_float(b),
+		   fixed_to_float(t), fixed_to_float(n), fixed_to_float(f));
 }
 
 GL_API void GL_APIENTRY glLineWidthx(GLfixed width)
 {
-	glLineWidth(FIXED_TO_FLOAT(width));
+	glLineWidth(fixed_to_float(width));
 }
 
 GL_API void GL_APIENTRY glLineWidth(GLfloat width)
@@ -381,8 +381,8 @@ GL_API void GL_APIENTRY glMultiTexCoord4f(GLenum target, GLfloat s, GLfloat t,
 GL_API void GL_APIENTRY glMultiTexCoord4x(GLenum texture, GLfixed s, GLfixed t,
 					  GLfixed r, GLfixed q)
 {
-	glMultiTexCoord4f(texture, FIXED_TO_FLOAT(s), FIXED_TO_FLOAT(t),
-			  FIXED_TO_FLOAT(r), FIXED_TO_FLOAT(q));
+	glMultiTexCoord4f(texture, fixed_to_float(s), fixed_to_float(t),
+			  fixed_to_float(r), fixed_to_float(q));
 }
 
 GL_API void GL_APIENTRY glNormal3f(GLfloat nx, GLfloat ny, GLfloat nz)
@@ -395,21 +395,21 @@ GL_API void GL_APIENTRY glNormal3f(GLfloat nx, GLfloat ny, GLfloat nz)
 
 GL_API void GL_APIENTRY glNormal3x(GLfixed nx, GLfixed ny, GLfixed nz)
 {
-	glNormal3f(FIXED_TO_FLOAT(nx), FIXED_TO_FLOAT(ny), FIXED_TO_FLOAT(nz));
+	glNormal3f(fixed_to_float(nx), fixed_to_float(ny), fixed_to_float(nz));
 }
 
 GL_API void GL_APIENTRY glOrthox(GLfixed l, GLfixed r, GLfixed b, GLfixed t,
 				 GLfixed n, GLfixed f)
 {
-	glOrthof(FIXED_TO_FLOAT(l), FIXED_TO_FLOAT(r), FIXED_TO_FLOAT(b),
-		 FIXED_TO_FLOAT(t), FIXED_TO_FLOAT(n), FIXED_TO_FLOAT(f));
+	glOrthof(fixed_to_float(l), fixed_to_float(r), fixed_to_float(b),
+		 fixed_to_float(t), fixed_to_float(n), fixed_to_float(f));
 }
 
 GL_API void GL_APIENTRY glRotatex(GLfixed angle, GLfixed x, GLfixed y,
 				  GLfixed z)
 {
-	glRotatef(FIXED_TO_FLOAT(angle), FIXED_TO_FLOAT(x), FIXED_TO_FLOAT(y),
-		  FIXED_TO_FLOAT(z));
+	glRotatef(fixed_to_float(angle), fixed_to_float(x), fixed_to_float(y),
+		  fixed_to_float(z));
 }
 
 GL_API void GL_APIENTRY glSampleCoverage(GLclampf value, GLboolean invert)
@@ -424,17 +424,17 @@ GL_API void GL_APIENTRY glSampleCoverage(GLclampf value, GLboolean invert)
 
 GL_API void GL_APIENTRY glSampleCoveragex(GLclampx value, GLboolean invert)
 {
-	glSampleCoverage(FIXED_TO_FLOAT(value), invert);
+	glSampleCoverage(fixed_to_float(value), invert);
 }
 
 GL_API void GL_APIENTRY glScalex(GLfixed x, GLfixed y, GLfixed z)
 {
-	glScalef(FIXED_TO_FLOAT(x), FIXED_TO_FLOAT(y), FIXED_TO_FLOAT(z));
+	glScalef(fixed_to_float(x), fixed_to_float(y), fixed_to_float(z));
 }
 
 GL_API void GL_APIENTRY glTranslatex(GLfixed x, GLfixed y, GLfixed z)
 {
-	glTranslatef(FIXED_TO_FLOAT(x), FIXED_TO_FLOAT(y), FIXED_TO_FLOAT(z));
+	glTranslatef(fixed_to_float(x), fixed_to_float(y), fixed_to_float(z));
 }
 
 GL_API void GL_APIENTRY glFinish(void)
@@ -486,5 +486,5 @@ GL_API void GL_APIENTRY glGetTexParameterxv(GLenum target, GLenum pname,
 	}
 	GLfloat tmp;
 	glGetTexParameterfv(target, pname, &tmp);
-	*params = (GLfixed)(tmp * 65536.0f);
+	*params = float_to_fixed(tmp);
 }

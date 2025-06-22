@@ -63,7 +63,7 @@ GL_API void GL_APIENTRY glTexParameterfv(GLenum target, GLenum pname,
 GL_API void GL_APIENTRY glTexParameterx(GLenum target, GLenum pname,
 					GLfixed param)
 {
-	glTexParameterf(target, pname, FIXED_TO_FLOAT(param));
+	glTexParameterf(target, pname, fixed_to_float(param));
 }
 
 GL_API void GL_APIENTRY glTexParameteriv(GLenum target, GLenum pname,
@@ -83,17 +83,17 @@ GL_API void GL_APIENTRY glTexParameterxv(GLenum target, GLenum pname,
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	GLfloat vals[4] = { FIXED_TO_FLOAT(params[0]),
-			    FIXED_TO_FLOAT(params[1]),
-			    FIXED_TO_FLOAT(params[2]),
-			    FIXED_TO_FLOAT(params[3]) };
+	GLfloat vals[4] = { fixed_to_float(params[0]),
+			    fixed_to_float(params[1]),
+			    fixed_to_float(params[2]),
+			    fixed_to_float(params[3]) };
 	glTexParameterfv(target, pname, vals);
 }
 
 GL_API void GL_APIENTRY glTexParameterxOES(GLenum target, GLenum pname,
 					   GLfixed param)
 {
-	glTexParameterf(target, pname, FIXED_TO_FLOAT(param));
+	glTexParameterf(target, pname, fixed_to_float(param));
 }
 
 GL_API void GL_APIENTRY glTexParameterxvOES(GLenum target, GLenum pname,
@@ -103,10 +103,10 @@ GL_API void GL_APIENTRY glTexParameterxvOES(GLenum target, GLenum pname,
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	GLfloat vals[4] = { FIXED_TO_FLOAT(params[0]),
-			    FIXED_TO_FLOAT(params[1]),
-			    FIXED_TO_FLOAT(params[2]),
-			    FIXED_TO_FLOAT(params[3]) };
+	GLfloat vals[4] = { fixed_to_float(params[0]),
+			    fixed_to_float(params[1]),
+			    fixed_to_float(params[2]),
+			    fixed_to_float(params[3]) };
 	glTexParameterfv(target, pname, vals);
 }
 
@@ -291,9 +291,10 @@ GL_API void GL_APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param)
 		break;
 	default:
 		glSetError(GL_INVALID_ENUM);
-		break;
+		return;
 	}
-	context_set_texture_env(unit, pname, &param);
+	if (pname == GL_TEXTURE_ENV_MODE)
+		context_set_texture_env(unit, pname, &param);
 }
 
 GL_API void GL_APIENTRY glTexEnvfv(GLenum target, GLenum pname,
@@ -325,7 +326,7 @@ GL_API void GL_APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param)
 
 GL_API void GL_APIENTRY glTexEnvx(GLenum target, GLenum pname, GLfixed param)
 {
-	glTexEnvf(target, pname, FIXED_TO_FLOAT(param));
+	glTexEnvf(target, pname, fixed_to_float(param));
 }
 
 GL_API void GL_APIENTRY glTexEnviv(GLenum target, GLenum pname,
@@ -345,16 +346,16 @@ GL_API void GL_APIENTRY glTexEnvxv(GLenum target, GLenum pname,
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	GLfloat vals[4] = { FIXED_TO_FLOAT(params[0]),
-			    FIXED_TO_FLOAT(params[1]),
-			    FIXED_TO_FLOAT(params[2]),
-			    FIXED_TO_FLOAT(params[3]) };
+	GLfloat vals[4] = { fixed_to_float(params[0]),
+			    fixed_to_float(params[1]),
+			    fixed_to_float(params[2]),
+			    fixed_to_float(params[3]) };
 	glTexEnvfv(target, pname, vals);
 }
 
 GL_API void GL_APIENTRY glTexEnvxOES(GLenum target, GLenum pname, GLfixed param)
 {
-	glTexEnvf(target, pname, FIXED_TO_FLOAT(param));
+	glTexEnvf(target, pname, fixed_to_float(param));
 }
 
 GL_API void GL_APIENTRY glTexEnvxvOES(GLenum target, GLenum pname,
@@ -364,9 +365,9 @@ GL_API void GL_APIENTRY glTexEnvxvOES(GLenum target, GLenum pname,
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	GLfloat vals[4] = { FIXED_TO_FLOAT(params[0]),
-			    FIXED_TO_FLOAT(params[1]),
-			    FIXED_TO_FLOAT(params[2]),
-			    FIXED_TO_FLOAT(params[3]) };
+	GLfloat vals[4] = { fixed_to_float(params[0]),
+			    fixed_to_float(params[1]),
+			    fixed_to_float(params[2]),
+			    fixed_to_float(params[3]) };
 	glTexEnvfv(target, pname, vals);
 }

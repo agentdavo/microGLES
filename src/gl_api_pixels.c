@@ -103,8 +103,8 @@ GL_API void GL_APIENTRY glClearColor(GLfloat red, GLfloat green, GLfloat blue,
 GL_API void GL_APIENTRY glClearColorx(GLfixed red, GLfixed green, GLfixed blue,
 				      GLfixed alpha)
 {
-	glClearColor(FIXED_TO_FLOAT(red), FIXED_TO_FLOAT(green),
-		     FIXED_TO_FLOAT(blue), FIXED_TO_FLOAT(alpha));
+	glClearColor(fixed_to_float(red), fixed_to_float(green),
+		     fixed_to_float(blue), fixed_to_float(alpha));
 }
 
 GL_API void GL_APIENTRY glPointSize(GLfloat size)
@@ -118,7 +118,7 @@ GL_API void GL_APIENTRY glPointSize(GLfloat size)
 
 GL_API void GL_APIENTRY glPointSizex(GLfixed size)
 {
-	glPointSize(FIXED_TO_FLOAT(size));
+	glPointSize(fixed_to_float(size));
 }
 
 GL_API void GL_APIENTRY glPointParameterf(GLenum pname, GLfloat param)
@@ -141,7 +141,7 @@ GL_API void GL_APIENTRY glPointParameterf(GLenum pname, GLfloat param)
 
 GL_API void GL_APIENTRY glPointParameterx(GLenum pname, GLfixed param)
 {
-	glPointParameterf(pname, FIXED_TO_FLOAT(param));
+	glPointParameterf(pname, fixed_to_float(param));
 }
 
 GL_API void GL_APIENTRY glPointParameterfv(GLenum pname, const GLfloat *params)
@@ -159,7 +159,7 @@ GL_API void GL_APIENTRY glPointParameterxv(GLenum pname, const GLfixed *params)
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	glPointParameterf(pname, FIXED_TO_FLOAT(params[0]));
+	glPointParameterf(pname, fixed_to_float(params[0]));
 }
 
 GL_API void GL_APIENTRY glPixelStorei(GLenum pname, GLint param)
@@ -185,12 +185,12 @@ GL_API void GL_APIENTRY glPixelStorei(GLenum pname, GLint param)
 
 GL_API void GL_APIENTRY glPointSizexOES(GLfixed size)
 {
-	glPointSize(FIXED_TO_FLOAT(size));
+	glPointSize(fixed_to_float(size));
 }
 
 GL_API void GL_APIENTRY glPointParameterxOES(GLenum pname, GLfixed param)
 {
-	glPointParameterf(pname, FIXED_TO_FLOAT(param));
+	glPointParameterf(pname, fixed_to_float(param));
 }
 
 GL_API void GL_APIENTRY glPointParameterxvOES(GLenum pname,
@@ -200,7 +200,7 @@ GL_API void GL_APIENTRY glPointParameterxvOES(GLenum pname,
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	glPointParameterf(pname, FIXED_TO_FLOAT(params[0]));
+	glPointParameterf(pname, fixed_to_float(params[0]));
 }
 
 GL_API void GL_APIENTRY glPointParameterfOES(GLenum pname, GLfloat param)

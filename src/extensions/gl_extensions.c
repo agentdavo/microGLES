@@ -44,7 +44,6 @@ GL_API void GL_APIENTRY glTexGenfvOES(GLenum coord, GLenum pname,
 }
 #endif
 #define MAX_PALETTE_MATRICES 32
-#define FIXED_TO_FLOAT(x) ((GLfloat)(x) / 65536.0f)
 
 static BufferObject *find_buffer(GLuint id)
 {
@@ -112,8 +111,8 @@ GL_API void GL_APIENTRY glDrawTexiOES(GLint x, GLint y, GLint z, GLint width,
 GL_API void GL_APIENTRY glDrawTexxOES(GLfixed x, GLfixed y, GLfixed z,
 				      GLfixed width, GLfixed height)
 {
-	draw_tex_rect(FIXED_TO_FLOAT(x), FIXED_TO_FLOAT(y), FIXED_TO_FLOAT(z),
-		      FIXED_TO_FLOAT(width), FIXED_TO_FLOAT(height));
+	draw_tex_rect(fixed_to_float(x), fixed_to_float(y), fixed_to_float(z),
+		      fixed_to_float(width), fixed_to_float(height));
 }
 
 GL_API void GL_APIENTRY glDrawTexsvOES(const GLshort *coords)
@@ -144,9 +143,9 @@ GL_API void GL_APIENTRY glDrawTexxvOES(const GLfixed *coords)
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	draw_tex_rect(FIXED_TO_FLOAT(coords[0]), FIXED_TO_FLOAT(coords[1]),
-		      FIXED_TO_FLOAT(coords[2]), FIXED_TO_FLOAT(coords[3]),
-		      FIXED_TO_FLOAT(coords[4]));
+	draw_tex_rect(fixed_to_float(coords[0]), fixed_to_float(coords[1]),
+		      fixed_to_float(coords[2]), fixed_to_float(coords[3]),
+		      fixed_to_float(coords[4]));
 }
 
 GL_API void GL_APIENTRY glDrawTexfOES(GLfloat x, GLfloat y, GLfloat z,
@@ -445,8 +444,8 @@ GL_API void GL_APIENTRY glClipPlanexIMG(GLenum p, const GLfixed *eqn)
 		glSetError(GL_INVALID_VALUE);
 		return;
 	}
-	GLfloat eq[4] = { FIXED_TO_FLOAT(eqn[0]), FIXED_TO_FLOAT(eqn[1]),
-			  FIXED_TO_FLOAT(eqn[2]), FIXED_TO_FLOAT(eqn[3]) };
+	GLfloat eq[4] = { fixed_to_float(eqn[0]), fixed_to_float(eqn[1]),
+			  fixed_to_float(eqn[2]), fixed_to_float(eqn[3]) };
 	glClipPlanef(p, eq);
 }
 
@@ -646,15 +645,10 @@ GLbitfield glQueryMatrixxOES(GLfixed *mantissa, GLint *exponent)
 		float val = gl_state.modelview_matrix.data[i];
 		int exp;
 		float m = frexpf(val, &exp);
-		mantissa[i] = (GLfixed)(m * 65536.0f);
+		mantissa[i] = float_to_fixed(m);
 		exponent[i] = exp;
 	}
 	return status;
-}
-
-params[1] = (GLfixed)(fp[1] * 65536.0f);
-params[2] = (GLfixed)(fp[2] * 65536.0f);
-params[3] = (GLfixed)(fp[3] * 65536.0f);
 }
 
 GL_API void GL_APIENTRY glRenderbufferStorageMultisampleIMG(
