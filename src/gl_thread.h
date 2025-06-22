@@ -32,6 +32,7 @@ void thread_pool_submit(task_function_t func, void *task_data,
 			stage_tag_t stage);
 void thread_pool_wait(void);
 int thread_pool_wait_timeout(uint32_t ms);
+void thread_pool_dump_queues(void);
 void thread_pool_shutdown(void);
 
 /* Returns true if worker threads are processing tasks. */

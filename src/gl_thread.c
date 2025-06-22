@@ -15,6 +15,12 @@
 #endif
 #include "texture_cache.h"
 
+#ifdef THREAD_POOL_WAIT_DEBUG
+#ifndef THREAD_POOL_WAIT_DEBUG_MS
+#define THREAD_POOL_WAIT_DEBUG_MS 100
+#endif
+#endif
+
 #define MAX_TASKS 256
 #define LOCAL_QUEUE_SIZE 128
 
@@ -439,6 +445,9 @@ int thread_pool_wait_timeout(uint32_t ms)
 {
 	struct timespec start;
 	clock_gettime(CLOCK_MONOTONIC, &start);
+#ifdef THREAD_POOL_WAIT_DEBUG
+	bool dumped = false;
+#endif
 	for (;;) {
 		bool done = atomic_load_explicit(&g_global_head,
 						 memory_order_acquire) >=
@@ -464,6 +473,12 @@ int thread_pool_wait_timeout(uint32_t ms)
 		uint64_t elapsed =
 			(uint64_t)(now.tv_sec - start.tv_sec) * 1000 +
 			(uint64_t)(now.tv_nsec - start.tv_nsec) / 1000000;
+#ifdef THREAD_POOL_WAIT_DEBUG
+		if (!dumped && elapsed >= THREAD_POOL_WAIT_DEBUG_MS) {
+			thread_pool_dump_queues();
+			dumped = true;
+		}
+#endif
 		if (elapsed >= ms)
 			return 0;
 		thrd_yield();
@@ -492,6 +507,23 @@ void thread_pool_shutdown(void)
 bool thread_pool_active(void)
 {
 	return !atomic_load_explicit(&g_shutdown_flag, memory_order_acquire);
+}
+
+void thread_pool_dump_queues(void)
+{
+	uint64_t gh =
+		atomic_load_explicit(&g_global_head, memory_order_relaxed);
+	uint64_t gt =
+		atomic_load_explicit(&g_global_tail, memory_order_relaxed);
+	LOG_DEBUG("Global queue length: %llu", (unsigned long long)(gt - gh));
+	for (int i = 0; i < g_num_threads; ++i) {
+		uint64_t lh = atomic_load_explicit(&g_local_queues[i].head,
+						   memory_order_relaxed);
+		uint64_t lt = atomic_load_explicit(&g_local_queues[i].tail,
+						   memory_order_relaxed);
+		LOG_DEBUG("Thread %d queue length: %llu", i,
+			  (unsigned long long)(lt - lh));
+	}
 }
 
 void thread_profile_start(void)

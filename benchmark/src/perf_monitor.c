@@ -313,7 +313,11 @@ int main(int argc, char **argv)
 			polys += NUM_PYRAMIDS * 6.0f;
 			pix += NUM_PYRAMIDS * 6.0f * face_pixels;
 			LOG_DEBUG("before thread_pool_wait");
-			thread_pool_wait();
+			if (!thread_pool_wait_timeout(2000)) {
+				LOG_WARN("thread_pool_wait timed out");
+				thread_pool_dump_queues();
+				thread_pool_wait();
+			}
 			LOG_DEBUG("after thread_pool_wait");
 #ifdef HAVE_X11
 			if (win) {
@@ -371,7 +375,11 @@ int main(int argc, char **argv)
 		x11_window_destroy(win);
 #endif
 	LOG_INFO("Render loop complete. Cleaning up");
-	thread_pool_wait();
+	if (!thread_pool_wait_timeout(5000)) {
+		LOG_WARN("thread pool shutdown wait timed out");
+		thread_pool_dump_queues();
+		thread_pool_wait();
+	}
 	command_buffer_shutdown();
 	thread_pool_shutdown();
 	GL_cleanup_with_framebuffer(fb);
