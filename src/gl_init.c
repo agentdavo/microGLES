@@ -6,143 +6,162 @@
 #include "pipeline/gl_framebuffer.h"
 #include <GLES/gl.h>
 #include <stdio.h>
+#include <pthread.h>
 
 static Framebuffer *g_default_fb = NULL;
+static pthread_mutex_t g_fb_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// This initializes all the states for OpenGL ES and sets default values
+// Initializes OpenGL ES with default state.
 void GL_init(void)
 {
-	// Set up default error state
-	glSetError(GL_NO_ERROR);
-
-	// Reset all states
-	GL_resetState();
-
-	// Set up default viewport
-	GL_setupViewport(0, 0, 800, 600); // Default dimensions
-
-	// Setup default matrices for projection and modelview
-	GL_defaultMatrixSetup();
-
-	LOG_DEBUG("OpenGL ES initialized with default state.");
+    glSetError(GL_NO_ERROR);
+    context_init(); // Initialize context (assumed to set up gl_state)
+    GL_resetState();
+    GL_setupViewport(0, 0, 800, 600); // Default viewport
+    GL_defaultMatrixSetup();
+    LOG_INFO("OpenGL ES initialized with default state.");
 }
 
-// Cleans up the OpenGL ES context if needed (empty here, could free resources
-// later)
+// Cleans up OpenGL ES context and resources.
 void GL_cleanup(void)
 {
-	LOG_DEBUG("OpenGL ES cleanup completed.");
+    context_cleanup(); // Assumed to clean up gl_state
+    LOG_INFO("OpenGL ES cleanup completed.");
 }
 
-// This function sets up the viewport and adjusts the projection matrix
-// accordingly
+// Sets up the viewport and adjusts the projection matrix.
 void GL_setupViewport(GLint x, GLint y, GLsizei width, GLsizei height)
 {
-	if (width <= 0 || height <= 0) {
-		glSetError(GL_INVALID_VALUE);
-		return;
-	}
+    if (width <= 0 || height <= 0) {
+        glSetError(GL_INVALID_VALUE);
+        LOG_ERROR("Invalid viewport dimensions: width=%d, height=%d", width, height);
+        return;
+    }
 
-	// Set the viewport in the global state
-	glViewport(x, y, width, height);
+    glViewport(x, y, width, height);
 
-	// Adjust the projection matrix for a basic orthogonal projection (2D setup as
-	// default)
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrthof(0.0f, (GLfloat)width, 0.0f, (GLfloat)height, -1.0f, 1.0f);
+    // Set up an orthographic projection
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrthof(0.0f, (GLfloat)width, 0.0f, (GLfloat)height, -1.0f, 1.0f);
 
-	// Switch back to modelview matrix mode
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
 
-	LOG_DEBUG("Viewport set to: x=%d, y=%d, width=%d, height=%d", x, y,
-		  width, height);
+    LOG_DEBUG("Viewport set: x=%d, y=%d, width=%d, height=%d", x, y, width, height);
 }
 
-// Resets all OpenGL states to their default values
+// Resets all OpenGL ES states to their default values.
 void GL_resetState(void)
 {
-	// Reset blending state
-	glDisable(GL_BLEND);
-	glBlendFunc(GL_ONE, GL_ZERO);
+    // Blending
+    glDisable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // More common default
 
-	// Reset depth state
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LESS);
-	glDepthMask(GL_TRUE);
+    // Depth
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glDepthMask(GL_TRUE);
 
-	// Set the clear color to black
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClearDepthf(1.0f);
+    // Clear values
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClearDepthf(1.0f);
 
-	// Reset texture state
-	glDisable(GL_TEXTURE_2D);
+    // Textures
+    glDisable(GL_TEXTURE_2D);
+    glActiveTexture(GL_TEXTURE0);
 
-	// Reset culling state
-	glDisable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
-	glFrontFace(GL_CCW);
+    // Culling
+    glDisable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
 
-	// Set up stencil defaults
-	glDisable(GL_STENCIL_TEST);
-	glStencilMask(0xFFFFFFFF);
+    // Stencil
+    glDisable(GL_STENCIL_TEST);
+    glStencilMask(~0U);
 
-	// Default point size
-	glPointSize(1.0f);
+    // Point size
+    glPointSize(1.0f);
 
-	LOG_DEBUG("OpenGL ES state reset to defaults.");
+    LOG_DEBUG("OpenGL ES state reset to defaults.");
 }
 
-// This function sets up the default matrices for projection and modelview
+// Sets up default matrices for projection and modelview.
 void GL_defaultMatrixSetup(void)
 {
-	// Load identity into both modelview and projection matrix stacks
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
 
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
 
-	// Set initial depth range (near and far clipping)
-	glDepthRangef(0.0f, 1.0f);
+    glDepthRangef(0.0f, 1.0f);
 
-	LOG_DEBUG("Default matrix setup completed.");
+    LOG_DEBUG("Default matrix setup completed.");
 }
 
+// Initializes OpenGL ES with a framebuffer.
 Framebuffer *GL_init_with_framebuffer(uint32_t width, uint32_t height)
 {
-	glSetError(GL_NO_ERROR);
-	context_init();
-	GL_resetState();
-	GL_setupViewport(0, 0, (GLsizei)width, (GLsizei)height);
-	GL_defaultMatrixSetup();
-	Framebuffer *fb = framebuffer_create(width, height);
-	if (!fb) {
-		LOG_FATAL("Failed to create framebuffer %ux%u", width, height);
-		return NULL;
-	}
-	framebuffer_clear(fb, 0x00000000u, 1.0f, 0);
-	LOG_INFO("Initialized renderer with framebuffer %ux%u", width, height);
-	g_default_fb = fb;
-	gl_state.default_framebuffer.fb = fb;
-	gl_state.bound_framebuffer = &gl_state.default_framebuffer;
-	return fb;
+    if (width == 0 || height == 0 || width > 16384 || height > 16384) {
+        glSetError(GL_INVALID_VALUE);
+        LOG_ERROR("Invalid framebuffer dimensions: %ux%u", width, height);
+        return NULL;
+    }
+
+    glSetError(GL_NO_ERROR);
+    context_init();
+    GL_resetState();
+    GL_setupViewport(0, 0, (GLsizei)width, (GLsizei)height);
+    GL_defaultMatrixSetup();
+
+    Framebuffer *fb = framebuffer_create(width, height);
+    if (!fb) {
+        glSetError(GL_OUT_OF_MEMORY);
+        LOG_FATAL("Failed to create framebuffer %ux%u", width, height);
+        context_cleanup();
+        return NULL;
+    }
+
+    framebuffer_clear(fb, 0x00000000u, 1.0f, 0);
+
+    pthread_mutex_lock(&g_fb_mutex);
+    if (g_default_fb) {
+        LOG_WARN("Overwriting existing default framebuffer");
+        framebuffer_destroy(g_default_fb);
+    }
+    g_default_fb = fb;
+    gl_state.default_framebuffer.fb = fb;
+    gl_state.bound_framebuffer = &gl_state.default_framebuffer;
+    pthread_mutex_unlock(&g_fb_mutex);
+
+    LOG_INFO("Initialized renderer with framebuffer %ux%u", width, height);
+    return fb;
 }
 
+// Cleans up the framebuffer and OpenGL ES context.
 void GL_cleanup_with_framebuffer(Framebuffer *fb)
 {
-	if (fb) {
-		framebuffer_destroy(fb);
-		LOG_INFO("Destroyed framebuffer");
-	}
-	g_default_fb = NULL;
-	gl_state.default_framebuffer.fb = NULL;
-	gl_state.bound_framebuffer = NULL;
-	GL_cleanup();
+    pthread_mutex_lock(&g_fb_mutex);
+    if (fb && fb == g_default_fb) {
+        framebuffer_destroy(fb);
+        g_default_fb = NULL;
+        gl_state.default_framebuffer.fb = NULL;
+        gl_state.bound_framebuffer = NULL;
+        LOG_INFO("Destroyed default framebuffer");
+    } else if (fb) {
+        framebuffer_destroy(fb);
+        LOG_INFO("Destroyed non-default framebuffer");
+    }
+    pthread_mutex_unlock(&g_fb_mutex);
+    GL_cleanup();
 }
 
+// Returns the default framebuffer.
 Framebuffer *GL_get_default_framebuffer(void)
 {
-	return g_default_fb;
+    pthread_mutex_lock(&g_fb_mutex);
+    Framebuffer *fb = g_default_fb;
+    pthread_mutex_unlock(&g_fb_mutex);
+    return fb;
 }
