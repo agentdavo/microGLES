@@ -1,54 +1,20 @@
 #include "gl_framebuffer.h"
 #include "gl_logger.h"
 #include "gl_memory_tracker.h"
-#define PIPELINE_USE_GLSTATE 0
-_Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "gl_utils.h"
 #include "gl_thread.h"
 #include "command_buffer.h"
-#include "../gl_context.h"
-#include "portable/c11threads.h"
+#include "gl_context.h"
+#include <GLES/gl.h>
+#include <GLES/glext.h>
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
 
-static _Thread_local FramebufferTile *tls_tile = NULL;
-static _Thread_local StencilState tl_stencil;
-static _Thread_local unsigned tl_stencil_ver;
-static _Thread_local GLboolean tl_stencil_on;
-static _Thread_local GLenum tl_depth_func;
-static _Thread_local unsigned tl_depth_ver;
-static _Thread_local GLboolean tl_depth_test;
-
-static inline void refresh_depth_stencil(void)
-{
-	RenderContext *ctx = GetCurrentContext();
-	unsigned sv = atomic_load(&ctx->stencil.version);
-	if (sv != tl_stencil_ver) {
-		memcpy(&tl_stencil, &ctx->stencil, sizeof(StencilState));
-		tl_stencil_ver = sv;
-	}
-	tl_stencil_on = ctx->stencil_test_enabled;
-	unsigned dv = atomic_load(&ctx->version_depth);
-	if (dv != tl_depth_ver) {
-		tl_depth_func = ctx->depth_func;
-		tl_depth_test = ctx->depth_test_enabled;
-		tl_depth_ver = dv;
-	} else {
-		tl_depth_test = ctx->depth_test_enabled;
-	}
-}
-
-void framebuffer_enter_tile(FramebufferTile *tile)
-{
-	tls_tile = tile;
-}
-
-void framebuffer_leave_tile(void)
-{
-	tls_tile = NULL;
-}
+#define PIPELINE_USE_GLSTATE 0
+_Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 
 #ifndef GL_INCR_WRAP
 #define GL_INCR_WRAP 0x8507
@@ -57,449 +23,579 @@ void framebuffer_leave_tile(void)
 #define GL_DECR_WRAP 0x8508
 #endif
 
+static _Thread_local FramebufferTile *tls_tile = NULL;
+static _Thread_local StencilState tl_stencil;
+static _Thread_local unsigned tl_stencil_ver;
+static _Thread_local GLboolean tl_stencil_on;
+static _Thread_local GLenum tl_depth_func;
+static _Thread_local unsigned tl_depth_ver;
+static _Thread_local GLboolean tl_depth_test;
+static pthread_mutex_t fb_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// Refreshes thread-local depth and stencil state from the current context.
+static inline void refresh_depth_stencil(void)
+{
+    RenderContext *ctx = GetCurrentContext();
+    if (!ctx) {
+        LOG_ERROR("refresh_depth_stencil: No current context");
+        tl_stencil_on = GL_FALSE;
+        tl_depth_test = GL_FALSE;
+        return;
+    }
+
+    unsigned sv = atomic_load(&ctx->stencil.version);
+    if (sv != tl_stencil_ver) {
+        memcpy(&tl_stencil, &ctx->stencil, sizeof(StencilState));
+        tl_stencil_ver = sv;
+    }
+    tl_stencil_on = ctx->stencil_test_enabled;
+
+    unsigned dv = atomic_load(&ctx->version_depth);
+    if (dv != tl_depth_ver) {
+        tl_depth_func = ctx->depth_func;
+        tl_depth_test = ctx->depth_test_enabled;
+        tl_depth_ver = dv;
+    } else {
+        tl_depth_test = ctx->depth_test_enabled;
+    }
+}
+
+// Creates a framebuffer with the specified dimensions.
 Framebuffer *framebuffer_create(uint32_t width, uint32_t height)
 {
-	Framebuffer *fb = (Framebuffer *)tracked_malloc(sizeof(Framebuffer));
-	if (!fb)
-		return NULL;
-	fb->width = width;
-	fb->height = height;
-	atomic_init(&fb->ref_count, 1);
-	size_t pixels = (size_t)width * height;
-	fb->color_buffer = (_Atomic uint32_t *)tracked_aligned_alloc(
-		64, pixels * sizeof(_Atomic uint32_t));
-	fb->depth_buffer = (_Atomic float *)tracked_aligned_alloc(
-		64, pixels * sizeof(_Atomic float));
-	fb->stencil_buffer = (_Atomic uint8_t *)tracked_aligned_alloc(
-		64, pixels * sizeof(_Atomic uint8_t));
-	if (!fb->color_buffer || !fb->depth_buffer || !fb->stencil_buffer) {
-		if (fb->color_buffer)
-			tracked_free(fb->color_buffer,
-				     pixels * sizeof(uint32_t));
-		if (fb->depth_buffer)
-			tracked_free(fb->depth_buffer, pixels * sizeof(float));
-		if (fb->stencil_buffer)
-			tracked_free(fb->stencil_buffer,
-				     pixels * sizeof(uint8_t));
-		tracked_free(fb, sizeof(Framebuffer));
-		return NULL;
-	}
-	fb->tiles_x = (width + TILE_SIZE - 1) / TILE_SIZE;
-	fb->tiles_y = (height + TILE_SIZE - 1) / TILE_SIZE;
-	size_t tile_count = (size_t)fb->tiles_x * fb->tiles_y;
-	fb->tiles = (FramebufferTile *)tracked_malloc(tile_count *
-						      sizeof(FramebufferTile));
-	if (!fb->tiles) {
-		tracked_free(fb->color_buffer, pixels * sizeof(uint32_t));
-		tracked_free(fb->depth_buffer, pixels * sizeof(float));
-		tracked_free(fb->stencil_buffer, pixels * sizeof(uint8_t));
-		tracked_free(fb, sizeof(Framebuffer));
-		return NULL;
-	}
-	for (size_t i = 0; i < tile_count; ++i) {
-		fb->tiles[i].x0 = 0;
-		fb->tiles[i].y0 = 0;
-		atomic_flag_clear(&fb->tiles[i].lock);
-	}
-	framebuffer_clear(fb, 0, 1.0f, 0);
-	return fb;
+    if (width == 0 || height == 0 || width > 16384 || height > 16384) {
+        LOG_ERROR("framebuffer_create: Invalid dimensions %ux%u", width, height);
+        return NULL;
+    }
+
+    pthread_mutex_lock(&fb_mutex);
+    Framebuffer *fb = (Framebuffer *)tracked_malloc(sizeof(Framebuffer));
+    if (!fb) {
+        LOG_ERROR("framebuffer_create: Failed to allocate Framebuffer");
+        pthread_mutex_unlock(&fb_mutex);
+        return NULL;
+    }
+
+    fb->width = width;
+    fb->height = height;
+    atomic_init(&fb->ref_count, 1);
+    size_t pixels = (size_t)width * height;
+
+    fb->color_buffer = (_Atomic uint32_t *)tracked_aligned_alloc(
+        64, pixels * sizeof(_Atomic uint32_t));
+    fb->depth_buffer = (_Atomic float *)tracked_aligned_alloc(
+        64, pixels * sizeof(_Atomic float));
+    fb->stencil_buffer = (_Atomic uint8_t *)tracked_aligned_alloc(
+        64, pixels * sizeof(_Atomic uint8_t));
+
+    if (!fb->color_buffer || !fb->depth_buffer || !fb->stencil_buffer) {
+        LOG_ERROR("framebuffer_create: Failed to allocate buffers");
+        if (fb->color_buffer) {
+            tracked_free(fb->color_buffer, pixels * sizeof(_Atomic uint32_t));
+        }
+        if (fb->depth_buffer) {
+            tracked_free(fb->depth_buffer, pixels * sizeof(_Atomic float));
+        }
+        if (fb->stencil_buffer) {
+            tracked_free(fb->stencil_buffer, pixels * sizeof(_Atomic uint8_t));
+        }
+        tracked_free(fb, sizeof(Framebuffer));
+        pthread_mutex_unlock(&fb_mutex);
+        return NULL;
+    }
+
+    fb->tiles_x = (width + TILE_SIZE - 1) / TILE_SIZE;
+    fb->tiles_y = (height + TILE_SIZE - 1) / TILE_SIZE;
+    size_t tile_count = (size_t)fb->tiles_x * fb->tiles_y;
+    fb->tiles = (FramebufferTile *)tracked_malloc(tile_count * sizeof(FramebufferTile));
+    if (!fb->tiles) {
+        LOG_ERROR("framebuffer_create: Failed to allocate tiles");
+        tracked_free(fb->color_buffer, pixels * sizeof(_Atomic uint32_t));
+        tracked_free(fb->depth_buffer, pixels * sizeof(_Atomic float));
+        tracked_free(fb->stencil_buffer, pixels * sizeof(_Atomic uint8_t));
+        tracked_free(fb, sizeof(Framebuffer));
+        pthread_mutex_unlock(&fb_mutex);
+        return NULL;
+    }
+
+    for (size_t i = 0; i < tile_count; ++i) {
+        fb->tiles[i].x0 = (i % fb->tiles_x) * TILE_SIZE;
+        fb->tiles[i].y0 = (i / fb->tiles_x) * TILE_SIZE;
+        atomic_flag_clear(&fb->tiles[i].lock);
+        fb->tiles[i].color = fb->color_buffer + fb->tiles[i].y0 * width + fb->tiles[i].x0;
+        fb->tiles[i].depth = fb->depth_buffer + fb->tiles[i].y0 * width + fb->tiles[i].x0;
+        fb->tiles[i].stencil = fb->stencil_buffer + fb->tiles[i].y0 * width + fb->tiles[i].x0;
+    }
+
+    framebuffer_clear(fb, 0, 1.0f, 0);
+    LOG_INFO("Created framebuffer %ux%u with %zu tiles", width, height, tile_count);
+    pthread_mutex_unlock(&fb_mutex);
+    return fb;
 }
 
+// Increments the framebuffer's reference count.
 void framebuffer_retain(Framebuffer *fb)
 {
-	atomic_fetch_add_explicit(&fb->ref_count, 1, memory_order_relaxed);
+    if (!fb) {
+        return;
+    }
+    atomic_fetch_add_explicit(&fb->ref_count, 1, memory_order_relaxed);
 }
 
+// Frees the framebuffer's resources.
 static void framebuffer_free(Framebuffer *fb)
 {
-	size_t pixels = (size_t)fb->width * fb->height;
-	tracked_free((void *)fb->color_buffer,
-		     pixels * sizeof(_Atomic uint32_t));
-	tracked_free((void *)fb->depth_buffer, pixels * sizeof(_Atomic float));
-	tracked_free((void *)fb->stencil_buffer,
-		     pixels * sizeof(_Atomic uint8_t));
-	if (fb->tiles) {
-		size_t tile_count = (size_t)fb->tiles_x * fb->tiles_y;
-		tracked_free(fb->tiles, tile_count * sizeof(FramebufferTile));
-	}
-	tracked_free(fb, sizeof(Framebuffer));
+    if (!fb) {
+        return;
+    }
+    size_t pixels = (size_t)fb->width * fb->height;
+    size_t tile_count = (size_t)fb->tiles_x * fb->tiles_y;
+    if (fb->color_buffer) {
+        tracked_free((void *)fb->color_buffer, pixels * sizeof(_Atomic uint32_t));
+    }
+    if (fb->depth_buffer) {
+        tracked_free((void *)fb->depth_buffer, pixels * sizeof(_Atomic float));
+    }
+    if (fb->stencil_buffer) {
+        tracked_free((void *)fb->stencil_buffer, pixels * sizeof(_Atomic uint8_t));
+    }
+    if (fb->tiles) {
+        tracked_free(fb->tiles, tile_count * sizeof(FramebufferTile));
+    }
+    tracked_free(fb, sizeof(Framebuffer));
 }
 
+// Decrements the framebuffer's reference count and frees if zero.
 void framebuffer_release(Framebuffer *fb)
 {
-	if (!fb)
-		return;
-	if (atomic_fetch_sub_explicit(&fb->ref_count, 1,
-				      memory_order_acq_rel) == 1) {
-		framebuffer_free(fb);
-	}
+    if (!fb) {
+        return;
+    }
+    if (atomic_fetch_sub_explicit(&fb->ref_count, 1, memory_order_acq_rel) == 1) {
+        pthread_mutex_lock(&fb_mutex);
+        framebuffer_free(fb);
+        pthread_mutex_unlock(&fb_mutex);
+    }
 }
 
+// Destroys the framebuffer, ensuring thread pool tasks are completed.
 void framebuffer_destroy(Framebuffer *fb)
 {
-	if (!fb)
-		return;
-	if (thread_pool_active()) {
-		command_buffer_flush();
-		thread_pool_wait();
-	}
-	framebuffer_release(fb);
+    if (!fb) {
+        return;
+    }
+    if (thread_pool_active()) {
+        command_buffer_flush();
+        thread_pool_wait();
+    }
+    framebuffer_release(fb);
 }
 
+// Clears the framebuffer with specified color, depth, and stencil values.
 void framebuffer_clear(Framebuffer *restrict fb, uint32_t clear_color,
-		       float clear_depth, uint8_t clear_stencil)
+                       float clear_depth, uint8_t clear_stencil)
 {
-	size_t total = (size_t)fb->width * fb->height;
-	size_t i = 0;
-	for (; i + 3 < total; i += 4) {
-		atomic_store(&fb->color_buffer[i + 0], clear_color);
-		atomic_store(&fb->color_buffer[i + 1], clear_color);
-		atomic_store(&fb->color_buffer[i + 2], clear_color);
-		atomic_store(&fb->color_buffer[i + 3], clear_color);
-		atomic_store(&fb->depth_buffer[i + 0], clear_depth);
-		atomic_store(&fb->depth_buffer[i + 1], clear_depth);
-		atomic_store(&fb->depth_buffer[i + 2], clear_depth);
-		atomic_store(&fb->depth_buffer[i + 3], clear_depth);
-		atomic_store(&fb->stencil_buffer[i + 0], clear_stencil);
-		atomic_store(&fb->stencil_buffer[i + 1], clear_stencil);
-		atomic_store(&fb->stencil_buffer[i + 2], clear_stencil);
-		atomic_store(&fb->stencil_buffer[i + 3], clear_stencil);
-	}
-	for (; i < total; ++i) {
-		atomic_store(&fb->color_buffer[i], clear_color);
-		atomic_store(&fb->depth_buffer[i], clear_depth);
-		atomic_store(&fb->stencil_buffer[i], clear_stencil);
-	}
+    if (!fb) {
+        LOG_ERROR("framebuffer_clear: NULL framebuffer");
+        return;
+    }
+
+    size_t pixels = (size_t)fb->width * fb->height;
+    // Use memset for faster clearing where possible
+    if (clear_color == 0) {
+        memset(fb->color_buffer, 0, pixels * sizeof(_Atomic uint32_t));
+    } else {
+        for (size_t i = 0; i < pixels; ++i) {
+            atomic_store(&fb->color_buffer[i], clear_color);
+        }
+    }
+    if (clear_depth == 0.0f) {
+        memset(fb->depth_buffer, 0, pixels * sizeof(_Atomic float));
+    } else {
+        for (size_t i = 0; i < pixels; ++i) {
+            atomic_store(&fb->depth_buffer[i], clear_depth);
+        }
+    }
+    if (clear_stencil == 0) {
+        memset(fb->stencil_buffer, 0, pixels * sizeof(_Atomic uint8_t));
+    } else {
+        for (size_t i = 0; i < pixels; ++i) {
+            atomic_store(&fb->stencil_buffer[i], clear_stencil);
+        }
+    }
 }
 
+// Asynchronous clear task structure.
 typedef struct {
-	Framebuffer *fb;
-	uint32_t color;
-	float depth;
-	uint8_t stencil;
+    Framebuffer *fb;
+    uint32_t color;
+    float depth;
+    uint8_t stencil;
 } ClearTask;
 
+// Executes an asynchronous clear task.
 static void clear_task_func(void *arg)
 {
-	ClearTask *t = (ClearTask *)arg;
-	framebuffer_clear(t->fb, t->color, t->depth, t->stencil);
-	framebuffer_release(t->fb);
-	MT_FREE(t, STAGE_FRAMEBUFFER);
-	LOG_DEBUG("framebuffer_clear_async task completed");
+    ClearTask *t = (ClearTask *)arg;
+    if (!t || !t->fb) {
+        LOG_ERROR("clear_task_func: Invalid task or framebuffer");
+        if (t) {
+            MT_FREE(t, STAGE_FRAMEBUFFER);
+        }
+        return;
+    }
+    framebuffer_clear(t->fb, t->color, t->depth, t->stencil);
+    framebuffer_release(t->fb);
+    MT_FREE(t, STAGE_FRAMEBUFFER);
+    LOG_DEBUG("framebuffer_clear_async task completed");
 }
 
+// Clears the framebuffer asynchronously via the thread pool.
 void framebuffer_clear_async(Framebuffer *fb, uint32_t clear_color,
-			     float clear_depth, uint8_t clear_stencil)
+                             float clear_depth, uint8_t clear_stencil)
 {
-	if (!thread_pool_active()) {
-		framebuffer_clear(fb, clear_color, clear_depth, clear_stencil);
-		return;
-	}
-	ClearTask *task = MT_ALLOC(sizeof(ClearTask), STAGE_FRAMEBUFFER);
-	if (!task) {
-		LOG_ERROR("Failed to allocate ClearTask");
-		return;
-	}
-	framebuffer_retain(fb);
-	*task = (ClearTask){ fb, clear_color, clear_depth, clear_stencil };
-	command_buffer_record_task(clear_task_func, task, STAGE_FRAMEBUFFER);
+    if (!fb) {
+        LOG_ERROR("framebuffer_clear_async: NULL framebuffer");
+        return;
+    }
+    if (!thread_pool_active()) {
+        framebuffer_clear(fb, clear_color, clear_depth, clear_stencil);
+        return;
+    }
+
+    ClearTask *task = MT_ALLOC(sizeof(ClearTask), STAGE_FRAMEBUFFER);
+    if (!task) {
+        LOG_ERROR("framebuffer_clear_async: Failed to allocate ClearTask");
+        framebuffer_clear(fb, clear_color, clear_depth, clear_stencil);
+        return;
+    }
+
+    framebuffer_retain(fb);
+    task->fb = fb;
+    task->color = clear_color;
+    task->depth = clear_depth;
+    task->stencil = clear_stencil;
+    command_buffer_record_task(clear_task_func, task, STAGE_FRAMEBUFFER);
+    LOG_DEBUG("Scheduled async clear for framebuffer %p", fb);
 }
 
+// Sets a pixel with color and depth, applying stencil and depth tests.
 void framebuffer_set_pixel(Framebuffer *restrict fb, uint32_t x, uint32_t y,
-			   uint32_t color, float depth)
+                           uint32_t color, float depth)
 {
-	if (x >= fb->width || y >= fb->height)
-		return;
+    if (!fb || x >= fb->width || y >= fb->height) {
+        return;
+    }
 
-	_Atomic uint32_t *color_buffer = fb->color_buffer;
-	_Atomic float *depth_buffer = fb->depth_buffer;
-	_Atomic uint8_t *stencil_buffer = fb->stencil_buffer;
-	size_t stride = fb->width;
-	if (tls_tile && x >= tls_tile->x0 && x < tls_tile->x0 + TILE_SIZE &&
-	    y >= tls_tile->y0 && y < tls_tile->y0 + TILE_SIZE) {
-		color_buffer = (_Atomic uint32_t *)tls_tile->color;
-		depth_buffer = (_Atomic float *)tls_tile->depth;
-		stencil_buffer = (_Atomic uint8_t *)tls_tile->stencil;
-		stride = TILE_SIZE;
-		x -= tls_tile->x0;
-		y -= tls_tile->y0;
-	}
-	size_t idx = (size_t)y * stride + x;
-	refresh_depth_stencil();
-	GLboolean stencil_on = tl_stencil_on;
-	StencilState *ss = &tl_stencil;
-	uint8_t stencil = atomic_load(&stencil_buffer[idx]);
-	if (stencil_on) {
-		uint8_t masked = stencil & ss->mask;
-		uint8_t ref = ss->ref & ss->mask;
-		bool pass = false;
-		switch (ss->func) {
-		case GL_NEVER:
-			pass = false;
-			break;
-		case GL_LESS:
-			pass = masked < ref;
-			break;
-		case GL_LEQUAL:
-			pass = masked <= ref;
-			break;
-		case GL_GREATER:
-			pass = masked > ref;
-			break;
-		case GL_GEQUAL:
-			pass = masked >= ref;
-			break;
-		case GL_EQUAL:
-			pass = masked == ref;
-			break;
-		case GL_NOTEQUAL:
-			pass = masked != ref;
-			break;
-		case GL_ALWAYS:
-			pass = true;
-			break;
-		}
-		if (!pass) {
-			uint8_t new = stencil;
-			switch (ss->sfail) {
-			case GL_ZERO:
-				new = 0;
-				break;
-			case GL_REPLACE:
-				new = ss->ref;
-				break;
-			case GL_INCR:
-				new = (stencil == 0xFF) ? 0xFF : stencil + 1;
-				break;
-			case GL_DECR:
-				new = (stencil == 0) ? 0 : stencil - 1;
-				break;
-			case GL_INVERT:
-				new = ~stencil;
-				break;
-			case GL_INCR_WRAP:
-				new = stencil + 1;
-				break;
-			case GL_DECR_WRAP:
-				new = stencil - 1;
-				break;
-			case GL_KEEP:
-			default:
-				break;
-			}
-			new = (new & ss->writemask) |
-			      (stencil & ~ss->writemask);
-			atomic_store(&stencil_buffer[idx], new);
-			return;
-		}
-	}
-	float current = atomic_load(&depth_buffer[idx]);
-	bool depth_pass = false;
-	/*
-         * Multiple fragment threads may attempt to write the same depth
-         * location concurrently. Compare-and-swap ensures only the correct
-         * fragment updates the buffer while losers retry with the new value.
-         */
-	if (!tl_depth_test) {
-		depth_pass = true;
-	} else {
-		while (true) {
-			bool pass = false;
-			switch (tl_depth_func) {
-			case GL_NEVER:
-				pass = false;
-				break;
-			case GL_LESS:
-				pass = depth < current;
-				break;
-			case GL_LEQUAL:
-				pass = depth <= current;
-				break;
-			case GL_GREATER:
-				pass = depth > current;
-				break;
-			case GL_GEQUAL:
-				pass = depth >= current;
-				break;
-			case GL_EQUAL:
-				pass = depth == current;
-				break;
-			case GL_NOTEQUAL:
-				pass = depth != current;
-				break;
-			case GL_ALWAYS:
-				pass = true;
-				break;
-			default:
-				pass = depth < current;
-				break;
-			}
-			if (!pass)
-				break;
-			if (atomic_compare_exchange_weak(&depth_buffer[idx],
-							 &current, depth)) {
-				depth_pass = true;
-				break;
-			}
-			/* current updated by atomic_compare_exchange_weak */
-		}
-	}
-	if (stencil_on) {
-		uint8_t new = stencil;
-		GLenum op = depth_pass ? ss->zpass : ss->zfail;
-		switch (op) {
-		case GL_ZERO:
-			new = 0;
-			break;
-		case GL_REPLACE:
-			new = ss->ref;
-			break;
-		case GL_INCR:
-			new = (stencil == 0xFF) ? 0xFF : stencil + 1;
-			break;
-		case GL_DECR:
-			new = (stencil == 0) ? 0 : stencil - 1;
-			break;
-		case GL_INVERT:
-			new = ~stencil;
-			break;
-		case GL_INCR_WRAP:
-			new = stencil + 1;
-			break;
-		case GL_DECR_WRAP:
-			new = stencil - 1;
-			break;
-		case GL_KEEP:
-		default:
-			break;
-		}
-		new = (new & ss->writemask) | (stencil & ~ss->writemask);
-		atomic_store(&stencil_buffer[idx], new);
-	}
-	if (depth_pass)
-		atomic_store(&color_buffer[idx], color);
+    _Atomic uint32_t *color_buffer = fb->color_buffer;
+    _Atomic float *depth_buffer = fb->depth_buffer;
+    _Atomic uint8_t *stencil_buffer = fb->stencil_buffer;
+    size_t stride = fb->width;
+    uint32_t tile_x = x, tile_y = y;
+
+    if (tls_tile && x >= tls_tile->x0 && x < tls_tile->x0 + TILE_SIZE &&
+        y >= tls_tile->y0 && y < tls_tile->y0 + TILE_SIZE) {
+        color_buffer = (_Atomic uint32_t *)tls_tile->color;
+        depth_buffer = (_Atomic float *)tls_tile->depth;
+        stencil_buffer = (_Atomic uint8_t *)tls_tile->stencil;
+        stride = TILE_SIZE;
+        tile_x = x - tls_tile->x0;
+        tile_y = y - tls_tile->y0;
+    }
+
+    size_t idx = (size_t)tile_y * stride + tile_x;
+    refresh_depth_stencil();
+    GLboolean stencil_on = tl_stencil_on;
+    StencilState *ss = &tl_stencil;
+    uint8_t stencil = atomic_load(&stencil_buffer[idx]);
+
+    if (stencil_on) {
+        uint8_t masked = stencil & ss->mask;
+        uint8_t ref = ss->ref & ss->mask;
+        bool pass = false;
+        switch (ss->func) {
+            case GL_NEVER: pass = false; break;
+            case GL_LESS: pass = masked < ref; break;
+            case GL_LEQUAL: pass = masked <= ref; break;
+            case GL_GREATER: pass = masked > ref; break;
+            case GL_GEQUAL: pass = masked >= ref; break;
+            case GL_EQUAL: pass = masked == ref; break;
+            case GL_NOTEQUAL: pass = masked != ref; break;
+            case GL_ALWAYS: pass = true; break;
+        }
+        if (!pass) {
+            uint8_t new = stencil;
+            switch (ss->sfail) {
+                case GL_ZERO: new = 0; break;
+                case GL_REPLACE: new = ss->ref; break;
+                case GL_INCR: new = (stencil == 0xFF) ? 0xFF : stencil + 1; break;
+                case GL_DECR: new = (stencil == 0) ? 0 : stencil - 1; break;
+                case GL_INVERT: new = ~stencil; break;
+                case GL_INCR_WRAP: new = stencil + 1; break;
+                case GL_DECR_WRAP: new = stencil - 1; break;
+                case GL_KEEP: default: break;
+            }
+            new = (new & ss->writemask) | (stencil & ~ss->writemask);
+            atomic_store(&stencil_buffer[idx], new);
+            return;
+        }
+    }
+
+    float current = atomic_load(&depth_buffer[idx]);
+    bool depth_pass = false;
+    if (!tl_depth_test) {
+        depth_pass = true;
+    } else {
+        while (true) {
+            bool pass = false;
+            switch (tl_depth_func) {
+                case GL_NEVER: pass = false; break;
+                case GL_LESS: pass = depth < current; break;
+                case GL_LEQUAL: pass = depth <= current; break;
+                case GL_GREATER: pass = depth > current; break;
+                case GL_GEQUAL: pass = depth >= current; break;
+                case GL_EQUAL: pass = depth == current; break;
+                case GL_NOTEQUAL: pass = depth != current; break;
+                case GL_ALWAYS: pass = true; break;
+                default: pass = depth < current; break;
+            }
+            if (!pass) {
+                break;
+            }
+            if (atomic_compare_exchange_weak(&depth_buffer[idx], &current, depth)) {
+                depth_pass = true;
+                break;
+            }
+        }
+    }
+
+    if (stencil_on) {
+        uint8_t new = stencil;
+        GLenum op = depth_pass ? ss->zpass : ss->zfail;
+        switch (op) {
+            case GL_ZERO: new = 0; break;
+            case GL_REPLACE: new = ss->ref; break;
+            case GL_INCR: new = (stencil == 0xFF) ? 0xFF : stencil + 1; break;
+            case GL_DECR: new = (stencil == 0) ? 0 : stencil - 1; break;
+            case GL_INVERT: new = ~stencil; break;
+            case GL_INCR_WRAP: new = stencil + 1; break;
+            case GL_DECR_WRAP: new = stencil - 1; break;
+            case GL_KEEP: default: break;
+        }
+        new = (new & ss->writemask) | (stencil & ~ss->writemask);
+        atomic_store(&stencil_buffer[idx], new);
+    }
+
+    if (depth_pass) {
+        atomic_store(&color_buffer[idx], color);
+    }
 }
 
+// Fills a rectangle with the specified color and depth.
 void framebuffer_fill_rect(Framebuffer *fb, uint32_t x0, uint32_t y0,
-			   uint32_t x1, uint32_t y1, uint32_t color,
-			   float depth)
+                           uint32_t x1, uint32_t y1, uint32_t color,
+                           float depth)
 {
-	for (uint32_t y = y0; y <= y1; ++y)
-		for (uint32_t x = x0; x <= x1; ++x)
-			framebuffer_set_pixel(fb, x, y, color, depth);
+    if (!fb || x0 > x1 || y0 > y1 || x1 >= fb->width || y1 >= fb->height) {
+        LOG_ERROR("framebuffer_fill_rect: Invalid parameters");
+        return;
+    }
+    for (uint32_t y = y0; y <= y1; ++y) {
+        for (uint32_t x = x0; x <= x1; ++x) {
+            framebuffer_set_pixel(fb, x, y, color, depth);
+        }
+    }
 }
 
+// Gets the color value of a pixel.
 uint32_t framebuffer_get_pixel(const Framebuffer *fb, uint32_t x, uint32_t y)
 {
-	if (x >= fb->width || y >= fb->height)
-		return 0;
-	return atomic_load(&fb->color_buffer[(size_t)y * fb->width + x]);
+    if (!fb || x >= fb->width || y >= fb->height) {
+        return 0;
+    }
+    return atomic_load(&fb->color_buffer[(size_t)y * fb->width + x]);
 }
 
+// Gets the depth value of a pixel.
 float framebuffer_get_depth(const Framebuffer *fb, uint32_t x, uint32_t y)
 {
-	if (x >= fb->width || y >= fb->height)
-		return 1.0f;
-	return atomic_load(&fb->depth_buffer[(size_t)y * fb->width + x]);
+    if (!fb || x >= fb->width || y >= fb->height) {
+        return 1.0f;
+    }
+    return atomic_load(&fb->depth_buffer[(size_t)y * fb->width + x]);
 }
 
+// Writes the framebuffer to a BMP file.
 int framebuffer_write_bmp(const Framebuffer *fb, const char *path)
 {
-	FILE *f = fopen(path, "wb");
-	if (!f) {
-		LOG_ERROR("Failed to open %s", path);
-		return 0;
-	}
-	int width = (int)fb->width;
-	int height = (int)fb->height;
-	int row_bytes = width * 3;
-	int row_padded = (row_bytes + 3) & ~3;
-	unsigned int filesize = 54 + row_padded * height;
-	unsigned char file_header[14] = { 'B', 'M' };
-	file_header[2] = (unsigned char)(filesize);
-	file_header[3] = (unsigned char)(filesize >> 8);
-	file_header[4] = (unsigned char)(filesize >> 16);
-	file_header[5] = (unsigned char)(filesize >> 24);
-	file_header[10] = 54;
-	fwrite(file_header, 1, 14, f);
+    if (!fb || !path) {
+        LOG_ERROR("framebuffer_write_bmp: NULL framebuffer or path");
+        return 0;
+    }
 
-	unsigned char info_header[40] = { 0 };
-	info_header[0] = 40;
-	info_header[4] = (unsigned char)(width);
-	info_header[5] = (unsigned char)(width >> 8);
-	info_header[6] = (unsigned char)(width >> 16);
-	info_header[7] = (unsigned char)(width >> 24);
-	info_header[8] = (unsigned char)(height);
-	info_header[9] = (unsigned char)(height >> 8);
-	info_header[10] = (unsigned char)(height >> 16);
-	info_header[11] = (unsigned char)(height >> 24);
-	info_header[12] = 1;
-	info_header[14] = 24;
-	fwrite(info_header, 1, 40, f);
+    FILE *f = fopen(path, "wb");
+    if (!f) {
+        LOG_ERROR("framebuffer_write_bmp: Failed to open %s", path);
+        return 0;
+    }
 
-	unsigned char *row = (unsigned char *)tracked_malloc(row_padded);
-	if (!row) {
-		fclose(f);
-		return 0;
-	}
-	for (int y = height - 1; y >= 0; --y) {
-		for (int x = 0; x < width; ++x) {
-			uint32_t pixel = atomic_load(
-				&fb->color_buffer[(size_t)y * fb->width + x]);
-			row[x * 3 + 0] = (pixel >> 0) & 0xFF;
-			row[x * 3 + 1] = (pixel >> 8) & 0xFF;
-			row[x * 3 + 2] = (pixel >> 16) & 0xFF;
-		}
-		memset(row + row_bytes, 0, row_padded - row_bytes);
-		fwrite(row, 1, row_padded, f);
-	}
-	tracked_free(row, row_padded);
-	fclose(f);
-	LOG_INFO("Wrote %s", path);
-	return 1;
+    int width = (int)fb->width;
+    int height = (int)fb->height;
+    int row_bytes = width * 3;
+    int row_padded = (row_bytes + 3) & ~3;
+    uint32_t filesize = 54 + row_padded * height;
+
+    unsigned char file_header[14] = { 'B', 'M' };
+    file_header[2] = (unsigned char)(filesize);
+    file_header[3] = (unsigned char)(filesize >> 8);
+    file_header[4] = (unsigned char)(filesize >> 16);
+    file_header[5] = (unsigned char)(filesize >> 24);
+    file_header[10] = 54;
+    if (fwrite(file_header, 1, 14, f) != 14) {
+        LOG_ERROR("framebuffer_write_bmp: Failed to write file header");
+        fclose(f);
+        return 0;
+    }
+
+    unsigned char info_header[40] = { 0 };
+    info_header[0] = 40;
+    info_header[4] = (unsigned char)(width);
+    info_header[5] = (unsigned char)(width >> 8);
+    info_header[6] = (unsigned char)(width >> 16);
+    info_header[7] = (unsigned char)(width >> 24);
+    info_header[8] = (unsigned char)(height);
+    info_header[9] = (unsigned char)(height >> 8);
+    info_header[10] = (unsigned char)(height >> 16);
+    info_header[11] = (unsigned char)(height >> 24);
+    info_header[12] = 1;
+    info_header[14] = 24;
+    if (fwrite(info_header, 1, 40, f) != 40) {
+        LOG_ERROR("framebuffer_write_bmp: Failed to write info header");
+        fclose(f);
+        return 0;
+    }
+
+    unsigned char *row = (unsigned char *)tracked_malloc(row_padded);
+    if (!row) {
+        LOG_ERROR("framebuffer_write_bmp: Failed to allocate row buffer");
+        fclose(f);
+        return 0;
+    }
+
+    for (int y = height - 1; y >= 0; --y) {
+        for (int x = 0; x < width; ++x) {
+            uint32_t pixel = atomic_load(&fb->color_buffer[(size_t)y * fb->width + x]);
+            row[x * 3 + 0] = (pixel >> 0) & 0xFF;  // B
+            row[x * 3 + 1] = (pixel >> 8) & 0xFF;  // G
+            row[x * 3 + 2] = (pixel >> 16) & 0xFF; // R
+        }
+        memset(row + row_bytes, 0, row_padded - row_bytes);
+        if (fwrite(row, 1, row_padded, f) != (size_t)row_padded) {
+            LOG_ERROR("framebuffer_write_bmp: Failed to write row data");
+            tracked_free(row, row_padded);
+            fclose(f);
+            return 0;
+        }
+    }
+
+    tracked_free(row, row_padded);
+    if (fclose(f) != 0) {
+        LOG_ERROR("framebuffer_write_bmp: Failed to close %s", path);
+        return 0;
+    }
+    LOG_INFO("Wrote BMP to %s", path);
+    return 1;
 }
 
+// Writes the framebuffer to an RGBA text file.
 int framebuffer_write_rgba(const Framebuffer *fb, const char *path)
 {
-	FILE *f = fopen(path, "w");
-	if (!f) {
-		LOG_ERROR("Failed to open %s", path);
-		return 0;
-	}
-	int width = (int)fb->width;
-	int height = (int)fb->height;
-	fprintf(f, "%d %d\n", width, height);
-	for (int y = 0; y < height; ++y) {
-		for (int x = 0; x < width; ++x) {
-			uint32_t pixel = atomic_load(
-				&fb->color_buffer[(size_t)y * fb->width + x]);
-			unsigned r = (pixel >> 16) & 0xFF;
-			unsigned g = (pixel >> 8) & 0xFF;
-			unsigned b = pixel & 0xFF;
-			fprintf(f, "%u %u %u 255\n", r, g, b);
-		}
-	}
-	fclose(f);
-	LOG_INFO("Wrote %s", path);
-	return 1;
+    if (!fb || !path) {
+        LOG_ERROR("framebuffer_write_rgba: NULL framebuffer or path");
+        return 0;
+    }
+
+    FILE *f = fopen(path, "w");
+    if (!f) {
+        LOG_ERROR("framebuffer_write_rgba: Failed to open %s", path);
+        return 0;
+    }
+
+    int width = (int)fb->width;
+    int height = (int)fb->height;
+    if (fprintf(f, "%d %d\n", width, height) < 0) {
+        LOG_ERROR("framebuffer_write_rgba: Failed to write header");
+        fclose(f);
+        return 0;
+    }
+
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            uint32_t pixel = atomic_load(&fb->color_buffer[(size_t)y * fb->width + x]);
+            unsigned r = (pixel >> 16) & 0xFF;
+            unsigned g = (pixel >> 8) & 0xFF;
+            unsigned b = pixel & 0xFF;
+            if (fprintf(f, "%u %u %u 255\n", r, g, b) < 0) {
+                LOG_ERROR("framebuffer_write_rgba: Failed to write pixel data");
+                fclose(f);
+                return 0;
+            }
+        }
+    }
+
+    if (fclose(f) != 0) {
+        LOG_ERROR("framebuffer_write_rgba: Failed to close %s", path);
+        return 0;
+    }
+    LOG_INFO("Wrote RGBA to %s", path);
+    return 1;
 }
 
+// Streams the framebuffer as RGBA bytes to a file stream.
 int framebuffer_stream_rgba(const Framebuffer *fb, FILE *out)
 {
-	int width = (int)fb->width;
-	int height = (int)fb->height;
-	for (int y = 0; y < height; ++y) {
-		for (int x = 0; x < width; ++x) {
-			uint32_t pixel = atomic_load(
-				&fb->color_buffer[(size_t)y * fb->width + x]);
-			unsigned char bytes[4] = {
-				(unsigned char)((pixel >> 16) & 0xFF),
-				(unsigned char)((pixel >> 8) & 0xFF),
-				(unsigned char)(pixel & 0xFF),
-				(unsigned char)((pixel >> 24) & 0xFF)
-			};
-			fwrite(bytes, 1, 4, out);
-		}
-	}
-	return ferror(out) ? 0 : 1;
+    if (!fb || !out) {
+        LOG_ERROR("framebuffer_stream_rgba: NULL framebuffer or stream");
+        return 0;
+    }
+
+    int width = (int)fb->width;
+    int height = (int)fb->height;
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            uint32_t pixel = atomic_load(&fb->color_buffer[(size_t)y * fb->width + x]);
+            unsigned char bytes[4] = {
+                (unsigned char)((pixel >> 16) & 0xFF), // R
+                (unsigned char)((pixel >> 8) & 0xFF),  // G
+                (unsigned char)(pixel & 0xFF),         // B
+                (unsigned char)((pixel >> 24) & 0xFF)  // A
+            };
+            if (fwrite(bytes, 1, 4, out) != 4) {
+                LOG_ERROR("framebuffer_stream_rgba: Failed to write pixel data");
+                return 0;
+            }
+        }
+    }
+
+    if (fflush(out) != 0) {
+        LOG_ERROR("framebuffer_stream_rgba: Failed to flush stream");
+        return 0;
+    }
+    return 1;
+}
+
+// Enters a tile for rendering.
+void framebuffer_enter_tile(FramebufferTile *tile)
+{
+    if (!tile) {
+        LOG_ERROR("framebuffer_enter_tile: NULL tile");
+        return;
+    }
+    tls_tile = tile;
+}
+
+// Leaves the current tile.
+void framebuffer_leave_tile(void)
+{
+    tls_tile = NULL;
 }
