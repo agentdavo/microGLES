@@ -7,6 +7,7 @@
 #include "command_buffer.h"
 #include "matrix_utils.h"
 #include "gl_utils.h"
+#include "pipeline/gl_framebuffer.h"
 #ifdef HAVE_X11
 #include "x11_window.h"
 #include <GL/glx.h>
@@ -144,6 +145,25 @@ static void render_scene(void)
 	}
 }
 
+static bool check_fb_content(const Framebuffer *fb)
+{
+	bool has_non_white = false;
+	bool has_non_black = false;
+	for (uint32_t y = 0; y < fb->height; ++y) {
+		for (uint32_t x = 0; x < fb->width; ++x) {
+			uint32_t c = framebuffer_get_pixel(fb, x, y) &
+				     0x00FFFFFFu;
+			if (c != 0xFFFFFFu)
+				has_non_white = true;
+			if (c != 0x000000u)
+				has_non_black = true;
+			if (has_non_white && has_non_black)
+				return true;
+		}
+	}
+	return has_non_white && has_non_black;
+}
+
 int main(int argc, char **argv)
 {
 	(void)argc;
@@ -197,6 +217,7 @@ int main(int argc, char **argv)
 			((float)rand() / RAND_MAX - 0.5f) * 60.0f;
 	}
 	const int face_pixels = 64 * 64;
+	int frame_idx = 0;
 	for (int sec = 0; sec < 10; ++sec) {
 		struct timespec start, now;
 		uint64_t cstart, cend;
@@ -222,6 +243,12 @@ int main(int argc, char **argv)
 				glXSwapBuffers(NULL,
 					       (GLXDrawable)(uintptr_t)win);
 #endif
+			if (frame_idx < 2) {
+				bool ok = check_fb_content(fb);
+				printf("Framebuffer frame %d %s\n",
+				       frame_idx + 1, ok ? "PASS" : "FAIL");
+				++frame_idx;
+			}
 			clock_gettime(CLOCK_MONOTONIC, &now);
 		} while (ts_diff(&now, &start) < 1.0);
 		cend = thread_get_cycles();
