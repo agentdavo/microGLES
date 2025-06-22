@@ -77,6 +77,13 @@ void mat4_rotate_axis(mat4 *restrict mat, GLfloat angle, GLfloat x, GLfloat y,
 void mat4_look_at(mat4 *restrict mat, GLfloat eyeX, GLfloat eyeY, GLfloat eyeZ,
 		  GLfloat centerX, GLfloat centerY, GLfloat centerZ,
 		  GLfloat upX, GLfloat upY, GLfloat upZ);
+/* GLU-style helper to multiply the current matrix by a look-at transform */
+void gluLookAt(GLfloat eyeX, GLfloat eyeY, GLfloat eyeZ, GLfloat centerX,
+	       GLfloat centerY, GLfloat centerZ, GLfloat upX, GLfloat upY,
+	       GLfloat upZ);
+/* GLU-style projection helpers */
+void gluPerspective(GLfloat fovy, GLfloat aspect, GLfloat zNear, GLfloat zFar);
+void gluOrtho2D(GLfloat left, GLfloat right, GLfloat bottom, GLfloat top);
 void mat4_perspective(mat4 *restrict mat, GLfloat fovy, GLfloat aspect,
 		      GLfloat zNear, GLfloat zFar);
 void mat4_frustum(mat4 *restrict mat, GLfloat left, GLfloat right,
