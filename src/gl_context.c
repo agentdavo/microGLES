@@ -207,6 +207,11 @@ void context_init(void)
 	LOG_INFO("Render context initialized");
 }
 
+void context_cleanup(void)
+{
+	LOG_INFO("Render context cleanup");
+}
+
 RenderContext *context_get(void)
 {
 	return &g_render_context;
