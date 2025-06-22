@@ -12,6 +12,9 @@ struct X11Window {
 	XImage *image;
 	unsigned width;
 	unsigned height;
+	unsigned rshift;
+	unsigned gshift;
+	unsigned bshift;
 };
 
 X11Window *x11_window_create(unsigned width, unsigned height, const char *title)
@@ -45,6 +48,9 @@ X11Window *x11_window_create(unsigned width, unsigned height, const char *title)
 		free(w);
 		return NULL;
 	}
+	w->rshift = __builtin_ctz(w->image->red_mask);
+	w->gshift = __builtin_ctz(w->image->green_mask);
+	w->bshift = __builtin_ctz(w->image->blue_mask);
 	return w;
 }
 
@@ -70,13 +76,26 @@ void x11_window_show_image(X11Window *w, const struct Framebuffer *fb)
 		for (unsigned x = 0; x < width; ++x) {
 			uint32_t pixel = atomic_load(
 				&fb->color_buffer[y * fb->width + x]);
+			unsigned char r = pixel & 0xFF;
+			unsigned char g = (pixel >> 8) & 0xFF;
+			unsigned char b = (pixel >> 16) & 0xFF;
 			unsigned char *dst = (unsigned char *)w->image->data +
 					     (y * w->image->bytes_per_line) +
 					     x * 4;
-			dst[0] = pixel & 0xFF; // R
-			dst[1] = (pixel >> 8) & 0xFF; // G
-			dst[2] = (pixel >> 16) & 0xFF; // B
-			dst[3] = (pixel >> 24) & 0xFF; // alpha
+			if (w->rshift == 16 && w->bshift == 0) {
+				dst[0] = b;
+				dst[1] = g;
+				dst[2] = r;
+			} else if (w->rshift == 0 && w->bshift == 16) {
+				dst[0] = r;
+				dst[1] = g;
+				dst[2] = b;
+			} else {
+				uint32_t out = ((uint32_t)r << w->rshift) |
+					       ((uint32_t)g << w->gshift) |
+					       ((uint32_t)b << w->bshift);
+				memcpy(dst, &out, 4);
+			}
 			dst[3] = 0xFF; // alpha
 		}
 	}
