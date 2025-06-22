@@ -123,10 +123,9 @@ bool x11_window_has_non_monochrome(const X11Window *w)
 		return false;
 	bool non_white = false;
 	bool non_black = false;
-	for (unsigned y = 0; y < img->height && !(non_white && non_black);
-	     ++y) {
-		for (unsigned x = 0; x < img->width; ++x) {
-			unsigned long p = XGetPixel(img, (int)x, (int)y);
+	for (int y = 0; y < img->height && !(non_white && non_black); ++y) {
+		for (int x = 0; x < img->width; ++x) {
+			unsigned long p = XGetPixel(img, x, y);
 			unsigned int rgb = ((p >> 16) & 0xFF) << 16 |
 					   ((p >> 8) & 0xFF) << 8 | (p & 0xFF);
 			if (rgb != 0xFFFFFFu)
