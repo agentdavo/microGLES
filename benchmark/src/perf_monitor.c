@@ -205,6 +205,7 @@ int main(int argc, char **argv)
 		double polys = 0.0, pix = 0.0;
 		do {
 			render_scene();
+			glFinish();
 			for (int i = 0; i < NUM_PYRAMIDS; ++i) {
 				pyramids[i].rotation.x +=
 					pyramids[i].rotationSpeed.x * 0.016f;
