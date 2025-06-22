@@ -424,13 +424,13 @@ void thread_pool_submit(task_function_t func, void *task_data,
 void thread_pool_wait(void)
 {
 	while (atomic_load_explicit(&g_global_head, memory_order_acquire) <
-	       atomic_load_explicit(&g_global_tail, memory_order_relaxed))
+	       atomic_load_explicit(&g_global_tail, memory_order_acquire))
 		thrd_yield();
 	for (int i = 0; i < g_num_threads; i++) {
 		while (atomic_load_explicit(&g_local_queues[i].head,
 					    memory_order_acquire) <
 		       atomic_load_explicit(&g_local_queues[i].tail,
-					    memory_order_relaxed))
+					    memory_order_acquire))
 			thrd_yield();
 	}
 }
@@ -443,7 +443,7 @@ int thread_pool_wait_timeout(uint32_t ms)
 		bool done = atomic_load_explicit(&g_global_head,
 						 memory_order_acquire) >=
 			    atomic_load_explicit(&g_global_tail,
-						 memory_order_relaxed);
+						 memory_order_acquire);
 		if (done) {
 			done = true;
 			for (int i = 0; i < g_num_threads; i++) {
@@ -451,7 +451,7 @@ int thread_pool_wait_timeout(uint32_t ms)
 							 memory_order_acquire) <
 				    atomic_load_explicit(
 					    &g_local_queues[i].tail,
-					    memory_order_relaxed)) {
+					    memory_order_acquire)) {
 					done = false;
 					break;
 				}
