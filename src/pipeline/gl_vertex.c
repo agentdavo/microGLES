@@ -102,8 +102,7 @@ static void apply_lighting(Vertex *v)
 				    lt->linear_attenuation * dist +
 				    lt->quadratic_attenuation * dist * dist);
 		float dot = nx * lx + ny * ly + nz * lz;
-		if (dot < 0.0f)
-			dot = 0.0f;
+		dot = GL_MAX(dot, 0.0f);
 		float hx = lx;
 		float hy = ly;
 		float hz = lz + 1.0f;
@@ -111,8 +110,7 @@ static void apply_lighting(Vertex *v)
 		if (hx != 0.0f || hy != 0.0f || hz != 0.0f) {
 			vec3_normalize(&hx, &hy, &hz);
 			float spec_dot = nx * hx + ny * hy + nz * hz;
-			if (spec_dot < 0.0f)
-				spec_dot = 0.0f;
+			spec_dot = GL_MAX(spec_dot, 0.0f);
 			spec = GL_POW(spec_dot, tl_mat.shininess);
 		}
 		r += tl_mat.ambient[0] * lt->ambient[0] * att +
