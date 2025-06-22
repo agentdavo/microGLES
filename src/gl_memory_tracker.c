@@ -117,7 +117,26 @@ void *memory_tracker_alloc_aligned(size_t alignment, size_t size,
 				   int line)
 {
 	void *p = NULL;
-	if (posix_memalign(&p, alignment, size) != 0)
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+	if (size % alignment == 0)
+		p = aligned_alloc(alignment, size);
+	else {
+		size_t padded = (size + alignment - 1) & ~(alignment - 1);
+		p = aligned_alloc(alignment, padded);
+	}
+	if (!p)
+#endif
+	{
+#ifdef _POSIX_C_SOURCE
+		if (posix_memalign(&p, alignment, size) != 0)
+			p = NULL;
+#else
+		p = NULL;
+#endif
+	}
+	if (!p)
+		p = malloc(size);
+	if (!p)
 		return NULL;
 	mtx_lock(&g_mutex);
 	record_alloc(p, size, stage, type, line);
