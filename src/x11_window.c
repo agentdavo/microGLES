@@ -314,6 +314,53 @@ bool x11_window_has_non_monochrome(const X11Window *w)
 	return non_white && non_black;
 }
 
+// Saves the current window contents to a BMP file.
+int x11_window_save_bmp(const X11Window *w, const char *path)
+{
+	if (!w || !path) {
+		return 0;
+	}
+
+	pthread_mutex_lock(&x11_mutex);
+	XImage *img = XGetImage(w->display, w->window, 0, 0, w->width,
+				w->height, AllPlanes, ZPixmap);
+	if (!img) {
+		pthread_mutex_unlock(&x11_mutex);
+		return 0;
+	}
+
+	Framebuffer *fb =
+		framebuffer_create((uint32_t)img->width, (uint32_t)img->height);
+	if (!fb) {
+		XDestroyImage(img);
+		pthread_mutex_unlock(&x11_mutex);
+		return 0;
+	}
+
+	unsigned rshift = __builtin_ctz(img->red_mask);
+	unsigned gshift = __builtin_ctz(img->green_mask);
+	unsigned bshift = __builtin_ctz(img->blue_mask);
+	for (int y = 0; y < img->height; ++y) {
+		for (int x = 0; x < img->width; ++x) {
+			unsigned long p = XGetPixel(img, x, y);
+			unsigned char r = (p & img->red_mask) >> rshift;
+			unsigned char g = (p & img->green_mask) >> gshift;
+			unsigned char b = (p & img->blue_mask) >> bshift;
+			uint32_t c = (uint32_t)b | ((uint32_t)g << 8) |
+				     ((uint32_t)r << 16);
+			atomic_store(
+				&fb->color_buffer[(size_t)y * fb->width + x],
+				c);
+		}
+	}
+
+	int ret = framebuffer_write_bmp(fb, path);
+	framebuffer_destroy(fb);
+	XDestroyImage(img);
+	pthread_mutex_unlock(&x11_mutex);
+	return ret;
+}
+
 // Processes X11 events and updates window state.
 bool x11_window_process_events(X11Window *w, bool *should_close)
 {
@@ -335,10 +382,10 @@ bool x11_window_process_events(X11Window *w, bool *should_close)
 			}
 			break;
 		case ConfigureNotify:
-			if (w->width != event.xconfigure.width ||
-			    w->height != event.xconfigure.height) {
-				w->width = event.xconfigure.width;
-				w->height = event.xconfigure.height;
+			if (w->width != (unsigned)event.xconfigure.width ||
+			    w->height != (unsigned)event.xconfigure.height) {
+				w->width = (unsigned)event.xconfigure.width;
+				w->height = (unsigned)event.xconfigure.height;
 				LOG_DEBUG("Window resized to %ux%u", w->width,
 					  w->height);
 				// Resize image (simplified; ideally recreate XImage)
