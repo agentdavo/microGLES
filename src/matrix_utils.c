@@ -3,6 +3,7 @@
 #include "matrix_utils.h"
 #include "gl_logger.h" // Ensure logger is initialized before using
 #include "c11_opt.h"
+#include <GLES/gl.h>
 
 /* Define Pi for angle conversions */
 #ifndef M_PI
@@ -529,6 +530,40 @@ void mat4_look_at(mat4 *restrict mat, GLfloat eyeX, GLfloat eyeY, GLfloat eyeZ,
 	mat->data[12] = -sx * eyeX - sy * eyeY - sz * eyeZ;
 	mat->data[13] = -ux * eyeX - uy * eyeY - uz * eyeZ;
 	mat->data[14] = fx * eyeX + fy * eyeY + fz * eyeZ;
+}
+
+/**
+ * @brief Multiplies the current matrix by a lookAt transform, replicating
+ *        classic GLU behaviour.
+ */
+void gluLookAt(GLfloat eyeX, GLfloat eyeY, GLfloat eyeZ, GLfloat centerX,
+	       GLfloat centerY, GLfloat centerZ, GLfloat upX, GLfloat upY,
+	       GLfloat upZ)
+{
+	mat4 look;
+	mat4_look_at(&look, eyeX, eyeY, eyeZ, centerX, centerY, centerZ, upX,
+		     upY, upZ);
+	glMultMatrixf(look.data);
+}
+
+/**
+ * @brief Multiplies the current matrix by a perspective projection.
+ */
+void gluPerspective(GLfloat fovy, GLfloat aspect, GLfloat zNear, GLfloat zFar)
+{
+	mat4 proj;
+	mat4_perspective(&proj, fovy, aspect, zNear, zFar);
+	glMultMatrixf(proj.data);
+}
+
+/**
+ * @brief Multiplies the current matrix by a 2D orthographic projection.
+ */
+void gluOrtho2D(GLfloat left, GLfloat right, GLfloat bottom, GLfloat top)
+{
+	mat4 ortho;
+	mat4_orthographic(&ortho, left, right, bottom, top, -1.0f, 1.0f);
+	glMultMatrixf(ortho.data);
 }
 
 /**

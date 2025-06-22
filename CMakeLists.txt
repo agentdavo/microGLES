@@ -44,6 +44,7 @@ set(SOURCE_FILES
     src/ktx_loader.c
     src/command_buffer.c
     src/x11_window.c
+    src/glx.c
     src/gl_init.c
     src/pipeline/gl_framebuffer.c
     src/pipeline/gl_vertex.c
