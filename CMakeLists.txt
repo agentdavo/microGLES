@@ -36,6 +36,7 @@ set(SOURCE_FILES
     src/extensions/gl_ext_OES_required_internalformat.c
     src/extensions/gl_ext_OES_blend_eq_sep.c
     src/extensions/gl_ext_OES_fixed_point.c
+    src/fixed_point.c
     src/gl_context.c
     src/gl_thread.c
     src/texture_cache.c
@@ -73,6 +74,7 @@ set(HEADER_FILES
     src/gl_api_vertex_array.h
     src/gl_state.h
     src/gl_utils.h
+    src/fixed_point.h
     src/matrix_utils.h
     src/gl_types.h
     src/pipeline/gl_framebuffer.h
