@@ -34,5 +34,7 @@ void GL_cleanup_with_framebuffer(Framebuffer *fb);
 
 // Retrieve the framebuffer created by GL_init_with_framebuffer
 Framebuffer *GL_get_default_framebuffer(void);
+void GL_swap_buffers(void);
+void GL_finish(void);
 
 #endif // GL_INIT_H

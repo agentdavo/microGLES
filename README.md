@@ -231,3 +231,4 @@ Pull requests that break conformance or style are rejected automatically.
 ## License
 
 MIT — see [`LICENSE`](LICENSE).
+\nMinor internal improvements to X11 and GLX

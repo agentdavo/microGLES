@@ -167,6 +167,7 @@ typedef struct {
 } RenderContext;
 
 void context_init(void);
+void context_cleanup(void);
 RenderContext *context_get(void);
 RenderContext *GetCurrentContext(void);
 void context_update_modelview_matrix(const mat4 *mat);
