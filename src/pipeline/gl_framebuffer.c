@@ -39,6 +39,7 @@ Framebuffer *framebuffer_create(uint32_t width, uint32_t height)
 		return NULL;
 	fb->width = width;
 	fb->height = height;
+	atomic_init(&fb->ref_count, 1);
 	size_t pixels = (size_t)width * height;
 	fb->color_buffer = (_Atomic uint32_t *)tracked_malloc(
 		pixels * sizeof(_Atomic uint32_t));
@@ -79,14 +80,13 @@ Framebuffer *framebuffer_create(uint32_t width, uint32_t height)
 	return fb;
 }
 
-void framebuffer_destroy(Framebuffer *fb)
+void framebuffer_retain(Framebuffer *fb)
 {
-	if (!fb)
-		return;
-	if (thread_pool_active()) {
-		command_buffer_flush();
-		thread_pool_wait();
-	}
+	atomic_fetch_add_explicit(&fb->ref_count, 1, memory_order_relaxed);
+}
+
+static void framebuffer_free(Framebuffer *fb)
+{
 	size_t pixels = (size_t)fb->width * fb->height;
 	tracked_free((void *)fb->color_buffer,
 		     pixels * sizeof(_Atomic uint32_t));
@@ -98,6 +98,27 @@ void framebuffer_destroy(Framebuffer *fb)
 		tracked_free(fb->tiles, tile_count * sizeof(FramebufferTile));
 	}
 	tracked_free(fb, sizeof(Framebuffer));
+}
+
+void framebuffer_release(Framebuffer *fb)
+{
+	if (!fb)
+		return;
+	if (atomic_fetch_sub_explicit(&fb->ref_count, 1,
+				      memory_order_acq_rel) == 1) {
+		framebuffer_free(fb);
+	}
+}
+
+void framebuffer_destroy(Framebuffer *fb)
+{
+	if (!fb)
+		return;
+	if (thread_pool_active()) {
+		command_buffer_flush();
+		thread_pool_wait();
+	}
+	framebuffer_release(fb);
 }
 
 void framebuffer_clear(Framebuffer *fb, uint32_t clear_color, float clear_depth,
@@ -137,6 +158,7 @@ static void clear_task_func(void *arg)
 {
 	ClearTask *t = (ClearTask *)arg;
 	framebuffer_clear(t->fb, t->color, t->depth, t->stencil);
+	framebuffer_release(t->fb);
 	MT_FREE(t, STAGE_FRAMEBUFFER);
 	LOG_DEBUG("framebuffer_clear_async task completed");
 }
@@ -153,6 +175,7 @@ void framebuffer_clear_async(Framebuffer *fb, uint32_t clear_color,
 		LOG_ERROR("Failed to allocate ClearTask");
 		return;
 	}
+	framebuffer_retain(fb);
 	*task = (ClearTask){ fb, clear_color, clear_depth, clear_stencil };
 	command_buffer_record_task(clear_task_func, task, STAGE_FRAMEBUFFER);
 }

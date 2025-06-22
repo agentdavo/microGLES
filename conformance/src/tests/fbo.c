@@ -41,9 +41,21 @@ int test_framebuffer_module(void)
 	return ok;
 }
 
+int test_async_clear_destroy(void)
+{
+	Framebuffer *fb = framebuffer_create(8, 8);
+	if (!fb)
+		return 0;
+	framebuffer_clear_async(fb, 0x00000000u, 1.0f, 0);
+	framebuffer_destroy(fb);
+	thread_pool_wait();
+	return 1;
+}
+
 static const struct Test tests[] = {
 	{ "framebuffer_complete", test_framebuffer_complete },
 	{ "framebuffer_module", test_framebuffer_module },
+	{ "async_clear_destroy", test_async_clear_destroy },
 };
 
 const struct Test *get_fbo_tests(size_t *count)
