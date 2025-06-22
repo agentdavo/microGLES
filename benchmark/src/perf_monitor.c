@@ -196,7 +196,9 @@ int main(int argc, char **argv)
 	} else {
 		LOG_INFO("x11_window_create succeeded");
 	}
+
 	Display *dpy = NULL;
+
 	GLXContext glx_ctx = NULL;
 	if (win) {
 		dpy = x11_window_get_display(win);
