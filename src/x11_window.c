@@ -85,3 +85,8 @@ void x11_window_show_image(X11Window *w, const struct Framebuffer *fb)
 		  height);
 	XFlush(w->display);
 }
+
+Display *x11_window_get_display(const X11Window *w)
+{
+	return w ? w->display : NULL;
+}

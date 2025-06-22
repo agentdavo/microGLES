@@ -7,6 +7,7 @@
 
 typedef struct uGLESXContext {
 	X11Window *win;
+	Display *display;
 } uGLESXContext;
 
 static uGLESXContext *current_ctx;
@@ -32,7 +33,6 @@ XVisualInfo *glXChooseVisual(Display *dpy, int screen, int *attribList)
 GLXContext glXCreateContext(Display *dpy, XVisualInfo *vis,
 			    GLXContext shareList, Bool direct)
 {
-	(void)dpy;
 	(void)vis;
 	(void)shareList;
 	(void)direct;
@@ -40,6 +40,7 @@ GLXContext glXCreateContext(Display *dpy, XVisualInfo *vis,
 	if (!ctx)
 		return NULL;
 	ctx->win = NULL;
+	ctx->display = dpy;
 	return (GLXContext)ctx;
 }
 
@@ -57,6 +58,7 @@ Bool glXMakeCurrent(Display *dpy, GLXDrawable drawable, GLXContext ctx)
 	(void)dpy;
 	uGLESXContext *c = (uGLESXContext *)ctx;
 	c->win = (X11Window *)(uintptr_t)drawable;
+	c->display = x11_window_get_display(c->win);
 	current_ctx = c;
 	return True;
 }
@@ -68,6 +70,8 @@ void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
 	if (!current_ctx || !current_ctx->win)
 		return;
 	x11_window_show_image(current_ctx->win, GL_get_default_framebuffer());
+	if (current_ctx->display)
+		XFlush(current_ctx->display);
 }
 
 void glXCopyContext(Display *dpy, GLXContext src, GLXContext dst, GLuint mask)
