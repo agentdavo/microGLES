@@ -2,7 +2,7 @@
 
 #include "matrix_utils.h"
 #include "gl_logger.h" // Ensure logger is initialized before using
-#include <math.h>
+#include "c11_opt.h"
 
 /* Define Pi for angle conversions */
 #ifndef M_PI
@@ -16,9 +16,10 @@
 /* Vector Utility Functions */
 /* ---------------------- */
 
-void vec3_normalize(GLfloat *x, GLfloat *y, GLfloat *z)
+void vec3_normalize(GLfloat *restrict x, GLfloat *restrict y,
+		    GLfloat *restrict z)
 {
-	GLfloat length = sqrtf((*x) * (*x) + (*y) * (*y) + (*z) * (*z));
+	GLfloat length = GL_SQRT((*x) * (*x) + (*y) * (*y) + (*z) * (*z));
 	if (length > 0.0f) {
 		*x /= length;
 		*y /= length;
@@ -32,7 +33,8 @@ void vec3_normalize(GLfloat *x, GLfloat *y, GLfloat *z)
 }
 
 void vec3_cross(GLfloat aX, GLfloat aY, GLfloat aZ, GLfloat bX, GLfloat bY,
-		GLfloat bZ, GLfloat *outX, GLfloat *outY, GLfloat *outZ)
+		GLfloat bZ, GLfloat *restrict outX, GLfloat *restrict outY,
+		GLfloat *restrict outZ)
 {
 	*outX = aY * bZ - aZ * bY;
 	*outY = aZ * bX - aX * bZ;
@@ -47,11 +49,12 @@ GLfloat vec3_dot(GLfloat aX, GLfloat aY, GLfloat aZ, GLfloat bX, GLfloat bY,
 
 GLfloat vec3_magnitude(GLfloat x, GLfloat y, GLfloat z)
 {
-	return sqrtf(x * x + y * y + z * z);
+	return GL_SQRT(x * x + y * y + z * z);
 }
 
 void vec3_add(GLfloat aX, GLfloat aY, GLfloat aZ, GLfloat bX, GLfloat bY,
-	      GLfloat bZ, GLfloat *outX, GLfloat *outY, GLfloat *outZ)
+	      GLfloat bZ, GLfloat *restrict outX, GLfloat *restrict outY,
+	      GLfloat *restrict outZ)
 {
 	*outX = aX + bX;
 	*outY = aY + bY;
@@ -59,7 +62,8 @@ void vec3_add(GLfloat aX, GLfloat aY, GLfloat aZ, GLfloat bX, GLfloat bY,
 }
 
 void vec3_subtract(GLfloat aX, GLfloat aY, GLfloat aZ, GLfloat bX, GLfloat bY,
-		   GLfloat bZ, GLfloat *outX, GLfloat *outY, GLfloat *outZ)
+		   GLfloat bZ, GLfloat *restrict outX, GLfloat *restrict outY,
+		   GLfloat *restrict outZ)
 {
 	*outX = aX - bX;
 	*outY = aY - bY;
@@ -73,7 +77,7 @@ void vec3_subtract(GLfloat aX, GLfloat aY, GLfloat aZ, GLfloat bX, GLfloat bY,
 /**
  * @brief Sets the matrix to the identity matrix.
  */
-void mat4_identity(mat4 *mat)
+void mat4_identity(mat4 *restrict mat)
 {
 	/* Unrolled loop for performance */
 	mat->data[0] = 1.0f;
@@ -97,7 +101,7 @@ void mat4_identity(mat4 *mat)
 /**
  * @brief Copies the source matrix to the destination matrix.
  */
-void mat4_copy(mat4 *dest, const mat4 *src)
+void mat4_copy(mat4 *restrict dest, const mat4 *restrict src)
 {
 	/* Unrolled copy for performance */
 	dest->data[0] = src->data[0];
@@ -121,7 +125,8 @@ void mat4_copy(mat4 *dest, const mat4 *src)
 /**
  * @brief Multiplies two matrices: result = a * b.
  */
-void mat4_multiply(mat4 *result, const mat4 *a, const mat4 *b)
+void mat4_multiply(mat4 *restrict result, const mat4 *restrict a,
+		   const mat4 *restrict b)
 {
 	const GLfloat *ap = a->data;
 	const GLfloat *bp = b->data;
@@ -163,7 +168,7 @@ void mat4_multiply(mat4 *result, const mat4 *a, const mat4 *b)
  * @param mat The matrix to invert. The result overwrites this matrix.
  * @return 1 if the matrix was successfully inverted, 0 otherwise.
  */
-int mat4_inverse(mat4 *mat)
+int mat4_inverse(mat4 *restrict mat)
 {
 	GLfloat inv[16], det;
 	int i;
@@ -299,7 +304,7 @@ int mat4_inverse(mat4 *mat)
 /**
  * @brief Transposes a 4x4 matrix.
  */
-void mat4_transpose(mat4 *mat)
+void mat4_transpose(mat4 *restrict mat)
 {
 	/* Unrolled transpose for performance */
 	GLfloat temp;
@@ -332,7 +337,7 @@ void mat4_transpose(mat4 *mat)
 /**
  * @brief Applies a translation to the matrix.
  */
-void mat4_translate(mat4 *mat, GLfloat x, GLfloat y, GLfloat z)
+void mat4_translate(mat4 *restrict mat, GLfloat x, GLfloat y, GLfloat z)
 {
 	/* Unrolled translation application */
 	mat->data[12] += mat->data[0] * x + mat->data[4] * y + mat->data[8] * z;
@@ -346,7 +351,7 @@ void mat4_translate(mat4 *mat, GLfloat x, GLfloat y, GLfloat z)
 /**
  * @brief Applies a scaling transformation to the matrix.
  */
-void mat4_scale(mat4 *mat, GLfloat x, GLfloat y, GLfloat z)
+void mat4_scale(mat4 *restrict mat, GLfloat x, GLfloat y, GLfloat z)
 {
 	/* Unrolled scaling application */
 	mat->data[0] *= x;
@@ -368,7 +373,7 @@ void mat4_scale(mat4 *mat, GLfloat x, GLfloat y, GLfloat z)
 /**
  * @brief Applies uniform scaling to the matrix.
  */
-void mat4_scale_uniform(mat4 *mat, GLfloat scale)
+void mat4_scale_uniform(mat4 *restrict mat, GLfloat scale)
 {
 	mat4_scale(mat, scale, scale, scale);
 }
@@ -376,7 +381,7 @@ void mat4_scale_uniform(mat4 *mat, GLfloat scale)
 /**
  * @brief Applies a rotation around the X-axis to the matrix.
  */
-void mat4_rotate_x(mat4 *mat, GLfloat angle)
+void mat4_rotate_x(mat4 *restrict mat, GLfloat angle)
 {
 	GLfloat rad = DEG2RAD(angle);
 	GLfloat c = cosf(rad);
@@ -399,7 +404,7 @@ void mat4_rotate_x(mat4 *mat, GLfloat angle)
 /**
  * @brief Applies a rotation around the Y-axis to the matrix.
  */
-void mat4_rotate_y(mat4 *mat, GLfloat angle)
+void mat4_rotate_y(mat4 *restrict mat, GLfloat angle)
 {
 	GLfloat rad = DEG2RAD(angle);
 	GLfloat c = cosf(rad);
@@ -422,7 +427,7 @@ void mat4_rotate_y(mat4 *mat, GLfloat angle)
 /**
  * @brief Applies a rotation around the Z-axis to the matrix.
  */
-void mat4_rotate_z(mat4 *mat, GLfloat angle)
+void mat4_rotate_z(mat4 *restrict mat, GLfloat angle)
 {
 	GLfloat rad = DEG2RAD(angle);
 	GLfloat c = cosf(rad);
@@ -445,7 +450,8 @@ void mat4_rotate_z(mat4 *mat, GLfloat angle)
 /**
  * @brief Applies a rotation around an arbitrary axis to the matrix.
  */
-void mat4_rotate_axis(mat4 *mat, GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
+void mat4_rotate_axis(mat4 *restrict mat, GLfloat angle, GLfloat x, GLfloat y,
+		      GLfloat z)
 {
 	GLfloat rad = DEG2RAD(angle);
 	GLfloat c = cosf(rad);
@@ -453,7 +459,7 @@ void mat4_rotate_axis(mat4 *mat, GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
 	GLfloat one_minus_c = 1.0f - c;
 
 	/* Normalize the axis vector */
-	GLfloat length = sqrtf(x * x + y * y + z * z);
+	GLfloat length = GL_SQRT(x * x + y * y + z * z);
 	if (length == 0.0f) {
 		LOG_WARN("mat4_rotate_axis: Zero-length axis vector.");
 		return;
@@ -484,7 +490,7 @@ void mat4_rotate_axis(mat4 *mat, GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
 /**
  * @brief Creates a lookAt view matrix.
  */
-void mat4_look_at(mat4 *mat, GLfloat eyeX, GLfloat eyeY, GLfloat eyeZ,
+void mat4_look_at(mat4 *restrict mat, GLfloat eyeX, GLfloat eyeY, GLfloat eyeZ,
 		  GLfloat centerX, GLfloat centerY, GLfloat centerZ,
 		  GLfloat upX, GLfloat upY, GLfloat upZ)
 {
@@ -528,8 +534,8 @@ void mat4_look_at(mat4 *mat, GLfloat eyeX, GLfloat eyeY, GLfloat eyeZ,
 /**
  * @brief Creates a perspective projection matrix.
  */
-void mat4_perspective(mat4 *mat, GLfloat fovy, GLfloat aspect, GLfloat zNear,
-		      GLfloat zFar)
+void mat4_perspective(mat4 *restrict mat, GLfloat fovy, GLfloat aspect,
+		      GLfloat zNear, GLfloat zFar)
 {
 	GLfloat f = 1.0f / tanf(DEG2RAD(fovy) / 2.0f);
 
@@ -546,8 +552,8 @@ void mat4_perspective(mat4 *mat, GLfloat fovy, GLfloat aspect, GLfloat zNear,
 /**
  * @brief Creates a frustum projection matrix.
  */
-void mat4_frustum(mat4 *mat, GLfloat left, GLfloat right, GLfloat bottom,
-		  GLfloat top, GLfloat nearVal, GLfloat farVal)
+void mat4_frustum(mat4 *restrict mat, GLfloat left, GLfloat right,
+		  GLfloat bottom, GLfloat top, GLfloat nearVal, GLfloat farVal)
 {
 	GLfloat rl = right - left;
 	GLfloat tb = top - bottom;
@@ -567,8 +573,9 @@ void mat4_frustum(mat4 *mat, GLfloat left, GLfloat right, GLfloat bottom,
 /**
  * @brief Creates an orthographic projection matrix.
  */
-void mat4_orthographic(mat4 *mat, GLfloat left, GLfloat right, GLfloat bottom,
-		       GLfloat top, GLfloat nearVal, GLfloat farVal)
+void mat4_orthographic(mat4 *restrict mat, GLfloat left, GLfloat right,
+		       GLfloat bottom, GLfloat top, GLfloat nearVal,
+		       GLfloat farVal)
 {
 	GLfloat rl = right - left;
 	GLfloat tb = top - bottom;
@@ -587,7 +594,7 @@ void mat4_orthographic(mat4 *mat, GLfloat left, GLfloat right, GLfloat bottom,
  * @brief Performs a perspective divide on the matrix, converting from clip
  * space to normalized device coordinates.
  */
-void mat4_perspective_divide(mat4 *mat)
+void mat4_perspective_divide(mat4 *restrict mat)
 {
 	if (mat->data[15] == 0.0f) {
 		LOG_WARN(
@@ -621,10 +628,10 @@ void mat4_perspective_divide(mat4 *mat)
 /**
  * @brief Normalizes a quaternion.
  */
-void quat_normalize(Quaternion *q)
+void quat_normalize(Quaternion *restrict q)
 {
 	GLfloat mag =
-		sqrtf(q->w * q->w + q->x * q->x + q->y * q->y + q->z * q->z);
+		GL_SQRT(q->w * q->w + q->x * q->x + q->y * q->y + q->z * q->z);
 	if (mag > 0.0f) {
 		q->w /= mag;
 		q->x /= mag;
@@ -638,8 +645,8 @@ void quat_normalize(Quaternion *q)
 /**
  * @brief Creates a quaternion from an axis and angle.
  */
-void quat_from_axis_angle(Quaternion *q, GLfloat angle, GLfloat x, GLfloat y,
-			  GLfloat z)
+void quat_from_axis_angle(Quaternion *restrict q, GLfloat angle, GLfloat x,
+			  GLfloat y, GLfloat z)
 {
 	GLfloat rad = DEG2RAD(angle);
 	GLfloat half_rad = rad / 2.0f;
@@ -655,7 +662,7 @@ void quat_from_axis_angle(Quaternion *q, GLfloat angle, GLfloat x, GLfloat y,
 /**
  * @brief Converts a quaternion to a rotation matrix.
  */
-void quat_to_mat4(const Quaternion *q, mat4 *mat)
+void quat_to_mat4(const Quaternion *restrict q, mat4 *restrict mat)
 {
 	mat4_identity(mat);
 
@@ -672,7 +679,8 @@ void quat_to_mat4(const Quaternion *q, mat4 *mat)
 	mat->data[10] = 1.0f - 2.0f * (q->x * q->x + q->y * q->y);
 }
 
-void mat4_transform_vec4(const mat4 *mat, const GLfloat in[4], GLfloat out[4])
+void mat4_transform_vec4(const mat4 *restrict mat, const GLfloat in[restrict 4],
+			 GLfloat out[restrict 4])
 {
 	out[0] = mat->data[0] * in[0] + mat->data[4] * in[1] +
 		 mat->data[8] * in[2] + mat->data[12] * in[3];
