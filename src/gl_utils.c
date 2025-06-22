@@ -76,6 +76,11 @@ void tracked_free(void *ptr, size_t size)
 // Validates framebuffer completeness.
 GLboolean ValidateFramebufferCompleteness(void)
 {
+#ifndef GL_STATE_DEFINED
+    LOG_ERROR("ValidateFramebufferCompleteness: gl_state not defined");
+    glSetError(GL_INVALID_FRAMEBUFFER_OPERATION_OES);
+    return GL_FALSE;
+#else
     Framebuffer *fb = gl_state.bound_framebuffer ? gl_state.bound_framebuffer->fb : NULL;
     if (!fb) {
         LOG_ERROR("ValidateFramebufferCompleteness: No framebuffer bound");
@@ -90,7 +95,14 @@ GLboolean ValidateFramebufferCompleteness(void)
         return GL_FALSE;
     }
 
-    // Add more checks (e.g., attachments, format compatibility) as needed
+    // Check buffer allocations
+    if (!fb->color_buffer || !fb->depth_buffer || !fb->stencil_buffer) {
+        LOG_ERROR("ValidateFramebufferCompleteness: Missing buffer allocations");
+        glSetError(GL_INVALID_FRAMEBUFFER_OPERATION_OES);
+        return GL_FALSE;
+    }
+
     LOG_DEBUG("ValidateFramebufferCompleteness: Framebuffer valid");
     return GL_TRUE;
+#endif
 }
