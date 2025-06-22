@@ -95,10 +95,10 @@ GL_API void GL_APIENTRY glGetClipPlanexOES(GLenum plane, GLfixed *equation)
 	}
 	GLfloat eq[4] = { 0, 0, 0, 0 };
 	glGetClipPlanef(plane, eq);
-	equation[0] = (GLfixed)(eq[0] * 65536.0f);
-	equation[1] = (GLfixed)(eq[1] * 65536.0f);
-	equation[2] = (GLfixed)(eq[2] * 65536.0f);
-	equation[3] = (GLfixed)(eq[3] * 65536.0f);
+	equation[0] = float_to_fixed(eq[0]);
+	equation[1] = float_to_fixed(eq[1]);
+	equation[2] = float_to_fixed(eq[2]);
+	equation[3] = float_to_fixed(eq[3]);
 }
 
 GL_API void GL_APIENTRY glGetFixedvOES(GLenum pname, GLfixed *params)
@@ -110,7 +110,7 @@ GL_API void GL_APIENTRY glGetFixedvOES(GLenum pname, GLfixed *params)
 	GLfloat tmp[4] = { 0, 0, 0, 0 };
 	glGetFloatv(pname, tmp);
 	for (int i = 0; i < 4; ++i)
-		params[i] = (GLfixed)(tmp[i] * 65536.0f);
+		params[i] = float_to_fixed(tmp[i]);
 }
 
 GL_API void GL_APIENTRY glGetLightxvOES(GLenum light, GLenum pname,
@@ -122,10 +122,10 @@ GL_API void GL_APIENTRY glGetLightxvOES(GLenum light, GLenum pname,
 	}
 	GLfloat tmp[4] = { 0, 0, 0, 0 };
 	glGetLightfv(light, pname, tmp);
-	params[0] = (GLfixed)(tmp[0] * 65536.0f);
-	params[1] = (GLfixed)(tmp[1] * 65536.0f);
-	params[2] = (GLfixed)(tmp[2] * 65536.0f);
-	params[3] = (GLfixed)(tmp[3] * 65536.0f);
+	params[0] = float_to_fixed(tmp[0]);
+	params[1] = float_to_fixed(tmp[1]);
+	params[2] = float_to_fixed(tmp[2]);
+	params[3] = float_to_fixed(tmp[3]);
 }
 
 GL_API void GL_APIENTRY glGetMaterialxvOES(GLenum face, GLenum pname,
@@ -137,10 +137,10 @@ GL_API void GL_APIENTRY glGetMaterialxvOES(GLenum face, GLenum pname,
 	}
 	GLfloat tmp[4] = { 0, 0, 0, 0 };
 	glGetMaterialfv(face, pname, tmp);
-	params[0] = (GLfixed)(tmp[0] * 65536.0f);
-	params[1] = (GLfixed)(tmp[1] * 65536.0f);
-	params[2] = (GLfixed)(tmp[2] * 65536.0f);
-	params[3] = (GLfixed)(tmp[3] * 65536.0f);
+	params[0] = float_to_fixed(tmp[0]);
+	params[1] = float_to_fixed(tmp[1]);
+	params[2] = float_to_fixed(tmp[2]);
+	params[3] = float_to_fixed(tmp[3]);
 }
 
 GL_API void GL_APIENTRY glGetTexEnvxvOES(GLenum target, GLenum pname,
@@ -152,10 +152,10 @@ GL_API void GL_APIENTRY glGetTexEnvxvOES(GLenum target, GLenum pname,
 	}
 	GLfloat tmp[4] = { 0, 0, 0, 0 };
 	glGetTexEnvfv(target, pname, tmp);
-	params[0] = (GLfixed)(tmp[0] * 65536.0f);
-	params[1] = (GLfixed)(tmp[1] * 65536.0f);
-	params[2] = (GLfixed)(tmp[2] * 65536.0f);
-	params[3] = (GLfixed)(tmp[3] * 65536.0f);
+	params[0] = float_to_fixed(tmp[0]);
+	params[1] = float_to_fixed(tmp[1]);
+	params[2] = float_to_fixed(tmp[2]);
+	params[3] = float_to_fixed(tmp[3]);
 }
 
 GL_API void GL_APIENTRY glGetTexParameterxvOES(GLenum target, GLenum pname,
@@ -167,10 +167,10 @@ GL_API void GL_APIENTRY glGetTexParameterxvOES(GLenum target, GLenum pname,
 	}
 	GLfloat tmp[4] = { 0, 0, 0, 0 };
 	glGetTexParameterfv(target, pname, tmp);
-	params[0] = (GLfixed)(tmp[0] * 65536.0f);
-	params[1] = (GLfixed)(tmp[1] * 65536.0f);
-	params[2] = (GLfixed)(tmp[2] * 65536.0f);
-	params[3] = (GLfixed)(tmp[3] * 65536.0f);
+	params[0] = float_to_fixed(tmp[0]);
+	params[1] = float_to_fixed(tmp[1]);
+	params[2] = float_to_fixed(tmp[2]);
+	params[3] = float_to_fixed(tmp[3]);
 }
 
 GL_API void GL_APIENTRY glLightModelxOES(GLenum pname, GLfixed param)
@@ -413,8 +413,8 @@ GL_API void GL_APIENTRY glGetTexGenxvOES(GLenum coord, GLenum pname,
 	}
 	GLfloat fp[4] = { 0, 0, 0, 0 };
 	glGetTexGenfvOES(coord, pname, fp);
-	params[0] = (GLfixed)(fp[0] * 65536.0f);
-	params[1] = (GLfixed)(fp[1] * 65536.0f);
-	params[2] = (GLfixed)(fp[2] * 65536.0f);
-	params[3] = (GLfixed)(fp[3] * 65536.0f);
+	params[0] = float_to_fixed(fp[0]);
+	params[1] = float_to_fixed(fp[1]);
+	params[2] = float_to_fixed(fp[2]);
+	params[3] = float_to_fixed(fp[3]);
 }

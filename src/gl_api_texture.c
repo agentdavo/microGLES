@@ -291,9 +291,10 @@ GL_API void GL_APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param)
 		break;
 	default:
 		glSetError(GL_INVALID_ENUM);
-		break;
+		return;
 	}
-	context_set_texture_env(unit, pname, &param);
+	if (pname == GL_TEXTURE_ENV_MODE)
+		context_set_texture_env(unit, pname, &param);
 }
 
 GL_API void GL_APIENTRY glTexEnvfv(GLenum target, GLenum pname,

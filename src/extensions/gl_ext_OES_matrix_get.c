@@ -1,6 +1,7 @@
 #include "gl_ext_common.h"
 #include <GLES/glext.h>
 #include <math.h>
+#include "../gl_utils.h"
 EXT_REGISTER("GL_OES_matrix_get")
 __attribute__((used)) int ext_link_dummy_OES_matrix_get = 0;
 
@@ -13,7 +14,7 @@ GLbitfield glQueryMatrixxOES(GLfixed *mantissa, GLint *exponent)
 		float val = gl_state.modelview_matrix.data[i];
 		int exp;
 		float m = frexpf(val, &exp);
-		mantissa[i] = (GLfixed)(m * 65536.0f);
+		mantissa[i] = float_to_fixed(m);
 		exponent[i] = exp;
 	}
 	return status;

@@ -486,5 +486,5 @@ GL_API void GL_APIENTRY glGetTexParameterxv(GLenum target, GLenum pname,
 	}
 	GLfloat tmp;
 	glGetTexParameterfv(target, pname, &tmp);
-	*params = (GLfixed)(tmp * 65536.0f);
+	*params = float_to_fixed(tmp);
 }

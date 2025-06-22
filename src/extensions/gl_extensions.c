@@ -645,15 +645,10 @@ GLbitfield glQueryMatrixxOES(GLfixed *mantissa, GLint *exponent)
 		float val = gl_state.modelview_matrix.data[i];
 		int exp;
 		float m = frexpf(val, &exp);
-		mantissa[i] = (GLfixed)(m * 65536.0f);
+		mantissa[i] = float_to_fixed(m);
 		exponent[i] = exp;
 	}
 	return status;
-}
-
-params[1] = (GLfixed)(fp[1] * 65536.0f);
-params[2] = (GLfixed)(fp[2] * 65536.0f);
-params[3] = (GLfixed)(fp[3] * 65536.0f);
 }
 
 GL_API void GL_APIENTRY glRenderbufferStorageMultisampleIMG(

@@ -548,10 +548,52 @@ GL_API void GL_APIENTRY glGetFixedv(GLenum pname, GLfixed *params)
 {
 	if (!params)
 		return;
-	GLfloat tmp[16] = { 0 };
-	glGetFloatv(pname, tmp);
-	for (int i = 0; i < 16; ++i)
-		params[i] = float_to_fixed(tmp[i]);
+	switch (pname) {
+	case GL_COLOR_CLEAR_VALUE:
+		params[0] = float_to_fixed(gl_state.clear_color[0]);
+		params[1] = float_to_fixed(gl_state.clear_color[1]);
+		params[2] = float_to_fixed(gl_state.clear_color[2]);
+		params[3] = float_to_fixed(gl_state.clear_color[3]);
+		break;
+	case GL_DEPTH_CLEAR_VALUE:
+		params[0] = float_to_fixed(gl_state.clear_depth);
+		break;
+	case GL_MODELVIEW_MATRIX:
+		for (int i = 0; i < 4; ++i)
+			params[i] = float_to_fixed(
+				gl_state.modelview_matrix.data[i]);
+		break;
+	case GL_PROJECTION_MATRIX:
+		for (int i = 0; i < 4; ++i)
+			params[i] = float_to_fixed(
+				gl_state.projection_matrix.data[i]);
+		break;
+	case GL_TEXTURE_MATRIX:
+		for (int i = 0; i < 4; ++i)
+			params[i] =
+				float_to_fixed(gl_state.texture_matrix.data[i]);
+		break;
+	case GL_LIGHT_MODEL_AMBIENT:
+		for (int i = 0; i < 4; ++i)
+			params[i] =
+				float_to_fixed(gl_state.light_model_ambient[i]);
+		break;
+	case GL_DEPTH_RANGE:
+		params[0] = float_to_fixed(gl_state.depth_range_near);
+		params[1] = float_to_fixed(gl_state.depth_range_far);
+		break;
+	case GL_SAMPLE_COVERAGE_VALUE:
+		params[0] = float_to_fixed(gl_state.sample_coverage_value);
+		break;
+	case GL_ALPHA_TEST_REF:
+		params[0] = float_to_fixed(gl_state.alpha_ref);
+		break;
+	case GL_LINE_WIDTH:
+		params[0] = float_to_fixed(gl_state.line_width);
+		break;
+	default:
+		break;
+	}
 }
 
 GL_API void GL_APIENTRY glGetIntegerv(GLenum pname, GLint *data)
