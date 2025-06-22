@@ -22,6 +22,10 @@
 EXT_REGISTER("GL_OES_fixed_point")
 __attribute__((used)) int ext_link_dummy_OES_fixed_point = 0;
 
+/* Forward declarations for internal helpers */
+GL_API void GL_APIENTRY glTexGenfvOES(GLenum coord, GLenum pname,
+				      const GLfloat *params);
+
 GL_API void GL_APIENTRY glAlphaFuncxOES(GLenum func, GLfixed ref)
 {
 	glAlphaFuncx(func, ref);
