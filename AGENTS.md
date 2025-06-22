@@ -58,4 +58,4 @@ benchmark/                   perf demos
 3. Benchmarks show ≤ 5 % perf regression (or explain).
 4. `clang-format` shows no diff.
 5. Update `README.md` and `CONFORMANCE.md` if behaviour changes.
-6. Push / MR.
+6. Push changes and open a merge request.
