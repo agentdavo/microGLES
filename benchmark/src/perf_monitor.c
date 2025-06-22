@@ -12,7 +12,6 @@
 #endif
 #include <stdio.h>
 #include <string.h>
-#include <stdbool.h>
 #include <time.h>
 #include <unistd.h>
 #include <sys/syscall.h>
@@ -61,10 +60,8 @@ static double ts_diff(const struct timespec *a, const struct timespec *b)
 
 int main(int argc, char **argv)
 {
-	bool profile = false;
-	for (int i = 1; i < argc; ++i)
-		if (strcmp(argv[i], "--profile") == 0)
-			profile = true;
+	(void)argc;
+	(void)argv;
 	if (!logger_init("perf_monitor.log", LOG_LEVEL_INFO)) {
 		fprintf(stderr, "Failed to initialize logger.\n");
 		return -1;
@@ -78,8 +75,7 @@ int main(int argc, char **argv)
 		return -1;
 	}
 	command_buffer_init();
-	if (profile)
-		thread_profile_start();
+	thread_profile_start();
 	InitGLState(&gl_state);
 	Framebuffer *fb = GL_init_with_framebuffer(1024, 768);
 	if (!fb) {
@@ -109,12 +105,20 @@ int main(int argc, char **argv)
 	glTexCoordPointer(2, GL_FLOAT, 0, cube_tex);
 	glEnable(GL_FOG);
 	glFogf(GL_FOG_DENSITY, 0.5f);
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT0);
+	glLightModelfv(GL_LIGHT_MODEL_AMBIENT,
+		       (GLfloat[]){ 0.1f, 0.1f, 0.1f, 1.0f });
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, (GLfloat[]){ 0.9f, 0.9f, 0.9f, 1.0f });
+	glLightfv(GL_LIGHT0, GL_POSITION,
+		  (GLfloat[]){ 0.0f, 0.0f, 2.0f, 0.0f });
 	mat4 model;
 	mat4_identity(&model);
 	for (int sec = 0; sec < 10; ++sec) {
-		struct timespec start, now, cstart, cend;
+		struct timespec start, now;
+		uint64_t cstart, cend;
 		clock_gettime(CLOCK_MONOTONIC, &start);
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cstart);
+		cstart = thread_get_cycles();
 		double polys = 0.0, pix = 0.0;
 		do {
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -135,15 +139,16 @@ int main(int argc, char **argv)
 #endif
 			clock_gettime(CLOCK_MONOTONIC, &now);
 		} while (ts_diff(&now, &start) < 1.0);
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cend);
+		cend = thread_get_cycles();
 		double wall = ts_diff(&now, &start);
-		double cpu = ts_diff(&cend, &cstart);
-		double cpu_pct = wall > 0.0 ? (cpu / wall) * 100.0 : 0.0;
+		double cpu_us = thread_cycles_to_us(cend - cstart);
+		double cpu_pct = wall > 0.0 ? (cpu_us / (wall * 1e6)) * 100.0 :
+					      0.0;
 		printf("TID %ld | Mem %zu KB | CPU %5.1f%% | Poly %6.2f MP/s | Pix %6.2f MP/s\n",
 		       get_tid(), memory_tracker_current() / 1024, cpu_pct,
 		       polys / wall / 1e6, pix / wall / 1e6);
-		if (profile)
-			thread_profile_report();
+		thread_profile_report();
+		thread_profile_start();
 	}
 #ifdef HAVE_X11
 	if (win)
