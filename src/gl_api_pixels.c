@@ -60,9 +60,9 @@ GL_API void GL_APIENTRY glReadPixels(GLint x, GLint y, GLsizei width,
 				fb, (uint32_t)(x + i), (uint32_t)(y + j));
 			uint8_t *dst =
 				(uint8_t *)pixels + (size_t)(j * width + i) * 4;
-			dst[0] = c & 0xFF;
+			dst[0] = (c >> 16) & 0xFF;
 			dst[1] = (c >> 8) & 0xFF;
-			dst[2] = (c >> 16) & 0xFF;
+			dst[2] = c & 0xFF;
 			dst[3] = (c >> 24) & 0xFF;
 		}
 	}
