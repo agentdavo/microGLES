@@ -1,6 +1,7 @@
 #include "gl_vertex.h"
 #include "gl_primitive.h"
 #include "../gl_context.h"
+#include "../gl_logger.h"
 #define PIPELINE_USE_GLSTATE 0
 _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "../gl_memory_tracker.h"
@@ -160,6 +161,15 @@ void process_vertex_job(void *task_data)
 	apply_lighting(&v0);
 	apply_lighting(&v1);
 	apply_lighting(&v2);
+	LOG_DEBUG("Vertex0: (%.2f, %.2f, %.2f, %.2f) col(%.2f %.2f %.2f %.2f)",
+		  v0.x, v0.y, v0.z, v0.w, v0.color[0], v0.color[1], v0.color[2],
+		  v0.color[3]);
+	LOG_DEBUG("Vertex1: (%.2f, %.2f, %.2f, %.2f) col(%.2f %.2f %.2f %.2f)",
+		  v1.x, v1.y, v1.z, v1.w, v1.color[0], v1.color[1], v1.color[2],
+		  v1.color[3]);
+	LOG_DEBUG("Vertex2: (%.2f, %.2f, %.2f, %.2f) col(%.2f %.2f %.2f %.2f)",
+		  v2.x, v2.y, v2.z, v2.w, v2.color[0], v2.color[1], v2.color[2],
+		  v2.color[3]);
 	PrimitiveJob *pjob = MT_ALLOC(sizeof(PrimitiveJob), STAGE_PRIMITIVE);
 	if (!pjob)
 		return;

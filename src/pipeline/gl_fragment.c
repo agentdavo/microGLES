@@ -288,6 +288,8 @@ void process_fragment_job(void *task_data)
 void process_fragment_tile_job(void *task_data)
 {
 	FragmentTileJob *job = (FragmentTileJob *)task_data;
+	LOG_DEBUG("Fragment tile (%u,%u)-(%u,%u) mode=%s", job->x0, job->y0,
+		  job->x1, job->y1, job->sprite_mode ? "sprite" : "triangle");
 	uint32_t w = job->x1 - job->x0 + 1;
 	uint32_t h = job->y1 - job->y0 + 1;
 
