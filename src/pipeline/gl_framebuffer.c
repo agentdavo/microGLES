@@ -10,6 +10,7 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
 
@@ -31,6 +32,27 @@ static _Thread_local GLenum tl_depth_func;
 static _Thread_local unsigned tl_depth_ver;
 static _Thread_local GLboolean tl_depth_test;
 static pthread_mutex_t fb_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static uint32_t g_env_tile_size = DEFAULT_TILE_SIZE;
+static bool g_tile_size_initialized = false;
+
+static void init_tile_size(void)
+{
+	if (g_tile_size_initialized)
+		return;
+	g_tile_size_initialized = true;
+	const char *var = getenv("TILESIZE");
+	if (!var || !*var)
+		return;
+	if (strcmp(var, "fb") == 0) {
+		g_env_tile_size = 0; /* use framebuffer size */
+		return;
+	}
+	char *end;
+	long val = strtol(var, &end, 10);
+	if (*end == '\0' && val > 0 && val <= 4096)
+		g_env_tile_size = (uint32_t)val;
+}
 
 // Refreshes thread-local depth and stencil state from the current context.
 static inline void refresh_depth_stencil(void)
@@ -69,6 +91,7 @@ Framebuffer *framebuffer_create(uint32_t width, uint32_t height)
 		return NULL;
 	}
 
+	init_tile_size();
 	pthread_mutex_lock(&fb_mutex);
 	Framebuffer *fb = (Framebuffer *)tracked_malloc(sizeof(Framebuffer));
 	if (!fb) {
@@ -108,8 +131,11 @@ Framebuffer *framebuffer_create(uint32_t width, uint32_t height)
 		return NULL;
 	}
 
-	fb->tiles_x = (width + TILE_SIZE - 1) / TILE_SIZE;
-	fb->tiles_y = (height + TILE_SIZE - 1) / TILE_SIZE;
+	fb->tile_size = (g_env_tile_size == 0) ?
+				((width > height) ? width : height) :
+				g_env_tile_size;
+	fb->tiles_x = (width + fb->tile_size - 1) / fb->tile_size;
+	fb->tiles_y = (height + fb->tile_size - 1) / fb->tile_size;
 	size_t tile_count = (size_t)fb->tiles_x * fb->tiles_y;
 	fb->tiles = (FramebufferTile *)tracked_malloc(tile_count *
 						      sizeof(FramebufferTile));
@@ -126,12 +152,57 @@ Framebuffer *framebuffer_create(uint32_t width, uint32_t height)
 	}
 
 	for (size_t i = 0; i < tile_count; ++i) {
-		fb->tiles[i].x0 = (i % fb->tiles_x) * TILE_SIZE;
-		fb->tiles[i].y0 = (i / fb->tiles_x) * TILE_SIZE;
+		fb->tiles[i].x0 = (i % fb->tiles_x) * fb->tile_size;
+		fb->tiles[i].y0 = (i / fb->tiles_x) * fb->tile_size;
+		fb->tiles[i].color = tracked_aligned_alloc(
+			64, fb->tile_size * fb->tile_size *
+				    sizeof(_Atomic uint32_t));
+		fb->tiles[i].depth = tracked_aligned_alloc(
+			64,
+			fb->tile_size * fb->tile_size * sizeof(_Atomic float));
+		fb->tiles[i].stencil = tracked_aligned_alloc(
+			64, fb->tile_size * fb->tile_size *
+				    sizeof(_Atomic uint8_t));
+		if (!fb->tiles[i].color || !fb->tiles[i].depth ||
+		    !fb->tiles[i].stencil) {
+			LOG_ERROR(
+				"framebuffer_create: Failed to allocate tile buffers");
+			for (size_t j = 0; j <= i; ++j) {
+				if (fb->tiles[j].color)
+					tracked_free(
+						fb->tiles[j].color,
+						fb->tile_size * fb->tile_size *
+							sizeof(_Atomic uint32_t));
+				if (fb->tiles[j].depth)
+					tracked_free(
+						fb->tiles[j].depth,
+						fb->tile_size * fb->tile_size *
+							sizeof(_Atomic float));
+				if (fb->tiles[j].stencil)
+					tracked_free(
+						fb->tiles[j].stencil,
+						fb->tile_size * fb->tile_size *
+							sizeof(_Atomic uint8_t));
+			}
+			tracked_free(fb->tiles,
+				     tile_count * sizeof(FramebufferTile));
+			tracked_free(fb->color_buffer,
+				     pixels * sizeof(_Atomic uint32_t));
+			tracked_free(fb->depth_buffer,
+				     pixels * sizeof(_Atomic float));
+			tracked_free(fb->stencil_buffer,
+				     pixels * sizeof(_Atomic uint8_t));
+			tracked_free(fb, sizeof(Framebuffer));
+			pthread_mutex_unlock(&fb_mutex);
+			return NULL;
+		}
 		atomic_flag_clear(&fb->tiles[i].lock);
-		memset(fb->tiles[i].color, 0, sizeof(fb->tiles[i].color));
-		memset(fb->tiles[i].depth, 0, sizeof(fb->tiles[i].depth));
-		memset(fb->tiles[i].stencil, 0, sizeof(fb->tiles[i].stencil));
+		memset(fb->tiles[i].color, 0,
+		       fb->tile_size * fb->tile_size * sizeof(uint32_t));
+		memset(fb->tiles[i].depth, 0,
+		       fb->tile_size * fb->tile_size * sizeof(float));
+		memset(fb->tiles[i].stencil, 0,
+		       fb->tile_size * fb->tile_size * sizeof(uint8_t));
 	}
 
 	framebuffer_clear(fb, 0, 1.0f, 0);
@@ -171,6 +242,20 @@ static void framebuffer_free(Framebuffer *fb)
 			     pixels * sizeof(_Atomic uint8_t));
 	}
 	if (fb->tiles) {
+		for (size_t i = 0; i < tile_count; ++i) {
+			if (fb->tiles[i].color)
+				tracked_free(fb->tiles[i].color,
+					     fb->tile_size * fb->tile_size *
+						     sizeof(_Atomic uint32_t));
+			if (fb->tiles[i].depth)
+				tracked_free(fb->tiles[i].depth,
+					     fb->tile_size * fb->tile_size *
+						     sizeof(_Atomic float));
+			if (fb->tiles[i].stencil)
+				tracked_free(fb->tiles[i].stencil,
+					     fb->tile_size * fb->tile_size *
+						     sizeof(_Atomic uint8_t));
+		}
 		tracked_free(fb->tiles, tile_count * sizeof(FramebufferTile));
 	}
 	tracked_free(fb, sizeof(Framebuffer));
@@ -307,12 +392,12 @@ void framebuffer_set_pixel(Framebuffer *restrict fb, uint32_t x, uint32_t y,
 	size_t stride = fb->width;
 	uint32_t tile_x = x, tile_y = y;
 
-	if (tls_tile && x >= tls_tile->x0 && x < tls_tile->x0 + TILE_SIZE &&
-	    y >= tls_tile->y0 && y < tls_tile->y0 + TILE_SIZE) {
+	if (tls_tile && x >= tls_tile->x0 && x < tls_tile->x0 + fb->tile_size &&
+	    y >= tls_tile->y0 && y < tls_tile->y0 + fb->tile_size) {
 		color_buffer = (_Atomic uint32_t *)tls_tile->color;
 		depth_buffer = (_Atomic float *)tls_tile->depth;
 		stencil_buffer = (_Atomic uint8_t *)tls_tile->stencil;
-		stride = TILE_SIZE;
+		stride = fb->tile_size;
 		tile_x = x - tls_tile->x0;
 		tile_y = y - tls_tile->y0;
 	}
