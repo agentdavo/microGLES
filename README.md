@@ -243,6 +243,7 @@ Each stage increments its own profiling counters (`thread_profile_report()`).
 - Follow **AGENTS.md** (build, test, clang-format, conformance pass).
 - Keep each `gl_api_*.c` focused on a single spec chapter.
 - Prefer `MT_ALLOC/MT_FREE` and `thread_pool_submit()` over raw `malloc/thrd_create`.
+- Stage plugins may call `plugin_submit()` to spawn extra work items.
 - Document non-obvious algorithms (e.g., atomic depth CAS loop) inline.
 - See [`docs/PORTABILITY.md`](docs/PORTABILITY.md) for cross-platform guidelines.
 
