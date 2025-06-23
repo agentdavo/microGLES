@@ -174,6 +174,8 @@ static void usage(const char *prog)
 	printf("                      MICROGLES_THREADS env var).\n");
 	printf("  --tilesize=<n|fb>   Tile size in pixels or 'fb' for one tile\n");
 	printf("                      covering the framebuffer.\n");
+	printf("  --color-spec=<ARGB8888|XRGB8888>\n");
+	printf("                      Framebuffer colour format.\n");
 	printf("  --log-level=<lvl>   Set log level: debug, info, warn,\n");
 	printf("                      error, or fatal. Default is info.\n");
 	printf("  --help              Display this information and exit.\n\n");
@@ -181,6 +183,7 @@ static void usage(const char *prog)
 	printf("  MICROGLES_THREADS   Default worker thread count (default 2).\n");
 	printf("  TILESIZE            Default tile size in pixels ('fb' disables\n");
 	printf("                      tiling).\n");
+	printf("  FB_COLOR_SPEC       Default colour format (ARGB8888).\n");
 }
 
 int main(int argc, char **argv)
@@ -189,6 +192,7 @@ int main(int argc, char **argv)
 	bool profile = false;
 	const char *threads_arg = NULL;
 	const char *tilesize_arg = NULL;
+	const char *color_arg = NULL;
 	if (!getenv("MICROGLES_THREADS"))
 		setenv("MICROGLES_THREADS", "2", 0);
 	for (int i = 1; i < argc; ++i) {
@@ -202,6 +206,8 @@ int main(int argc, char **argv)
 			threads_arg = arg + 10;
 		} else if (strncmp(arg, "--tilesize=", 11) == 0) {
 			tilesize_arg = arg + 11;
+		} else if (strncmp(arg, "--color-spec=", 13) == 0) {
+			color_arg = arg + 13;
 		} else if (strncmp(arg, "--log-level=", 12) == 0) {
 			const char *lvl = arg + 12;
 			if (strcmp(lvl, "debug") == 0)
@@ -220,6 +226,8 @@ int main(int argc, char **argv)
 		setenv("MICROGLES_THREADS", threads_arg, 1);
 	if (tilesize_arg)
 		setenv("TILESIZE", tilesize_arg, 1);
+	if (color_arg)
+		setenv("FB_COLOR_SPEC", color_arg, 1);
 	if (!logger_init("perf_monitor.log", log_level)) {
 		fprintf(stderr, "Failed to initialize logger.\n");
 		return -1;

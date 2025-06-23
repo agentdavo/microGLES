@@ -34,6 +34,8 @@ int main(int argc, char **argv)
 			win_h = (unsigned)atoi(argv[i] + 9);
 		else if (strncmp(argv[i], "--tilesize=", 11) == 0)
 			setenv("TILESIZE", argv[i] + 11, 1);
+		else if (strncmp(argv[i], "--color-spec=", 13) == 0)
+			setenv("FB_COLOR_SPEC", argv[i] + 13, 1);
 	}
 	/* Initialize Logger */
 	if (!logger_init("renderer.log", LOG_LEVEL_DEBUG)) {

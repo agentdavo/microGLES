@@ -36,6 +36,37 @@ static pthread_mutex_t fb_mutex = PTHREAD_MUTEX_INITIALIZER;
 static uint32_t g_env_tile_size = DEFAULT_TILE_SIZE;
 static bool g_tile_size_initialized = false;
 
+static FramebufferColorSpec g_env_color_spec = FB_COLOR_ARGB8888;
+static bool g_color_spec_initialized = false;
+
+static void init_color_spec(void)
+{
+	if (g_color_spec_initialized)
+		return;
+	g_color_spec_initialized = true;
+	const char *var = getenv("FB_COLOR_SPEC");
+	if (!var || !*var)
+		return;
+	if (strcmp(var, "XRGB8888") == 0)
+		g_env_color_spec = FB_COLOR_XRGB8888;
+	else if (strcmp(var, "ARGB8888") == 0)
+		g_env_color_spec = FB_COLOR_ARGB8888;
+}
+
+static inline uint32_t encode_color(const Framebuffer *fb, uint32_t color)
+{
+	if (fb->color_spec == FB_COLOR_XRGB8888)
+		color = (color & 0x00FFFFFFu) | 0xFF000000u;
+	return color;
+}
+
+static inline uint32_t decode_color(const Framebuffer *fb, uint32_t stored)
+{
+	if (fb->color_spec == FB_COLOR_XRGB8888)
+		stored |= 0xFF000000u;
+	return stored;
+}
+
 static void init_tile_size(void)
 {
 	if (g_tile_size_initialized)
@@ -92,6 +123,7 @@ Framebuffer *framebuffer_create(uint32_t width, uint32_t height)
 	}
 
 	init_tile_size();
+	init_color_spec();
 	pthread_mutex_lock(&fb_mutex);
 	Framebuffer *fb = (Framebuffer *)tracked_malloc(sizeof(Framebuffer));
 	if (!fb) {
@@ -102,6 +134,7 @@ Framebuffer *framebuffer_create(uint32_t width, uint32_t height)
 
 	fb->width = width;
 	fb->height = height;
+	fb->color_spec = g_env_color_spec;
 	atomic_init(&fb->ref_count, 1);
 	size_t pixels = (size_t)width * height;
 
@@ -298,12 +331,13 @@ void framebuffer_clear(Framebuffer *restrict fb, uint32_t clear_color,
 	}
 
 	size_t pixels = (size_t)fb->width * fb->height;
+	uint32_t enc = encode_color(fb, clear_color);
 	// Use memset for faster clearing where possible
-	if (clear_color == 0) {
+	if (enc == 0) {
 		memset(fb->color_buffer, 0, pixels * sizeof(_Atomic uint32_t));
 	} else {
 		for (size_t i = 0; i < pixels; ++i) {
-			atomic_store(&fb->color_buffer[i], clear_color);
+			atomic_store(&fb->color_buffer[i], enc);
 		}
 	}
 	if (clear_depth == 0.0f) {
@@ -554,7 +588,7 @@ void framebuffer_set_pixel(Framebuffer *restrict fb, uint32_t x, uint32_t y,
 	}
 
 	if (depth_pass) {
-		atomic_store(&color_buffer[idx], color);
+		atomic_store(&color_buffer[idx], encode_color(fb, color));
 	}
 }
 
@@ -582,7 +616,8 @@ uint32_t framebuffer_get_pixel(const Framebuffer *fb, uint32_t x, uint32_t y)
 	if (!fb || x >= fb->width || y >= fb->height) {
 		return 0;
 	}
-	return atomic_load(&fb->color_buffer[(size_t)y * fb->width + x]);
+	uint32_t v = atomic_load(&fb->color_buffer[(size_t)y * fb->width + x]);
+	return decode_color(fb, v);
 }
 
 // Gets the depth value of a pixel.
@@ -656,8 +691,11 @@ int framebuffer_write_bmp(const Framebuffer *fb, const char *path)
 
 	for (int y = height - 1; y >= 0; --y) {
 		for (int x = 0; x < width; ++x) {
-			uint32_t pixel = atomic_load(
-				&fb->color_buffer[(size_t)y * fb->width + x]);
+			uint32_t pixel = decode_color(
+				fb,
+				atomic_load(
+					&fb->color_buffer[(size_t)y * fb->width +
+							  x]));
 			row[x * 3 + 0] = (pixel >> 0) & 0xFF; // B
 			row[x * 3 + 1] = (pixel >> 8) & 0xFF; // G
 			row[x * 3 + 2] = (pixel >> 16) & 0xFF; // R
@@ -705,8 +743,11 @@ int framebuffer_write_rgba(const Framebuffer *fb, const char *path)
 
 	for (int y = 0; y < height; ++y) {
 		for (int x = 0; x < width; ++x) {
-			uint32_t pixel = atomic_load(
-				&fb->color_buffer[(size_t)y * fb->width + x]);
+			uint32_t pixel = decode_color(
+				fb,
+				atomic_load(
+					&fb->color_buffer[(size_t)y * fb->width +
+							  x]));
 			unsigned r = (pixel >> 16) & 0xFF;
 			unsigned g = (pixel >> 8) & 0xFF;
 			unsigned b = pixel & 0xFF;
@@ -740,8 +781,11 @@ int framebuffer_stream_rgba(const Framebuffer *fb, FILE *out)
 	int height = (int)fb->height;
 	for (int y = 0; y < height; ++y) {
 		for (int x = 0; x < width; ++x) {
-			uint32_t pixel = atomic_load(
-				&fb->color_buffer[(size_t)y * fb->width + x]);
+			uint32_t pixel = decode_color(
+				fb,
+				atomic_load(
+					&fb->color_buffer[(size_t)y * fb->width +
+							  x]));
 			unsigned char bytes[4] = {
 				(unsigned char)((pixel >> 16) & 0xFF), // R
 				(unsigned char)((pixel >> 8) & 0xFF), // G
