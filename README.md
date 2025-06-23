@@ -71,7 +71,12 @@ format (defaults to `ARGB8888`). Pass `--color-spec=<ARGB8888|XRGB8888>` on the
 command line to override the environment.
 
 To gather per-stage timings at runtime, pass `--profile` to the benchmark or conformance executables. The stress_test program also accepts `--profile` for analyzing the million-cube scene. Pass `--stream-fb` to stress_test to pipe the framebuffer as raw RGBA to stdout for tools like `ffmpeg`. Use `--x11-window --width=640 --height=480` to display the framebuffer in an X11 window. The command buffer recorder is always enabled, so no extra build flags are required. The `perf_monitor` tool shows CPU and memory usage while spinning 1,000 pyramids; set `MICROGLES_THREADS` to adjust the worker thread count. Run `perf_monitor --help` for available options such as `--profile` and `--log-level=<lvl>`. The `--threads=<n>` option sets the worker count without touching the environment.
-The `stage_logging_demo` executable draws a triangle with verbose logs and writes `stage_demo.bmp`; run `./build/bin/stage_logging_demo` after building.
+The `stage_logging_demo` executable draws a triangle with verbose logs and writes
+`stage_demo.bmp`; run `./build/bin/stage_logging_demo` after building. When
+displaying frames through GLX, the first two back buffers and window contents are
+saved as `framebuffer_0.bmp`, `framebuffer_1.bmp`, `window_0.bmp` and
+`window_1.bmp` via `x11_window_save_bmp`. These captures help confirm the final
+output when debugging rendering glitches.
 
 ### Debug / Sanitizer
 
