@@ -66,6 +66,7 @@ static int g_num_threads;
 static _Thread_local int tls_tid = -1;
 static atomic_bool g_shutdown_flag = false;
 static atomic_bool g_profiling_enabled = false;
+static _Alignas(64) atomic_uint_fast64_t g_pending_tasks;
 static _Thread_local thread_profile_t g_thread_profile;
 static texture_cache_t *g_texture_caches;
 static _Thread_local texture_cache_t *tls_cache;
@@ -182,6 +183,9 @@ static int worker_thread_main(void *arg)
 					uint64_t ts = profiling ? get_cycles() :
 								  0;
 					task.function(task.task_data);
+					atomic_fetch_sub_explicit(
+						&g_pending_tasks, 1,
+						memory_order_acq_rel);
 					if (profiling) {
 						uint64_t c = get_cycles() - ts;
 						stage_profile_t *sp =
@@ -252,6 +256,8 @@ static int worker_thread_main(void *arg)
 			}
 			uint64_t ts = profiling ? get_cycles() : 0;
 			stolen.function(stolen.task_data);
+			atomic_fetch_sub_explicit(&g_pending_tasks, 1,
+						  memory_order_acq_rel);
 			if (profiling) {
 				uint64_t c = get_cycles() - ts;
 				stage_profile_t *sp =
@@ -321,6 +327,7 @@ int thread_pool_init(int num_threads)
 		texture_cache_init(&g_texture_caches[i]);
 	atomic_init(&g_global_head, 0);
 	atomic_init(&g_global_tail, 0);
+	atomic_init(&g_pending_tasks, 0);
 	atomic_store(&g_shutdown_flag, false);
 	atomic_store(&g_profiling_enabled, false);
 
@@ -426,6 +433,7 @@ void thread_pool_submit(task_function_t func, void *task_data,
 	}
 	if (profiling && depth > g_thread_profile.stages[stage].max_queue_depth)
 		g_thread_profile.stages[stage].max_queue_depth = depth;
+	atomic_fetch_add_explicit(&g_pending_tasks, 1, memory_order_release);
 	mtx_lock(&g_wakeup_mutex);
 	cnd_signal(&g_wakeup);
 	mtx_unlock(&g_wakeup_mutex);
@@ -433,16 +441,8 @@ void thread_pool_submit(task_function_t func, void *task_data,
 
 void thread_pool_wait(void)
 {
-	while (atomic_load_explicit(&g_global_head, memory_order_acquire) <
-	       atomic_load_explicit(&g_global_tail, memory_order_acquire))
+	while (atomic_load_explicit(&g_pending_tasks, memory_order_acquire) > 0)
 		thrd_yield();
-	for (int i = 0; i < g_num_threads; i++) {
-		while (atomic_load_explicit(&g_local_queues[i].head,
-					    memory_order_acquire) <
-		       atomic_load_explicit(&g_local_queues[i].tail,
-					    memory_order_acquire))
-			thrd_yield();
-	}
 }
 
 int thread_pool_wait_timeout(uint32_t ms)
@@ -453,25 +453,9 @@ int thread_pool_wait_timeout(uint32_t ms)
 	bool dumped = false;
 #endif
 	for (;;) {
-		bool done = atomic_load_explicit(&g_global_head,
-						 memory_order_acquire) >=
-			    atomic_load_explicit(&g_global_tail,
-						 memory_order_acquire);
-		if (done) {
-			done = true;
-			for (int i = 0; i < g_num_threads; i++) {
-				if (atomic_load_explicit(&g_local_queues[i].head,
-							 memory_order_acquire) <
-				    atomic_load_explicit(
-					    &g_local_queues[i].tail,
-					    memory_order_acquire)) {
-					done = false;
-					break;
-				}
-			}
-			if (done)
-				return 1;
-		}
+		if (atomic_load_explicit(&g_pending_tasks,
+					 memory_order_acquire) == 0)
+			return 1;
 		struct timespec now;
 		clock_gettime(CLOCK_MONOTONIC, &now);
 		uint64_t elapsed =
