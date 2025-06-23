@@ -167,8 +167,11 @@ static bool check_fb_content(const Framebuffer *fb)
 
 static void usage(const char *prog)
 {
-	printf("Usage: %s [--profile] [--log-level=<lvl>] [--help]\n", prog);
+	printf("Usage: %s [--profile] [--threads=<n>] [--log-level=<lvl>] [--help]\n",
+	       prog);
 	printf("  --profile           Enable per-thread profiling.\n");
+	printf("  --threads=<n>       Number of worker threads (overrides\n");
+	printf("                      MICROGLES_THREADS env var).\n");
 	printf("  --log-level=<lvl>   Set log level: debug, info, warn,\n");
 	printf("                      error, or fatal. Default is info.\n");
 	printf("  --help              Show this help and exit.\n");
@@ -179,6 +182,9 @@ int main(int argc, char **argv)
 {
 	LogLevel log_level = LOG_LEVEL_INFO;
 	bool profile = false;
+	const char *threads_arg = NULL;
+	if (!getenv("MICROGLES_THREADS"))
+		setenv("MICROGLES_THREADS", "2", 0);
 	for (int i = 1; i < argc; ++i) {
 		const char *arg = argv[i];
 		if (strcmp(arg, "--help") == 0) {
@@ -186,6 +192,8 @@ int main(int argc, char **argv)
 			return 0;
 		} else if (strcmp(arg, "--profile") == 0) {
 			profile = true;
+		} else if (strncmp(arg, "--threads=", 10) == 0) {
+			threads_arg = arg + 10;
 		} else if (strncmp(arg, "--log-level=", 12) == 0) {
 			const char *lvl = arg + 12;
 			if (strcmp(lvl, "debug") == 0)
@@ -200,6 +208,8 @@ int main(int argc, char **argv)
 				log_level = LOG_LEVEL_FATAL;
 		}
 	}
+	if (threads_arg)
+		setenv("MICROGLES_THREADS", threads_arg, 1);
 	if (!logger_init("perf_monitor.log", log_level)) {
 		fprintf(stderr, "Failed to initialize logger.\n");
 		return -1;
