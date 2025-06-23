@@ -323,14 +323,11 @@ int main(int argc, char **argv)
 			polys += NUM_PYRAMIDS * 6.0f;
 			pix += NUM_PYRAMIDS * 6.0f * face_pixels;
 			LOG_DEBUG("before thread_pool_wait");
-			if (!thread_pool_wait_timeout(2000)) {
-				LOG_WARN("thread_pool_wait timed out");
+			if (!thread_pool_wait_timeout(5000)) {
+				LOG_WARN(
+					"thread_pool_wait timed out; dumping queues and aborting");
 				thread_pool_dump_queues();
-				if (!thread_pool_wait_timeout(1000)) {
-					LOG_WARN(
-						"thread_pool_wait timed out again; breaking render loop");
-					break;
-				}
+				break;
 			}
 			LOG_DEBUG("after thread_pool_wait");
 #ifdef HAVE_X11
