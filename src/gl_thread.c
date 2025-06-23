@@ -573,7 +573,7 @@ void thread_profile_report(void)
 			if (pd->max_task_cycles > t_max_cycles)
 				t_max_cycles = pd->max_task_cycles;
 		}
-		LOG_INFO("Stage %s:", stage_names[stage]);
+		LOG_STAGE_START(stage_names[stage]);
 		LOG_INFO("  Total Tasks: %llu", t_tasks);
 		LOG_INFO("  Total Steal Attempts: %llu", t_attempts);
 		LOG_INFO("  Total Steal Successes: %llu", t_steals);
@@ -593,6 +593,7 @@ void thread_profile_report(void)
 			 thread_cycles_to_us(t_idle_cycles));
 		LOG_INFO("  Total Steal Time: %llu us",
 			 thread_cycles_to_us(t_steal_cycles));
+		logger_set_indent(0);
 	}
 	uint64_t g_tasks = 0, g_steals = 0, g_attempts = 0, g_contention = 0;
 	uint64_t g_task_cycles = 0, g_idle_cycles = 0, g_steal_cycles = 0,

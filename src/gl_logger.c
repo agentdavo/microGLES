@@ -16,6 +16,7 @@ static _Alignas(64) atomic_uint_fast64_t g_head;
 static _Alignas(64) atomic_uint_fast64_t g_tail;
 static atomic_uint g_dropped;
 static FILE *g_file;
+static _Thread_local unsigned g_indent;
 
 static void log_output_char(char c)
 {
@@ -123,6 +124,11 @@ void logger_shutdown(void)
 	}
 }
 
+void logger_set_indent(unsigned level)
+{
+	g_indent = level;
+}
+
 void LogMessage(LogLevel level, const char *format, ...)
 {
 	if (level < g_level)
@@ -140,6 +146,10 @@ void LogMessage(LogLevel level, const char *format, ...)
 	get_timestamp(ts, sizeof(ts));
 	int off = snprintf(msg, MESSAGE_SIZE, "[%s] [%s] ", ts,
 			   level_string(level));
+	for (unsigned i = 0; i < g_indent && off + 2 < MESSAGE_SIZE; ++i) {
+		msg[off++] = ' ';
+		msg[off++] = ' ';
+	}
 	va_list args;
 	va_start(args, format);
 	vsnprintf(msg + off, MESSAGE_SIZE - off, format, args);

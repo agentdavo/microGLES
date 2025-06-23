@@ -305,6 +305,7 @@ int main(int argc, char **argv)
 		cstart = thread_get_cycles();
 		double polys = 0.0, pix = 0.0;
 		do {
+			LOG_FRAME_START(frame_idx);
 			LOG_DEBUG("before render_scene");
 			render_scene();
 			LOG_DEBUG("after render_scene");
