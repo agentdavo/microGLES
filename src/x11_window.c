@@ -298,17 +298,23 @@ bool x11_window_has_non_monochrome(const X11Window *w)
 		return false;
 	}
 
+	unsigned rshift = __builtin_ctz(img->red_mask);
+	unsigned gshift = __builtin_ctz(img->green_mask);
+	unsigned bshift = __builtin_ctz(img->blue_mask);
+
 	bool non_white = false;
 	bool non_black = false;
 	for (int y = 0; y < img->height && !(non_white && non_black); ++y) {
-		for (int x = 0; x < img->width; ++x) {
+		for (int x = 0; x < img->width && !(non_white && non_black);
+		     ++x) {
 			unsigned long p = XGetPixel(img, x, y);
-			unsigned int rgb = (p & 0xFF) | ((p >> 8) & 0xFF) << 8 |
-					   ((p >> 16) & 0xFF) << 16;
-			if (rgb != 0xFFFFFFu) {
+			unsigned char r = (p & img->red_mask) >> rshift;
+			unsigned char g = (p & img->green_mask) >> gshift;
+			unsigned char b = (p & img->blue_mask) >> bshift;
+			if (r != 0xFF || g != 0xFF || b != 0xFF) {
 				non_white = true;
 			}
-			if (rgb != 0x000000u) {
+			if (r != 0x00 || g != 0x00 || b != 0x00) {
 				non_black = true;
 			}
 		}
