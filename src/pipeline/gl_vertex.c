@@ -171,13 +171,18 @@ void process_vertex_job(void *task_data)
 		  v2.x, v2.y, v2.z, v2.w, v2.color[0], v2.color[1], v2.color[2],
 		  v2.color[3]);
 	PrimitiveJob *pjob = MT_ALLOC(sizeof(PrimitiveJob), STAGE_PRIMITIVE);
-	if (!pjob)
+	if (!pjob) {
+		framebuffer_release(job->fb);
+		vertex_job_release(job);
 		return;
+	}
 	pjob->verts[0] = v0;
 	pjob->verts[1] = v1;
 	pjob->verts[2] = v2;
 	pjob->fb = job->fb;
+	framebuffer_retain(pjob->fb);
 	memcpy(pjob->viewport, job->viewport, sizeof(job->viewport));
+	framebuffer_release(job->fb);
 	vertex_job_release(job);
 	thread_pool_submit(process_primitive_job, pjob, STAGE_PRIMITIVE);
 }
