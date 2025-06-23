@@ -11,6 +11,35 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+static const GLfloat cube_vertices[] = {
+	-0.5f, -0.5f, -0.5f, 0.5f,  -0.5f, -0.5f, 0.5f,	 0.5f,	-0.5f, 0.5f,
+	-0.5f, -0.5f, -0.5f, -0.5f, 0.5f,  -0.5f, -0.5f, -0.5f, 0.5f,  -0.5f,
+	-0.5f, 0.5f,  0.5f,  -0.5f, -0.5f, 0.5f,  0.5f,	 -0.5f, 0.5f,  -0.5f,
+	0.5f,  -0.5f, 0.5f,  0.5f,  -0.5f, 0.5f,  0.5f,	 0.5f,	-0.5f, -0.5f,
+	0.5f,  -0.5f, 0.5f,  0.5f,  0.5f,  0.5f,  -0.5f, -0.5f, 0.5f,  -0.5f,
+	0.5f,  0.5f,  0.5f,  -0.5f, 0.5f,  -0.5f, -0.5f, 0.5f,	-0.5f, 0.5f,
+	0.5f,  -0.5f, 0.5f,  -0.5f, 0.5f,  -0.5f, 0.5f,	 0.5f,	0.5f,  0.5f,
+	-0.5f, 0.5f,  0.5f,  0.5f,  -0.5f, 0.5f,  0.5f,	 -0.5f, -0.5f
+};
+static const GLfloat cube_normals[] = {
+	0, 0,  -1, 0, 0,  -1, 0,  0, -1, 0,  0, -1, 0,	0,  1, 0,  0,  1,
+	0, 0,  1,  0, 0,  1,  -1, 0, 0,	 -1, 0, 0,  -1, 0,  0, -1, 0,  0,
+	1, 0,  0,  1, 0,  0,  1,  0, 0,	 1,  0, 0,  0,	-1, 0, 0,  -1, 0,
+	0, -1, 0,  0, -1, 0,  0,  1, 0,	 0,  1, 0,  0,	1,  0, 0,  1,  0
+};
+static const GLfloat cube_tex[] = { 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0,
+				    1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1,
+				    0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0,
+				    1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1 };
+static const GLubyte cube_indices[] = {
+	0,  1,	2,  0,	2,  3, /* Front */
+	4,  5,	6,  4,	6,  7, /* Back */
+	8,  9,	10, 8,	10, 11, /* Left */
+	12, 13, 14, 12, 14, 15, /* Right */
+	16, 17, 18, 16, 18, 19, /* Top */
+	20, 21, 22, 20, 22, 23 /* Bottom */
+};
+
 void run_spinning_cubes(Framebuffer *fb, BenchmarkResult *result)
 {
 	const int cube_count = 12;
@@ -23,6 +52,14 @@ void run_spinning_cubes(Framebuffer *fb, BenchmarkResult *result)
 	glBindTexture(GL_TEXTURE_2D, t);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 64, 64, 0, GL_RGBA,
 		     GL_UNSIGNED_BYTE, tex);
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, cube_vertices);
+	glEnableClientState(GL_NORMAL_ARRAY);
+	glNormalPointer(GL_FLOAT, 0, cube_normals);
+	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+	glTexCoordPointer(2, GL_FLOAT, 0, cube_tex);
+
 	glEnable(GL_FOG);
 	glFogf(GL_FOG_DENSITY, 0.5f);
 
@@ -41,12 +78,15 @@ void run_spinning_cubes(Framebuffer *fb, BenchmarkResult *result)
 			mat4_rotate_z(&model, 1.0f);
 			glLoadMatrixf(model.data);
 			glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_BYTE,
-				       NULL);
+				       cube_indices);
 			pixels_drawn += 6 * face_pixels; // 6 faces per cube
 		}
 	}
 	clock_t end = clock();
 
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_NORMAL_ARRAY);
+	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glDeleteTextures(1, &t);
 	tracked_free(tex, face_pixels * 4);
 
