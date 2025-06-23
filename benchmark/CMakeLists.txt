@@ -21,6 +21,22 @@ set(BENCH_SOURCES
 
 add_executable(benchmark ${BENCH_SOURCES})
 
+add_executable(stage_logging_demo
+    src/stage_logging_demo.c
+)
+
+target_include_directories(stage_logging_demo PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_link_libraries(stage_logging_demo PRIVATE renderer_lib pthread m)
+
+set_target_properties(stage_logging_demo PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+)
+
 add_executable(stress_test
     src/stress_test.c
     src/benchmark.c
