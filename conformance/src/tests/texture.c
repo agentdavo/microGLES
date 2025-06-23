@@ -1,6 +1,6 @@
 #include "tests.h"
 #include "util.h"
-#include "ktx_loader.h"
+#include "plugin.h"
 #include "gl_init.h"
 #include "gl_thread.h"
 #include "gl_context.h"
@@ -35,10 +35,9 @@ int test_texture_setup(void)
 
 int test_load_ktx(void)
 {
-	GLuint tex = 0;
-	KTXError err = load_ktx_texture("gold/red.ktx", &tex);
-	if (err != KTX_SUCCESS) {
-		LOG_ERROR("KTX load error %d", err);
+	GLuint tex = texture_decode("gold/red.ktx");
+	if (!tex) {
+		LOG_ERROR("texture decode failed");
 		return 0;
 	}
 	TextureOES *texObj = context_find_texture(tex);

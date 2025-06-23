@@ -41,7 +41,7 @@ set(SOURCE_FILES
     src/gl_thread.c
     src/texture_cache.c
     src/function_profile.c
-    src/ktx_loader.c
+    plugins/ktx_decoder.c
     src/command_buffer.c
     src/x11_window.c
     src/glx.c
@@ -90,7 +90,6 @@ set(HEADER_FILES
     src/gl_context.h
     src/gl_thread.h
     src/texture_cache.h
-    src/ktx_loader.h
     src/command_buffer.h
     src/gl_init.h
     src/x11_window.h
@@ -168,6 +167,7 @@ add_custom_target(run
 # Formatting target
 file(GLOB_RECURSE SOURCES
     "src/*.h" "src/*.c"
+    "plugins/*.c" "plugins/*.h"
     "benchmark/*.h" "benchmark/*.c"
     "conformance/*.h" "conformance/*.c")
 list(FILTER SOURCES EXCLUDE REGEX "CMakeLists.txt")

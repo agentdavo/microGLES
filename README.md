@@ -17,7 +17,7 @@ No SIMD intrinsics or platform APIs are required; only a C11 toolchain is needed
 |---------------------|----------------------------------------------------------------------|
 | **Fixed-function core** | ✔ Matrix stacks, lighting (8 lights), fog, 2-unit texturing, alpha-test, depth & stencil, blending, scissor, point/line primitives |
 | **Extensions**      | ✔ `OES_framebuffer_object`, `OES_draw_texture`, `OES_point_sprite`, `OES_point_size_array`, `OES_matrix_palette` (stubs for others) |
-| **Utilities**       | ✔ `load_ktx_texture()` helper and GLU-style matrix wrappers |
+| **Utilities**       | ✔ pluggable `texture_decode()` helper and GLU-style matrix wrappers |
 | **Framebuffer**     | ✔ ARGB8888/XRGB8888 + 32-bit float depth, atomic CAS writes, morton-swizzled layout |
 | **Threading**       | ✔ Lock-free MPMC queue, built-in command buffer recorder, per-stage profiling (`--profile`) |
 | **Pipeline**        | ✔ Configurable tiled fragment stage (default 16×16), 4×4 texture block cache |
