@@ -356,6 +356,10 @@ fail:
 	free(g_texture_caches);
 	free(g_local_queues);
 	free(g_worker_threads);
+	g_worker_threads = NULL;
+	g_local_queues = NULL;
+	g_texture_caches = NULL;
+	g_num_threads = 0;
 	return 0;
 }
 
