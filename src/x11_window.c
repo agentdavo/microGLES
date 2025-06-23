@@ -252,9 +252,9 @@ void x11_window_show_image(X11Window *w, const struct Framebuffer *fb)
 			for (unsigned x = 0; x < width; ++x) {
 				uint32_t pixel =
 					fb->color_buffer[y * fb->width + x];
-				unsigned char r = (pixel >> 16) & 0xFF;
+				unsigned char r = pixel & 0xFF;
 				unsigned char g = (pixel >> 8) & 0xFF;
-				unsigned char b = pixel & 0xFF;
+				unsigned char b = (pixel >> 16) & 0xFF;
 				unsigned char *dst =
 					(unsigned char *)w->image->data +
 					(y * w->image->bytes_per_line) + x * 4;
@@ -303,8 +303,8 @@ bool x11_window_has_non_monochrome(const X11Window *w)
 	for (int y = 0; y < img->height && !(non_white && non_black); ++y) {
 		for (int x = 0; x < img->width; ++x) {
 			unsigned long p = XGetPixel(img, x, y);
-			unsigned int rgb = ((p >> 16) & 0xFF) << 16 |
-					   ((p >> 8) & 0xFF) << 8 | (p & 0xFF);
+			unsigned int rgb = (p & 0xFF) | ((p >> 8) & 0xFF) << 8 |
+					   ((p >> 16) & 0xFF) << 16;
 			if (rgb != 0xFFFFFFu) {
 				non_white = true;
 			}
@@ -353,8 +353,8 @@ int x11_window_save_bmp(const X11Window *w, const char *path)
 			unsigned char r = (p & img->red_mask) >> rshift;
 			unsigned char g = (p & img->green_mask) >> gshift;
 			unsigned char b = (p & img->blue_mask) >> bshift;
-			uint32_t c = (uint32_t)b | ((uint32_t)g << 8) |
-				     ((uint32_t)r << 16);
+			uint32_t c = (uint32_t)r | ((uint32_t)g << 8) |
+				     ((uint32_t)b << 16);
 			atomic_store(
 				&fb->color_buffer[(size_t)y * fb->width + x],
 				c);
