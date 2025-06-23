@@ -77,6 +77,10 @@ void pipeline_rasterize_triangle(const Triangle *restrict tri,
 	}
 	if (iminx > imaxx || iminy > imaxy)
 		return;
+	int tiles_x = (imaxx - iminx) / TILE_SIZE + 1;
+	int tiles_y = (imaxy - iminy) / TILE_SIZE + 1;
+	LOG_DEBUG("Raster tri BB [%d,%d]-[%d,%d], %d tiles", iminx, iminy,
+		  imaxx, imaxy, tiles_x * tiles_y);
 	uint32_t color = pack_color(tri->v0.color);
 	for (int ty = iminy; ty <= imaxy; ty += TILE_SIZE) {
 		for (int tx = iminx; tx <= imaxx; tx += TILE_SIZE) {
@@ -149,6 +153,10 @@ void pipeline_rasterize_point(const Vertex *restrict v, GLfloat size,
 	}
 	if (x0 > x1 || y0 > y1)
 		return;
+	int ptiles_x = (x1 - x0) / TILE_SIZE + 1;
+	int ptiles_y = (y1 - y0) / TILE_SIZE + 1;
+	LOG_DEBUG("Raster point BB [%d,%d]-[%d,%d], %d tiles", x0, y0, x1, y1,
+		  ptiles_x * ptiles_y);
 	uint32_t color = pack_color(v->color);
 	for (int ty = y0; ty <= y1; ty += TILE_SIZE) {
 		for (int tx = x0; tx <= x1; tx += TILE_SIZE) {
