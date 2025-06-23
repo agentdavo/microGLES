@@ -10,7 +10,8 @@ extern "C" {
 
 typedef void (*stage_plugin_fn)(void *job);
 
-void plugin_register(stage_tag_t stage, stage_plugin_fn fn);
+const char *plugin_list(void);
+void plugin_register(stage_tag_t stage, stage_plugin_fn fn, const char *name);
 void plugin_invoke(stage_tag_t stage, void *job);
 
 typedef int (*texture_decoder_fn)(const char *file, GLuint *tex);
@@ -31,7 +32,7 @@ extern int ktx_decoder_link;
 #define PLUGIN_REGISTER(stage, func)                                    \
 	static void __attribute__((constructor)) _register_##func(void) \
 	{                                                               \
-		plugin_register(stage, func);                           \
+		plugin_register(stage, func, #func);                    \
 	}
 
 #ifdef __cplusplus
