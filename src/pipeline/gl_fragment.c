@@ -165,21 +165,20 @@ void pipeline_shade_fragment(Fragment *frag, Framebuffer *fb)
 				texture_cache_fetch(cache, tex, level, ix, iy1);
 			uint32_t c11 = texture_cache_fetch(cache, tex, level,
 							   ix1, iy1);
-			float r = ((c00 & 0xFF) * (1 - fx) * (1 - fy) +
-				   (c10 & 0xFF) * fx * (1 - fy) +
-				   (c01 & 0xFF) * (1 - fx) * fy +
-				   (c11 & 0xFF) * fx * fy);
+			float r = (((c00 >> 16) & 0xFF) * (1 - fx) * (1 - fy) +
+				   ((c10 >> 16) & 0xFF) * fx * (1 - fy) +
+				   ((c01 >> 16) & 0xFF) * (1 - fx) * fy +
+				   ((c11 >> 16) & 0xFF) * fx * fy);
 			float g = (((c00 >> 8) & 0xFF) * (1 - fx) * (1 - fy) +
 				   ((c10 >> 8) & 0xFF) * fx * (1 - fy) +
 				   ((c01 >> 8) & 0xFF) * (1 - fx) * fy +
 				   ((c11 >> 8) & 0xFF) * fx * fy);
-			float b = (((c00 >> 16) & 0xFF) * (1 - fx) * (1 - fy) +
-				   ((c10 >> 16) & 0xFF) * fx * (1 - fy) +
-				   ((c01 >> 16) & 0xFF) * (1 - fx) * fy +
-				   ((c11 >> 16) & 0xFF) * fx * fy);
-			uint32_t color = ((uint32_t)r & 0xFF) |
-					 (((uint32_t)g & 0xFF) << 8) |
-					 (((uint32_t)b & 0xFF) << 16) |
+			float b = ((c00 & 0xFF) * (1 - fx) * (1 - fy) +
+				   (c10 & 0xFF) * fx * (1 - fy) +
+				   (c01 & 0xFF) * (1 - fx) * fy +
+				   (c11 & 0xFF) * fx * fy);
+			uint32_t color = ((uint32_t)r << 16) |
+					 ((uint32_t)g << 8) | (uint32_t)b |
 					 0xFF000000u;
 			if (local_tex[0].env_mode == GL_MODULATE)
 				frag->color = modulate(frag->color, color);
@@ -210,10 +209,14 @@ void pipeline_shade_fragment(Fragment *frag, Framebuffer *fb)
 			break;
 		}
 		factor = GL_CLAMP(factor, 0.0f, 1.0f);
-		for (int i = 0; i < 3; ++i)
-			((float *)&frag->color)[i] =
-				GL_LERP(local_fog.color[i],
-					((float *)&frag->color)[i], factor);
+		uint8_t r = (frag->color >> 16) & 0xFF;
+		uint8_t g = (frag->color >> 8) & 0xFF;
+		uint8_t b = frag->color & 0xFF;
+		r = (uint8_t)(GL_LERP(local_fog.color[0] * 255.0f, r, factor));
+		g = (uint8_t)(GL_LERP(local_fog.color[1] * 255.0f, g, factor));
+		b = (uint8_t)(GL_LERP(local_fog.color[2] * 255.0f, b, factor));
+		frag->color = (frag->color & 0xFF000000u) |
+			      ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
 	}
 	RenderContext *ctx = GetCurrentContext();
 	if (ctx->alpha_test.enabled) {
@@ -254,12 +257,12 @@ void pipeline_shade_fragment(Fragment *frag, Framebuffer *fb)
 		uint32_t dst = framebuffer_get_pixel(fb, frag->x, frag->y);
 		float srcA = ((frag->color >> 24) & 0xFF) / 255.0f;
 		float dstA = ((dst >> 24) & 0xFF) / 255.0f;
-		float src[3] = { (frag->color & 0xFF) / 255.0f,
+		float src[3] = { ((frag->color >> 16) & 0xFF) / 255.0f,
 				 ((frag->color >> 8) & 0xFF) / 255.0f,
-				 ((frag->color >> 16) & 0xFF) / 255.0f };
-		float dstc[3] = { (dst & 0xFF) / 255.0f,
+				 (frag->color & 0xFF) / 255.0f };
+		float dstc[3] = { ((dst >> 16) & 0xFF) / 255.0f,
 				  ((dst >> 8) & 0xFF) / 255.0f,
-				  ((dst >> 16) & 0xFF) / 255.0f };
+				  (dst & 0xFF) / 255.0f };
 		float out[3];
 		for (int i = 0; i < 3; ++i) {
 			float sf = blend_factor(local_blend.src_factor, src[i],
@@ -274,10 +277,10 @@ void pipeline_shade_fragment(Fragment *frag, Framebuffer *fb)
 		float bf = blend_factor(local_blend.dst_factor, srcA, dstA,
 					srcA, dstA);
 		float outA = srcA * af + dstA * bf;
-		frag->color = ((uint32_t)(out[0] * 255.0f) & 0xFF) |
-			      (((uint32_t)(out[1] * 255.0f) & 0xFF) << 8) |
-			      (((uint32_t)(out[2] * 255.0f) & 0xFF) << 16) |
-			      ((uint32_t)(outA * 255.0f) << 24);
+		frag->color = ((uint32_t)(outA * 255.0f) << 24) |
+			      ((uint32_t)(out[0] * 255.0f) << 16) |
+			      ((uint32_t)(out[1] * 255.0f) << 8) |
+			      (uint32_t)(out[2] * 255.0f);
 	}
 	framebuffer_set_pixel(fb, frag->x, frag->y, frag->color, frag->depth);
 }
