@@ -133,6 +133,8 @@ X11Window *x11_window_create(unsigned width, unsigned height, const char *title)
 				if (w->shm_info.shmaddr != (char *)-1) {
 					w->image->data = w->shm_info.shmaddr;
 					XShmAttach(dpy, &w->shm_info);
+					free(image_data);
+					image_data = NULL;
 				} else {
 					w->use_shm = False;
 					XDestroyImage(w->image);
@@ -161,6 +163,7 @@ X11Window *x11_window_create(unsigned width, unsigned height, const char *title)
 			pthread_mutex_unlock(&x11_mutex);
 			return NULL;
 		}
+		image_data = NULL;
 	}
 
 	// Validate color masks
@@ -173,6 +176,7 @@ X11Window *x11_window_create(unsigned width, unsigned height, const char *title)
 			shmctl(w->shm_info.shmid, IPC_RMID, NULL);
 		}
 		XDestroyImage(w->image);
+		free(image_data);
 		free(w);
 		XFreeGC(dpy, gc);
 		XDestroyWindow(dpy, win);
