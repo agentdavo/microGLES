@@ -1,9 +1,11 @@
 #include "plugin.h"
 #include <stddef.h>
+#include <string.h>
 
 #define MAX_PLUGINS_PER_STAGE 4
 
 static stage_plugin_fn g_plugins[STAGE_COUNT][MAX_PLUGINS_PER_STAGE];
+static const char *g_plugin_names[STAGE_COUNT][MAX_PLUGINS_PER_STAGE];
 static int g_plugin_count[STAGE_COUNT];
 
 #define MAX_TEXTURE_DECODERS 4
@@ -19,13 +21,14 @@ extern int pixel_shader_1_3_link;
 static void *volatile force_link_ps
 	__attribute__((used)) = &pixel_shader_1_3_link;
 
-void plugin_register(stage_tag_t stage, stage_plugin_fn fn)
+void plugin_register(stage_tag_t stage, stage_plugin_fn fn, const char *name)
 {
-	if (!fn || stage < 0 || stage >= STAGE_COUNT)
+	if (!fn || !name || stage < 0 || stage >= STAGE_COUNT)
 		return;
 	int count = g_plugin_count[stage];
 	if (count < MAX_PLUGINS_PER_STAGE) {
 		g_plugins[stage][count] = fn;
+		g_plugin_names[stage][count] = name;
 		g_plugin_count[stage] = count + 1;
 	}
 }
@@ -63,4 +66,30 @@ GLuint texture_decode(const char *file)
 			return tex;
 	}
 	return 0;
+}
+
+const char *plugin_list(void)
+{
+	static char list[256];
+	size_t pos = 0;
+	list[0] = '\0';
+	for (int s = 0; s < STAGE_COUNT; ++s) {
+		for (int i = 0; i < g_plugin_count[s]; ++i) {
+			const char *name = g_plugin_names[s][i];
+			if (!name)
+				continue;
+			size_t len = strlen(name);
+			if (pos != 0 && pos + 1 < sizeof(list))
+				list[pos++] = ' ';
+			if (pos + len >= sizeof(list))
+				return list; /* truncate */
+			memcpy(&list[pos], name, len);
+			pos += len;
+		}
+	}
+	if (pos < sizeof(list))
+		list[pos] = '\0';
+	else
+		list[sizeof(list) - 1] = '\0';
+	return list;
 }

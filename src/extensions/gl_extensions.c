@@ -3,9 +3,11 @@
 #include "gl_types.h"
 #include "gl_utils.h"
 #include "gl_logger.h"
+#include "plugin.h"
 #include <GLES/gl.h>
 #include <GLES/glext.h>
 #include <string.h>
+#include <stdio.h>
 #include <math.h>
 
 /* Tokens missing from the ES headers used by TexGen */
@@ -75,7 +77,13 @@ static TextureOES *find_texture(GLuint id)
 
 const GLubyte *renderer_get_extensions(void)
 {
-	return (const GLubyte *)EXT_STRING;
+	static char buf[512];
+	const char *plugins = plugin_list();
+	if (plugins && plugins[0] != '\0')
+		snprintf(buf, sizeof(buf), "%s %s", EXT_STRING, plugins);
+	else
+		snprintf(buf, sizeof(buf), "%s", EXT_STRING);
+	return (const GLubyte *)buf;
 }
 
 static void draw_tex_rect(GLfloat x, GLfloat y, GLfloat z, GLfloat width,
