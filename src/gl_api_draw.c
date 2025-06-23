@@ -7,6 +7,7 @@
 #include "pool.h"
 #include "pipeline/gl_vertex.h"
 #include "pipeline/gl_raster.h"
+#include "pipeline/gl_framebuffer.h"
 #include "matrix_utils.h"
 #include "gl_thread.h"
 #include "function_profile.h"
@@ -256,6 +257,7 @@ GL_API void GL_APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count)
 			}
 		}
 		job->fb = fb;
+		framebuffer_retain(job->fb);
 		command_buffer_record_task(process_vertex_job, job,
 					   STAGE_VERTEX);
 	}
@@ -512,6 +514,7 @@ GL_API void GL_APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type,
 			}
 		}
 		job->fb = fb;
+		framebuffer_retain(job->fb);
 		command_buffer_record_task(process_vertex_job, job,
 					   STAGE_VERTEX);
 	}

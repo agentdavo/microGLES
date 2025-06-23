@@ -100,6 +100,7 @@ void pipeline_rasterize_triangle(const Triangle *restrict tri,
 			jobt->color = color;
 			jobt->depth = tri->v0.z;
 			jobt->fb = fb;
+			framebuffer_retain(jobt->fb);
 			jobt->sprite_mode = GL_FALSE;
 			thread_pool_submit(process_fragment_tile_job, jobt,
 					   STAGE_FRAGMENT);
@@ -176,6 +177,7 @@ void pipeline_rasterize_point(const Vertex *restrict v, GLfloat size,
 			jobt->color = color;
 			jobt->depth = v->z;
 			jobt->fb = fb;
+			framebuffer_retain(jobt->fb);
 			jobt->sprite_mode = GL_TRUE;
 			jobt->sprite_cx = v->x;
 			jobt->sprite_cy = v->y;
@@ -190,5 +192,6 @@ void process_raster_job(void *task_data)
 {
 	RasterJob *job = (RasterJob *)task_data;
 	pipeline_rasterize_triangle(&job->tri, job->viewport, job->fb);
+	framebuffer_release(job->fb);
 	raster_job_release(job);
 }

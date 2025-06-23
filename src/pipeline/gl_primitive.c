@@ -31,18 +31,22 @@ void process_primitive_job(void *task_data)
 		tri.v2.x, tri.v2.y, tri.v2.z);
 	if (edge(&tri.v0, &tri.v1, &tri.v2) <= 0.f) {
 		LOG_DEBUG("Triangle culled due to backface");
+		framebuffer_release(job->fb);
 		MT_FREE(job, STAGE_PRIMITIVE);
 		return; // culled
 	}
 	LOG_DEBUG("Triangle accepted for rasterization");
 	RasterJob *rjob = raster_job_acquire();
 	if (!rjob) {
+		framebuffer_release(job->fb);
 		MT_FREE(job, STAGE_PRIMITIVE);
 		return;
 	}
 	rjob->tri = tri;
 	rjob->fb = job->fb;
+	framebuffer_retain(rjob->fb);
 	memcpy(rjob->viewport, job->viewport, sizeof(job->viewport));
+	framebuffer_release(job->fb);
 	MT_FREE(job, STAGE_PRIMITIVE);
 	thread_pool_submit(process_raster_job, rjob, STAGE_RASTER);
 }

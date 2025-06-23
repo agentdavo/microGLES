@@ -356,5 +356,6 @@ void process_fragment_tile_job(void *task_data)
 		       w * sizeof(uint8_t));
 	}
 	atomic_flag_clear(&tile->lock);
+	framebuffer_release(job->fb);
 	tile_job_release(job);
 }
