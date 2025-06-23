@@ -1,5 +1,5 @@
 #define _GNU_SOURCE
-#include "ktx_loader.h"
+#include "plugin.h"
 #include "gl_context.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,6 +7,16 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <ctype.h>
+
+typedef enum {
+	KTX_SUCCESS,
+	KTX_FILE_NOT_FOUND,
+	KTX_INVALID_HEADER,
+	KTX_UNSUPPORTED_TEXTURE_TYPE,
+	KTX_INVALID_METADATA,
+	KTX_INVALID_DATA,
+	KTX_OPENGL_ERROR
+} KTXError;
 
 static const uint8_t KTX_IDENTIFIER[12] = {
 	0xAB, 0x4B, 0x54, 0x58, 0x20, 0x31, 0x31, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A
@@ -329,3 +339,15 @@ KTXError load_ktx_texture(const char *filename, GLuint *texture_id)
 	free(buf);
 	return res;
 }
+
+static int ktx_decoder(const char *file, GLuint *tex)
+{
+	return load_ktx_texture(file, tex) == KTX_SUCCESS;
+}
+
+static void __attribute__((constructor)) register_ktx_decoder(void)
+{
+	texture_decoder_register(ktx_decoder);
+}
+
+int ktx_decoder_link;

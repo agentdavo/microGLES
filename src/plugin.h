@@ -2,6 +2,7 @@
 #define PLUGIN_H
 
 #include "gl_thread.h" /* stage_tag_t */
+#include <GLES/gl.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -11,6 +12,12 @@ typedef void (*stage_plugin_fn)(void *job);
 
 void plugin_register(stage_tag_t stage, stage_plugin_fn fn);
 void plugin_invoke(stage_tag_t stage, void *job);
+
+typedef int (*texture_decoder_fn)(const char *file, GLuint *tex);
+void texture_decoder_register(texture_decoder_fn fn);
+GLuint texture_decode(const char *file);
+
+extern int ktx_decoder_link;
 
 /**
  * Convenience macro to auto-register a plugin at load time.
