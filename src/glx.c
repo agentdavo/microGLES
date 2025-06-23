@@ -174,6 +174,8 @@ void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
 	}
 
 	x11_window_show_image(current_ctx->win, fb);
+	bool dummy_close = false;
+	x11_window_process_events(current_ctx->win, &dummy_close);
 	pthread_mutex_unlock(&ctx_mutex);
 }
 

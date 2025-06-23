@@ -239,7 +239,7 @@ void x11_window_show_image(X11Window *w, const struct Framebuffer *fb)
 	unsigned height = w->height < fb->height ? w->height : fb->height;
 
 	// Optimize for common pixel formats
-	if (w->rshift == 0 && w->gshift == 8 && w->bshift == 16 &&
+	if (w->rshift == 16 && w->gshift == 8 && w->bshift == 0 &&
 	    w->image->bits_per_pixel == 32) {
 		// Direct copy if formats match
 		for (unsigned y = 0; y < height; ++y) {
@@ -252,9 +252,9 @@ void x11_window_show_image(X11Window *w, const struct Framebuffer *fb)
 			for (unsigned x = 0; x < width; ++x) {
 				uint32_t pixel =
 					fb->color_buffer[y * fb->width + x];
-				unsigned char r = pixel & 0xFF;
+				unsigned char r = (pixel >> 16) & 0xFF;
 				unsigned char g = (pixel >> 8) & 0xFF;
-				unsigned char b = (pixel >> 16) & 0xFF;
+				unsigned char b = pixel & 0xFF;
 				unsigned char *dst =
 					(unsigned char *)w->image->data +
 					(y * w->image->bytes_per_line) + x * 4;
