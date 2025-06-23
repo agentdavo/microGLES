@@ -42,6 +42,7 @@ set(SOURCE_FILES
     src/texture_cache.c
     src/function_profile.c
     plugins/ktx_decoder.c
+    plugins/vertex_shader_1_1.c
     src/command_buffer.c
     src/x11_window.c
     src/glx.c

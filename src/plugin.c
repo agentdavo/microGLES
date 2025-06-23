@@ -12,6 +12,9 @@ static int g_dec_count;
 
 extern int ktx_decoder_link;
 static void *volatile force_link_ktx __attribute__((used)) = &ktx_decoder_link;
+extern int vertex_shader_1_1_link;
+static void *volatile force_link_vs
+	__attribute__((used)) = &vertex_shader_1_1_link;
 
 void plugin_register(stage_tag_t stage, stage_plugin_fn fn)
 {
