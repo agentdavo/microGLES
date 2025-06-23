@@ -299,6 +299,7 @@ void framebuffer_set_pixel(Framebuffer *restrict fb, uint32_t x, uint32_t y,
 	if (!fb || x >= fb->width || y >= fb->height) {
 		return;
 	}
+	LOG_DEBUG("set_pixel (%u,%u) color=0x%08X", x, y, color);
 
 	_Atomic uint32_t *color_buffer = fb->color_buffer;
 	_Atomic float *depth_buffer = fb->depth_buffer;
@@ -481,6 +482,8 @@ void framebuffer_fill_rect(Framebuffer *fb, uint32_t x0, uint32_t y0,
 		LOG_ERROR("framebuffer_fill_rect: Invalid parameters");
 		return;
 	}
+	LOG_DEBUG("fill_rect (%u,%u)-(%u,%u) color=0x%08X", x0, y0, x1, y1,
+		  color);
 	for (uint32_t y = y0; y <= y1; ++y) {
 		for (uint32_t x = x0; x <= x1; ++x) {
 			framebuffer_set_pixel(fb, x, y, color, depth);
