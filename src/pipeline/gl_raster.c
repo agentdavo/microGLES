@@ -14,7 +14,9 @@ static uint32_t pack_color(const GLfloat c[4])
 	uint8_t g = (uint8_t)(c[1] * 255.0f + 0.5f);
 	uint8_t b = (uint8_t)(c[2] * 255.0f + 0.5f);
 	uint8_t a = (uint8_t)(c[3] * 255.0f + 0.5f);
-	return (a << 24) | (b << 16) | (g << 8) | r;
+	/* Store colors in AARRGGBB layout */
+	return ((uint32_t)a << 24) | ((uint32_t)r << 16) | ((uint32_t)g << 8) |
+	       (uint32_t)b;
 }
 
 void pipeline_rasterize_triangle(const Triangle *restrict tri,

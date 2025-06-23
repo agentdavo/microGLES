@@ -17,19 +17,23 @@ _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 
 static uint32_t modulate(uint32_t a, uint32_t c)
 {
-	uint8_t ar = a & 0xFF;
+	/* Colors are stored as AARRGGBB */
+	uint8_t ar = (a >> 16) & 0xFF;
 	uint8_t ag = (a >> 8) & 0xFF;
-	uint8_t ab = (a >> 16) & 0xFF;
+	uint8_t ab = a & 0xFF;
 	uint8_t aa = (a >> 24) & 0xFF;
-	uint8_t br = c & 0xFF;
+
+	uint8_t br = (c >> 16) & 0xFF;
 	uint8_t bg = (c >> 8) & 0xFF;
-	uint8_t bb = (c >> 16) & 0xFF;
+	uint8_t bb = c & 0xFF;
 	uint8_t ba = (c >> 24) & 0xFF;
+
 	uint8_t r = (ar * br) / 255;
 	uint8_t g = (ag * bg) / 255;
 	uint8_t b = (ab * bb) / 255;
 	uint8_t aout = (aa * ba) / 255;
-	return r | (g << 8) | (b << 16) | ((uint32_t)aout << 24);
+	return ((uint32_t)aout << 24) | ((uint32_t)r << 16) |
+	       ((uint32_t)g << 8) | (uint32_t)b;
 }
 static _Thread_local TextureState local_tex[2];
 static _Thread_local unsigned local_tex_ver[2];
