@@ -41,6 +41,11 @@ void plugin_invoke(stage_tag_t stage, void *job)
 	}
 }
 
+void plugin_submit(task_function_t fn, void *data, stage_tag_t stage)
+{
+	thread_pool_submit(fn, data, stage);
+}
+
 void texture_decoder_register(texture_decoder_fn fn)
 {
 	if (!fn)

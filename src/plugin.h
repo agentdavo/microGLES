@@ -13,6 +13,14 @@ typedef void (*stage_plugin_fn)(void *job);
 void plugin_register(stage_tag_t stage, stage_plugin_fn fn);
 void plugin_invoke(stage_tag_t stage, void *job);
 
+/**
+ * Submit a task to the internal thread pool from a plugin.
+ *
+ * Stage plugins may call this helper to spawn additional work items.
+ * It simply forwards the request to `thread_pool_submit`.
+ */
+void plugin_submit(task_function_t fn, void *data, stage_tag_t stage);
+
 typedef int (*texture_decoder_fn)(const char *file, GLuint *tex);
 void texture_decoder_register(texture_decoder_fn fn);
 GLuint texture_decode(const char *file);
