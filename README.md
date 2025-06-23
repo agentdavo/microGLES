@@ -39,12 +39,18 @@ src/
   ├─ api/        # One file per GL 1.1 chapter (gl_api_xxx.c)
   ├─ pipeline/   # Vertex → primitive → raster → fragment → framebuffer
   ├─ util/       # Logger, memory-tracker, math helpers
+plugins/        # Optional runtime modules (see Plugins section)
 docs/            # HTML docs & migration notes
 benchmark/       # Perf micro-benchmarks
 conformance/     # Spec-validation tests
 ```
 
 All public symbols are declared by `#include <GLES/gl.h>` and `<GLES/glext.h>`. No additional headers are installed.
+
+Plugins live under `plugins/` and are compiled into the library. Each module
+registers callbacks at startup with `PLUGIN_REGISTER(stage, func)` or
+`texture_decoder_register()` so the renderer can invoke them without manual
+wiring.
 
 ---
 
@@ -177,6 +183,18 @@ Plugins extend the renderer at runtime. Built-in modules register themselves
 automatically via `PLUGIN_REGISTER`. Call `plugin_list()` to retrieve a
 space-separated string of active plugin identifiers. The value is also appended
 to the list returned by `renderer_get_extensions()`.
+
+### Built-in plugins
+
+- **vertex_shader_1_1** – runs in the vertex stage and colors vertices based on
+  their NDC position.
+- **pixel_shader_1_3** – grayscale filter executed in the fragment stage; also
+  demonstrates `plugin_submit()` from a callback.
+- **ktx_decoder** – registers `texture_decode()` support for `.ktx` files.
+
+Plugins run on the same worker threads as the core pipeline. Adjust the worker
+count with `MICROGLES_THREADS`; all callbacks are included in stage timings
+when running tools with `--profile`.
 
 ## Profiling
 
