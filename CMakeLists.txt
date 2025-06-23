@@ -55,6 +55,7 @@ set(SOURCE_FILES
     src/pool.c
     src/gl_memory_tracker.c
     src/gl_logger.c
+    src/plugin.c
 )
 
 include(CheckIncludeFile)
@@ -93,6 +94,7 @@ set(HEADER_FILES
     src/command_buffer.h
     src/gl_init.h
     src/x11_window.h
+    src/plugin.h
 )
 
 # Create executable
