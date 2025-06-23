@@ -7,6 +7,7 @@ _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "../gl_memory_tracker.h"
 #include "../gl_thread.h"
 #include "../pool.h"
+#include "../plugin.h"
 #include <string.h>
 #include "../c11_opt.h"
 #include "../matrix_utils.h"
@@ -133,6 +134,7 @@ static void apply_lighting(Vertex *v)
 void process_vertex_job(void *task_data)
 {
 	VertexJob *job = (VertexJob *)task_data;
+	plugin_invoke(STAGE_VERTEX, job);
 	RenderContext *ctx = GetCurrentContext();
 	unsigned mv = atomic_load(&ctx->version_modelview);
 	unsigned pr = atomic_load(&ctx->version_projection);

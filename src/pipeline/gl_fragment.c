@@ -7,6 +7,7 @@
 _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "../gl_memory_tracker.h"
 #include "../pool.h"
+#include "../plugin.h"
 #include "../gl_types.h"
 #include "gl_framebuffer.h"
 #include "gl_raster.h"
@@ -288,6 +289,7 @@ void pipeline_shade_fragment(Fragment *frag, Framebuffer *fb)
 void process_fragment_job(void *task_data)
 {
 	FragmentJob *job = (FragmentJob *)task_data;
+	plugin_invoke(STAGE_FRAGMENT, job);
 	pipeline_shade_fragment(&job->frag, job->fb);
 	MT_FREE(job, STAGE_FRAGMENT);
 }
@@ -295,6 +297,7 @@ void process_fragment_job(void *task_data)
 void process_fragment_tile_job(void *task_data)
 {
 	FragmentTileJob *job = (FragmentTileJob *)task_data;
+	plugin_invoke(STAGE_FRAGMENT, job);
 	LOG_DEBUG("Fragment tile (%u,%u)-(%u,%u) mode=%s", job->x0, job->y0,
 		  job->x1, job->y1, job->sprite_mode ? "sprite" : "triangle");
 	uint32_t w = job->x1 - job->x0 + 1;

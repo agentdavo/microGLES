@@ -7,6 +7,7 @@ _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "../gl_memory_tracker.h"
 #include "../gl_thread.h"
 #include "../pool.h"
+#include "../plugin.h"
 
 static uint32_t pack_color(const GLfloat c[4])
 {
@@ -193,6 +194,7 @@ void pipeline_rasterize_point(const Vertex *restrict v, GLfloat size,
 void process_raster_job(void *task_data)
 {
 	RasterJob *job = (RasterJob *)task_data;
+	plugin_invoke(STAGE_RASTER, job);
 	pipeline_rasterize_triangle(&job->tri, job->viewport, job->fb);
 	framebuffer_release(job->fb);
 	raster_job_release(job);

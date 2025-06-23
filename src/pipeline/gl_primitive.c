@@ -3,6 +3,7 @@
 #include "../gl_logger.h"
 #include "../gl_thread.h"
 #include "../pool.h"
+#include "../plugin.h"
 #define PIPELINE_USE_GLSTATE 0
 _Static_assert(PIPELINE_USE_GLSTATE == 0, "pipeline must not touch gl_state");
 #include "../gl_memory_tracker.h"
@@ -22,6 +23,7 @@ static float edge(const Vertex *a, const Vertex *b, const Vertex *c)
 void process_primitive_job(void *task_data)
 {
 	PrimitiveJob *job = (PrimitiveJob *)task_data;
+	plugin_invoke(STAGE_PRIMITIVE, job);
 	Triangle tri;
 	pipeline_assemble_triangle(&tri, &job->verts[0], &job->verts[1],
 				   &job->verts[2]);
