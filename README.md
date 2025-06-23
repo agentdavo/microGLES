@@ -18,7 +18,7 @@ No SIMD intrinsics or platform APIs are required; only a C11 toolchain is needed
 | **Fixed-function core** | ✔ Matrix stacks, lighting (8 lights), fog, 2-unit texturing, alpha-test, depth & stencil, blending, scissor, point/line primitives |
 | **Extensions**      | ✔ `OES_framebuffer_object`, `OES_draw_texture`, `OES_point_sprite`, `OES_point_size_array`, `OES_matrix_palette` (stubs for others) |
 | **Utilities**       | ✔ `load_ktx_texture()` helper and GLU-style matrix wrappers |
-| **Framebuffer**     | ✔ RGBA8 + 32-bit float depth, atomic CAS writes, morton-swizzled layout |
+| **Framebuffer**     | ✔ ARGB8888/XRGB8888 + 32-bit float depth, atomic CAS writes, morton-swizzled layout |
 | **Threading**       | ✔ Lock-free MPMC queue, built-in command buffer recorder, per-stage profiling (`--profile`) |
 | **Pipeline**        | ✔ Configurable tiled fragment stage (default 16×16), 4×4 texture block cache |
 | **State model**     | ✔ Versioned `RenderContext`; worker threads clone only dirtied chunks. RenderContext holds all dynamic flags (see `docs/migration/state.md`) |
@@ -66,6 +66,9 @@ number of online CPUs). The `perf_monitor` tool starts with two threads if the
 variable is unset. Use `--threads=<n>` to override the count on the command
 line. Set `TILESIZE` (or pass `--tilesize=<n|fb>`) to control the rendering tile
 size; `fb` uses one tile for the entire framebuffer.
+Set `FB_COLOR_SPEC` to `ARGB8888` or `XRGB8888` to select the framebuffer colour
+format (defaults to `ARGB8888`). Pass `--color-spec=<ARGB8888|XRGB8888>` on the
+command line to override the environment.
 
 To gather per-stage timings at runtime, pass `--profile` to the benchmark or conformance executables. The stress_test program also accepts `--profile` for analyzing the million-cube scene. Pass `--stream-fb` to stress_test to pipe the framebuffer as raw RGBA to stdout for tools like `ffmpeg`. Use `--x11-window --width=640 --height=480` to display the framebuffer in an X11 window. The command buffer recorder is always enabled, so no extra build flags are required. The `perf_monitor` tool shows CPU and memory usage while spinning 1,000 pyramids; set `MICROGLES_THREADS` to adjust the worker thread count. Run `perf_monitor --help` for available options such as `--profile` and `--log-level=<lvl>`. The `--threads=<n>` option sets the worker count without touching the environment.
 The `stage_logging_demo` executable draws a triangle with verbose logs and writes `stage_demo.bmp`; run `./build/bin/stage_logging_demo` after building.

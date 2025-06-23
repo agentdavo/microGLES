@@ -17,6 +17,13 @@ extern "C" {
  */
 #define DEFAULT_TILE_SIZE 16
 
+/** Framebuffer colour specification selected via `FB_COLOR_SPEC` or
+ *  `--color-spec`. */
+typedef enum {
+	FB_COLOR_ARGB8888, /**< Stored as AARRGGBB (default). */
+	FB_COLOR_XRGB8888 /**< Alpha ignored, treated as 0xFF. */
+} FramebufferColorSpec;
+
 /**
  * @brief Structure representing a tile in a framebuffer. Tile size is
  *        determined at runtime via the TILESIZE environment variable or the
@@ -54,6 +61,7 @@ typedef struct Framebuffer {
 	uint32_t tiles_x; /**< Number of tiles along x-axis. */
 	uint32_t tiles_y; /**< Number of tiles along y-axis. */
 	uint32_t tile_size; /**< Size of each tile (pixels). */
+	FramebufferColorSpec color_spec; /**< Colour format. */
 } Framebuffer;
 
 _Static_assert(sizeof(uint32_t) == 4, "Framebuffer requires 32-bit colors");
