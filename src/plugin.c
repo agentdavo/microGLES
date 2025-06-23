@@ -15,6 +15,9 @@ static void *volatile force_link_ktx __attribute__((used)) = &ktx_decoder_link;
 extern int vertex_shader_1_1_link;
 static void *volatile force_link_vs
 	__attribute__((used)) = &vertex_shader_1_1_link;
+extern int pixel_shader_1_3_link;
+static void *volatile force_link_ps
+	__attribute__((used)) = &pixel_shader_1_3_link;
 
 void plugin_register(stage_tag_t stage, stage_plugin_fn fn)
 {
