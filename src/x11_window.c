@@ -132,20 +132,36 @@ X11Window *x11_window_create(unsigned width, unsigned height, const char *title)
 					shmat(w->shm_info.shmid, NULL, 0);
 				if (w->shm_info.shmaddr != (char *)-1) {
 					w->image->data = w->shm_info.shmaddr;
-					XShmAttach(dpy, &w->shm_info);
-					free(image_data);
-					image_data = NULL;
+					if (!XShmAttach(dpy, &w->shm_info)) {
+						shmdt(w->shm_info.shmaddr);
+						shmctl(w->shm_info.shmid,
+						       IPC_RMID, NULL);
+						XDestroyImage(w->image);
+						w->image = NULL;
+						w->use_shm = False;
+						free(image_data);
+						image_data = NULL;
+					} else {
+						free(image_data);
+						image_data = NULL;
+					}
 				} else {
 					w->use_shm = False;
 					XDestroyImage(w->image);
 					w->image = NULL;
+					free(image_data);
+					image_data = NULL;
 				}
 			} else {
 				w->use_shm = False;
 				XDestroyImage(w->image);
 				w->image = NULL;
+				free(image_data);
+				image_data = NULL;
 			}
 		} else {
+			free(image_data);
+			image_data = NULL;
 			w->use_shm = False;
 		}
 	}
