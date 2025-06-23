@@ -24,9 +24,9 @@ GL_API void GL_APIENTRY glClear(GLbitfield mask)
 	if (fb) {
 		uint32_t color =
 			((uint32_t)(gl_state.clear_color[3] * 255.0f) << 24) |
-			((uint32_t)(gl_state.clear_color[2] * 255.0f) << 16) |
+			((uint32_t)(gl_state.clear_color[0] * 255.0f) << 16) |
 			((uint32_t)(gl_state.clear_color[1] * 255.0f) << 8) |
-			((uint32_t)(gl_state.clear_color[0] * 255.0f));
+			((uint32_t)(gl_state.clear_color[2] * 255.0f));
 		framebuffer_clear_async(fb, color, gl_state.clear_depth,
 					(uint8_t)gl_state.clear_stencil);
 	}

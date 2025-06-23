@@ -575,28 +575,28 @@ void context_tex_image_2d(GLenum target, GLint level, GLint internalformat,
 				uint32_t c = 0xFF000000u;
 				switch (format) {
 				case GL_RGBA:
-					c = (uint32_t)src[(y * width + x) * 4 +
-							  0] |
+					c = ((uint32_t)
+						     src[(y * width + x) * 4 + 3]
+					     << 24) |
+					    ((uint32_t)
+						     src[(y * width + x) * 4 + 0]
+					     << 16) |
 					    ((uint32_t)
 						     src[(y * width + x) * 4 + 1]
 					     << 8) |
-					    ((uint32_t)
-						     src[(y * width + x) * 4 + 2]
-					     << 16) |
-					    ((uint32_t)
-						     src[(y * width + x) * 4 + 3]
-					     << 24);
+					    (uint32_t)
+						    src[(y * width + x) * 4 + 2];
 					break;
 				case GL_RGB:
-					c = (uint32_t)src[(y * width + x) * 3 +
-							  0] |
+					c = 0xFF000000u |
+					    ((uint32_t)
+						     src[(y * width + x) * 3 + 0]
+					     << 16) |
 					    ((uint32_t)
 						     src[(y * width + x) * 3 + 1]
 					     << 8) |
-					    ((uint32_t)
-						     src[(y * width + x) * 3 + 2]
-					     << 16) |
-					    0xFF000000u;
+					    (uint32_t)
+						    src[(y * width + x) * 3 + 2];
 					break;
 				case GL_ALPHA:
 					c = ((uint32_t)src[y * width + x]
@@ -604,8 +604,9 @@ void context_tex_image_2d(GLenum target, GLint level, GLint internalformat,
 					break;
 				case GL_LUMINANCE: {
 					uint8_t l = src[y * width + x];
-					c = (uint32_t)l | ((uint32_t)l << 8) |
-					    ((uint32_t)l << 16) | 0xFF000000u;
+					c = ((uint32_t)l << 16) |
+					    ((uint32_t)l << 8) | (uint32_t)l |
+					    0xFF000000u;
 					break;
 				}
 				case GL_LUMINANCE_ALPHA: {
@@ -613,9 +614,9 @@ void context_tex_image_2d(GLenum target, GLint level, GLint internalformat,
 						src[(y * width + x) * 2 + 0];
 					uint8_t a =
 						src[(y * width + x) * 2 + 1];
-					c = (uint32_t)l | ((uint32_t)l << 8) |
+					c = ((uint32_t)a << 24) |
 					    ((uint32_t)l << 16) |
-					    ((uint32_t)a << 24);
+					    ((uint32_t)l << 8) | (uint32_t)l;
 					break;
 				}
 				default:
@@ -652,23 +653,21 @@ void context_tex_sub_image_2d(GLenum target, GLint level, GLint xoffset,
 				    4;
 		int row_padded = (row_bytes + align - 1) & ~(align - 1);
 
-		uint32_t *dst = tex->levels[level] +
-				(size_t)yoffset * tex->mip_width[level] +
-				xoffset;
-
-		if (row_padded == row_bytes) {
-			if (width == tex->mip_width[level] && xoffset == 0) {
-				memcpy(dst, src, (size_t)row_bytes * height);
-			} else {
-				for (int y = 0; y < height; ++y) {
-					memcpy(dst + y * tex->mip_width[level],
-					       src + y * row_bytes, row_bytes);
-				}
+		for (int y = 0; y < height; ++y) {
+			for (int x = 0; x < width; ++x) {
+				const uint8_t *p = src + y * row_padded + x * 4;
+				uint32_t c = ((uint32_t)p[3] << 24) |
+					     ((uint32_t)p[0] << 16) |
+					     ((uint32_t)p[1] << 8) | p[2];
+				size_t idx = (size_t)(yoffset + y) *
+						     tex->mip_width[level] +
+					     (xoffset + x);
+				tex->levels[level][idx] = c;
 			}
-			atomic_fetch_add_explicit(&tex->version, 1,
-						  memory_order_relaxed);
-			return;
 		}
+		atomic_fetch_add_explicit(&tex->version, 1,
+					  memory_order_relaxed);
+		return;
 	}
 
 	for (int y = 0; y < height; ++y) {
@@ -676,36 +675,36 @@ void context_tex_sub_image_2d(GLenum target, GLint level, GLint xoffset,
 			uint32_t c = 0xFF000000u;
 			switch (format) {
 			case GL_RGBA:
-				c = (uint32_t)src[(y * width + x) * 4 + 0] |
+				c = ((uint32_t)src[(y * width + x) * 4 + 3]
+				     << 24) |
+				    ((uint32_t)src[(y * width + x) * 4 + 0]
+				     << 16) |
 				    ((uint32_t)src[(y * width + x) * 4 + 1]
 				     << 8) |
-				    ((uint32_t)src[(y * width + x) * 4 + 2]
-				     << 16) |
-				    ((uint32_t)src[(y * width + x) * 4 + 3]
-				     << 24);
+				    (uint32_t)src[(y * width + x) * 4 + 2];
 				break;
 			case GL_RGB:
-				c = (uint32_t)src[(y * width + x) * 3 + 0] |
+				c = 0xFF000000u |
+				    ((uint32_t)src[(y * width + x) * 3 + 0]
+				     << 16) |
 				    ((uint32_t)src[(y * width + x) * 3 + 1]
 				     << 8) |
-				    ((uint32_t)src[(y * width + x) * 3 + 2]
-				     << 16) |
-				    0xFF000000u;
+				    (uint32_t)src[(y * width + x) * 3 + 2];
 				break;
 			case GL_ALPHA:
 				c = ((uint32_t)src[y * width + x] << 24);
 				break;
 			case GL_LUMINANCE: {
 				uint8_t l = src[y * width + x];
-				c = (uint32_t)l | ((uint32_t)l << 8) |
-				    ((uint32_t)l << 16) | 0xFF000000u;
+				c = ((uint32_t)l << 16) | ((uint32_t)l << 8) |
+				    (uint32_t)l | 0xFF000000u;
 				break;
 			}
 			case GL_LUMINANCE_ALPHA: {
 				uint8_t l = src[(y * width + x) * 2 + 0];
 				uint8_t a = src[(y * width + x) * 2 + 1];
-				c = (uint32_t)l | ((uint32_t)l << 8) |
-				    ((uint32_t)l << 16) | ((uint32_t)a << 24);
+				c = ((uint32_t)a << 24) | ((uint32_t)l << 16) |
+				    ((uint32_t)l << 8) | (uint32_t)l;
 				break;
 			}
 			default:
