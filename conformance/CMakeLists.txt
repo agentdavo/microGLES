@@ -13,6 +13,7 @@ set(CONFORMANCE_SOURCES
     src/tests/texture_cache.c
     src/tests/thread_stress.c
     src/tests/point_sprite.c
+    src/tests/plugin.c
     src/tests/fixed_point.c
     src/tests/all_calls.c
     src/tests/extensions.c
