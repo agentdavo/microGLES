@@ -114,8 +114,12 @@ int main(void)
     /* Infrastructure */
     logger_init(NULL, LOG_LEVEL_INFO);
     memory_tracker_init();
-    thread_pool_init_from_env(); /* uses MICROGLES_THREADS or the
-                                   number of online CPUs */
+    int threads = thread_pool_init_from_env(); /* uses MICROGLES_THREADS or the
+                                                 number of online CPUs */
+    if (threads <= 0) {
+        fputs("Failed to init thread pool\n", stderr);
+        return 1;
+    }
 #ifdef ENABLE_PROFILE
     thread_profile_start(); /* Optional: per-stage timings */
 #endif
