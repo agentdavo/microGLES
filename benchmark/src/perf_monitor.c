@@ -167,15 +167,20 @@ static bool check_fb_content(const Framebuffer *fb)
 
 static void usage(const char *prog)
 {
-	printf("Usage: %s [--profile] [--threads=<n>] [--log-level=<lvl>] [--help]\n",
-	       prog);
+	printf("Usage: %s [options]\n\n", prog);
+	printf("Options:\n");
 	printf("  --profile           Enable per-thread profiling.\n");
 	printf("  --threads=<n>       Number of worker threads (overrides\n");
 	printf("                      MICROGLES_THREADS env var).\n");
+	printf("  --tilesize=<n|fb>   Tile size in pixels or 'fb' for one tile\n");
+	printf("                      covering the framebuffer.\n");
 	printf("  --log-level=<lvl>   Set log level: debug, info, warn,\n");
 	printf("                      error, or fatal. Default is info.\n");
-	printf("  --help              Show this help and exit.\n");
-	printf("Set MICROGLES_THREADS to control worker thread count.\n");
+	printf("  --help              Display this information and exit.\n\n");
+	printf("Environment variables:\n");
+	printf("  MICROGLES_THREADS   Default worker thread count (default 2).\n");
+	printf("  TILESIZE            Default tile size in pixels ('fb' disables\n");
+	printf("                      tiling).\n");
 }
 
 int main(int argc, char **argv)
@@ -183,6 +188,7 @@ int main(int argc, char **argv)
 	LogLevel log_level = LOG_LEVEL_INFO;
 	bool profile = false;
 	const char *threads_arg = NULL;
+	const char *tilesize_arg = NULL;
 	if (!getenv("MICROGLES_THREADS"))
 		setenv("MICROGLES_THREADS", "2", 0);
 	for (int i = 1; i < argc; ++i) {
@@ -194,6 +200,8 @@ int main(int argc, char **argv)
 			profile = true;
 		} else if (strncmp(arg, "--threads=", 10) == 0) {
 			threads_arg = arg + 10;
+		} else if (strncmp(arg, "--tilesize=", 11) == 0) {
+			tilesize_arg = arg + 11;
 		} else if (strncmp(arg, "--log-level=", 12) == 0) {
 			const char *lvl = arg + 12;
 			if (strcmp(lvl, "debug") == 0)
@@ -210,6 +218,8 @@ int main(int argc, char **argv)
 	}
 	if (threads_arg)
 		setenv("MICROGLES_THREADS", threads_arg, 1);
+	if (tilesize_arg)
+		setenv("TILESIZE", tilesize_arg, 1);
 	if (!logger_init("perf_monitor.log", log_level)) {
 		fprintf(stderr, "Failed to initialize logger.\n");
 		return -1;
