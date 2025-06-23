@@ -45,6 +45,7 @@ const struct Test *get_autogen_tests(size_t *count);
 const struct Test *get_all_calls_tests(size_t *count);
 const struct Test *get_point_sprite_tests(size_t *count);
 const struct Test *get_fixed_point_tests(size_t *count);
+const struct Test *get_plugin_tests(size_t *count);
 
 #ifdef __cplusplus
 }
