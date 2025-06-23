@@ -506,7 +506,8 @@ void thread_pool_shutdown(void)
 
 bool thread_pool_active(void)
 {
-	return !atomic_load_explicit(&g_shutdown_flag, memory_order_acquire);
+	return g_worker_threads && g_local_queues && g_num_threads > 0 &&
+	       !atomic_load_explicit(&g_shutdown_flag, memory_order_acquire);
 }
 
 void thread_pool_dump_queues(void)
