@@ -143,7 +143,7 @@ int main(void)
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
     /* Flush & dump */
-    thread_pool_wait();
+    thread_pool_wait(); /* blocks until all queued and running tasks finish */
     framebuffer_write_rgba(fb, "tri.rgba");
 
     /* Teardown */
@@ -157,6 +157,7 @@ int main(void)
     logger_shutdown();
 }
 ```
+`thread_pool_wait()` uses an internal pending-task counter to know when all work has completed. Call it before destroying contexts or framebuffers to avoid tasks touching freed memory.
 
 Compile with `-DENABLE_PROFILE` or run any program with `--profile` to record per-stage timings. Without the flag, tasks still execute but no profiling counters are recorded.
 Set `MICROGLES_THREADS` to override the default thread count (number of online
