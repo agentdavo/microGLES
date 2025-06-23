@@ -7,7 +7,15 @@
 struct PoolNode {
 	struct PoolNode *next_free;
 	struct PoolNode *next_all;
+	/* Padding ensures that the following object allocation begins on a
+         * 64-byte boundary.  This avoids misaligned accesses when the object
+         * itself requires 64 byte alignment (e.g. VertexJob).  The exact size
+         * is computed so that sizeof(struct PoolNode) == 64 on both 32 and
+         * 64 bit builds.
+         */
+	unsigned char padding[64 - 2 * sizeof(void *)];
 };
+_Static_assert(sizeof(struct PoolNode) == 64, "PoolNode must be 64 bytes");
 
 struct ObjectPool {
 	struct PoolNode *free_list;
