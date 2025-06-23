@@ -16,8 +16,6 @@ void pipeline_rasterize_point(const Vertex *restrict v, GLfloat size,
 			      const GLint *restrict viewport,
 			      Framebuffer *restrict fb);
 
-#define TILE_SIZE 16
-
 typedef struct {
 	alignas(64) uint32_t x0, y0, x1, y1;
 	uint32_t color;

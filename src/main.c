@@ -32,6 +32,8 @@ int main(int argc, char **argv)
 			win_w = (unsigned)atoi(argv[i] + 8);
 		else if (strncmp(argv[i], "--height=", 9) == 0)
 			win_h = (unsigned)atoi(argv[i] + 9);
+		else if (strncmp(argv[i], "--tilesize=", 11) == 0)
+			setenv("TILESIZE", argv[i] + 11, 1);
 	}
 	/* Initialize Logger */
 	if (!logger_init("renderer.log", LOG_LEVEL_DEBUG)) {

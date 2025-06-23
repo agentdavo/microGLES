@@ -13,28 +13,28 @@ extern "C" {
 #endif
 
 /**
- * @brief Size of a framebuffer tile in pixels (width and height).
+ * @brief Default tile size used if TILESIZE env var is not set.
  */
-#define TILE_SIZE 16
+#define DEFAULT_TILE_SIZE 16
 
 /**
- * @brief Structure representing a 16x16 pixel tile in a framebuffer.
+ * @brief Structure representing a tile in a framebuffer. Tile size is
+ *        determined at runtime via the TILESIZE environment variable or the
+ *        `--tilesize` command line option (see README).
  *
  * Contains color, depth, and stencil data for a tile, aligned to 64 bytes for
  * cache efficiency. Includes an atomic lock for thread-safe access.
  */
 typedef struct {
-    alignas(64) uint32_t x0, y0; /**< Top-left coordinates of the tile. */
-    _Atomic uint32_t color[TILE_SIZE * TILE_SIZE]; /**< Color data (RGBA). */
-    _Atomic float depth[TILE_SIZE * TILE_SIZE]; /**< Depth data. */
-    _Atomic uint8_t stencil[TILE_SIZE * TILE_SIZE]; /**< Stencil data. */
-    atomic_flag lock; /**< Lock for thread-safe tile access. */
+	alignas(64) uint32_t x0, y0; /**< Top-left coordinates of the tile. */
+	_Atomic uint32_t *color; /**< Color data (RGBA). */
+	_Atomic float *depth; /**< Depth data. */
+	_Atomic uint8_t *stencil; /**< Stencil data. */
+	atomic_flag lock; /**< Lock for thread-safe tile access. */
 } FramebufferTile;
 
-_Static_assert(sizeof(FramebufferTile) == 2432,
-               "FramebufferTile size must be 2432 bytes");
 _Static_assert(alignof(FramebufferTile) >= 64,
-               "FramebufferTile must be 64-byte aligned");
+	       "FramebufferTile must be 64-byte aligned");
 
 /**
  * @brief Structure representing a framebuffer.
@@ -44,15 +44,16 @@ _Static_assert(alignof(FramebufferTile) >= 64,
  * thread-safe access.
  */
 typedef struct Framebuffer {
-    uint32_t width; /**< Width in pixels. */
-    uint32_t height; /**< Height in pixels. */
-    _Atomic int ref_count; /**< Reference count for memory management. */
-    _Atomic uint32_t *color_buffer; /**< Front color buffer (RGBA). */
-    _Atomic float *depth_buffer; /**< Depth buffer. */
-    _Atomic uint8_t *stencil_buffer; /**< Stencil buffer. */
-    FramebufferTile *tiles; /**< Array of tiles for parallel rendering. */
-    uint32_t tiles_x; /**< Number of tiles along x-axis. */
-    uint32_t tiles_y; /**< Number of tiles along y-axis. */
+	uint32_t width; /**< Width in pixels. */
+	uint32_t height; /**< Height in pixels. */
+	_Atomic int ref_count; /**< Reference count for memory management. */
+	_Atomic uint32_t *color_buffer; /**< Front color buffer (RGBA). */
+	_Atomic float *depth_buffer; /**< Depth buffer. */
+	_Atomic uint8_t *stencil_buffer; /**< Stencil buffer. */
+	FramebufferTile *tiles; /**< Array of tiles for parallel rendering. */
+	uint32_t tiles_x; /**< Number of tiles along x-axis. */
+	uint32_t tiles_y; /**< Number of tiles along y-axis. */
+	uint32_t tile_size; /**< Size of each tile (pixels). */
 } Framebuffer;
 
 _Static_assert(sizeof(uint32_t) == 4, "Framebuffer requires 32-bit colors");
@@ -109,7 +110,7 @@ void framebuffer_release(Framebuffer *fb);
  * @threadsafe
  */
 void framebuffer_clear(Framebuffer *restrict fb, uint32_t clear_color,
-                       float clear_depth, uint8_t clear_stencil);
+		       float clear_depth, uint8_t clear_stencil);
 
 /**
  * @brief Sets a pixel’s color and depth, applying stencil and depth tests.
@@ -121,7 +122,7 @@ void framebuffer_clear(Framebuffer *restrict fb, uint32_t clear_color,
  * @threadsafe
  */
 void framebuffer_set_pixel(Framebuffer *restrict fb, uint32_t x, uint32_t y,
-                           uint32_t color, float depth);
+			   uint32_t color, float depth);
 
 /**
  * @brief Fills a rectangle with the specified color and depth.
@@ -135,8 +136,8 @@ void framebuffer_set_pixel(Framebuffer *restrict fb, uint32_t x, uint32_t y,
  * @threadsafe
  */
 void framebuffer_fill_rect(Framebuffer *fb, uint32_t x0, uint32_t y0,
-                           uint32_t x1, uint32_t y1, uint32_t color,
-                           float depth);
+			   uint32_t x1, uint32_t y1, uint32_t color,
+			   float depth);
 
 /**
  * @brief Gets the color value of a pixel.
@@ -194,7 +195,7 @@ int framebuffer_stream_rgba(const Framebuffer *fb, FILE *out);
  * @threadsafe
  */
 void framebuffer_clear_async(Framebuffer *fb, uint32_t clear_color,
-                             float clear_depth, uint8_t clear_stencil);
+			     float clear_depth, uint8_t clear_stencil);
 
 #ifdef __cplusplus
 }

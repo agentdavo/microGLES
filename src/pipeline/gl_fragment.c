@@ -294,8 +294,8 @@ void process_fragment_tile_job(void *task_data)
 	uint32_t h = job->y1 - job->y0 + 1;
 
 	Framebuffer *fb = job->fb;
-	uint32_t tile_x = job->x0 / TILE_SIZE;
-	uint32_t tile_y = job->y0 / TILE_SIZE;
+	uint32_t tile_x = job->x0 / fb->tile_size;
+	uint32_t tile_y = job->y0 / fb->tile_size;
 	FramebufferTile *tile = &fb->tiles[tile_y * fb->tiles_x + tile_x];
 	while (atomic_flag_test_and_set(&tile->lock))
 		thrd_yield();
@@ -304,11 +304,11 @@ void process_fragment_tile_job(void *task_data)
 
 	for (uint32_t row = 0; row < h; ++row) {
 		size_t idx = (size_t)(job->y0 + row) * fb->width + job->x0;
-		memcpy(&tile->color[row * TILE_SIZE], &fb->color_buffer[idx],
-		       w * sizeof(uint32_t));
-		memcpy(&tile->depth[row * TILE_SIZE], &fb->depth_buffer[idx],
-		       w * sizeof(float));
-		memcpy(&tile->stencil[row * TILE_SIZE],
+		memcpy(&tile->color[row * fb->tile_size],
+		       &fb->color_buffer[idx], w * sizeof(uint32_t));
+		memcpy(&tile->depth[row * fb->tile_size],
+		       &fb->depth_buffer[idx], w * sizeof(float));
+		memcpy(&tile->stencil[row * fb->tile_size],
 		       &fb->stencil_buffer[idx], w * sizeof(uint8_t));
 	}
 
@@ -347,12 +347,13 @@ void process_fragment_tile_job(void *task_data)
 	framebuffer_leave_tile();
 	for (uint32_t row = 0; row < h; ++row) {
 		size_t idx = (size_t)(job->y0 + row) * fb->width + job->x0;
-		memcpy(&fb->color_buffer[idx], &tile->color[row * TILE_SIZE],
-		       w * sizeof(uint32_t));
-		memcpy(&fb->depth_buffer[idx], &tile->depth[row * TILE_SIZE],
-		       w * sizeof(float));
+		memcpy(&fb->color_buffer[idx],
+		       &tile->color[row * fb->tile_size], w * sizeof(uint32_t));
+		memcpy(&fb->depth_buffer[idx],
+		       &tile->depth[row * fb->tile_size], w * sizeof(float));
 		memcpy(&fb->stencil_buffer[idx],
-		       &tile->stencil[row * TILE_SIZE], w * sizeof(uint8_t));
+		       &tile->stencil[row * fb->tile_size],
+		       w * sizeof(uint8_t));
 	}
 	atomic_flag_clear(&tile->lock);
 	tile_job_release(job);
