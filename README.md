@@ -184,6 +184,11 @@ Systems without a cycle counter treat the value as nanoseconds. When
 `__builtin_readcyclecounter` is available, the profiler calibrates CPU
 frequency on first use so reported times are approximations.
 
+Debug logging can also trace each pipeline phase. Initialize the logger with
+`LOG_LEVEL_DEBUG` or pass `--log-level=debug` on the command line to emit
+messages when stages start and finish. Run `stage_logging_demo --log-level=debug`
+to watch the vertex through framebuffer stages execute in sequence.
+
 ### Linking as a Static Library
 
 Build only the library if you want to embed microGLES in another project:
