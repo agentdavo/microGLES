@@ -28,6 +28,11 @@ struct X11Window {
 static pthread_mutex_t x11_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool threads_initialized = false;
 
+// Track early frames to ensure colored output appears.
+static unsigned color_check_frame = 0;
+static bool color_found = false;
+static const unsigned COLOR_CHECK_LIMIT = 5;
+
 // Creates an X11 window with the specified dimensions and title.
 X11Window *x11_window_create(unsigned width, unsigned height, const char *title)
 {
@@ -257,10 +262,18 @@ void x11_window_show_image(X11Window *w, const struct Framebuffer *fb)
 	// Optimize for common pixel formats
 	if (w->rshift == 16 && w->gshift == 8 && w->bshift == 0 &&
 	    w->image->bits_per_pixel == 32) {
-		// Direct copy if formats match
+		// Direct copy if formats match. Ensure unused alpha is 0xFF
 		for (unsigned y = 0; y < height; ++y) {
-			memcpy(w->image->data + y * w->image->bytes_per_line,
-			       fb->color_buffer + y * fb->width, width * 4);
+			uint32_t *dst =
+				(uint32_t *)(w->image->data +
+					     y * w->image->bytes_per_line);
+			const uint32_t *src =
+				(const uint32_t *)fb->color_buffer +
+				(size_t)y * fb->width;
+			for (unsigned x = 0; x < width; ++x)
+				dst[x] = src[x] |
+					 (w->image->depth == 24 ? 0xFF000000u :
+								  0);
 		}
 	} else {
 		// Per-pixel conversion
@@ -277,6 +290,9 @@ void x11_window_show_image(X11Window *w, const struct Framebuffer *fb)
 				uint32_t out = ((uint32_t)r << w->rshift) |
 					       ((uint32_t)g << w->gshift) |
 					       ((uint32_t)b << w->bshift);
+				if (w->image->depth == 24 &&
+				    w->image->bits_per_pixel == 32)
+					out |= 0xFF000000u;
 				memcpy(dst, &out, 4);
 			}
 		}
@@ -291,6 +307,17 @@ void x11_window_show_image(X11Window *w, const struct Framebuffer *fb)
 	}
 	XFlush(w->display);
 	pthread_mutex_unlock(&x11_mutex);
+
+	if (!color_found && color_check_frame < COLOR_CHECK_LIMIT) {
+		if (x11_window_has_non_monochrome(w)) {
+			color_found = true;
+		} else if (++color_check_frame >= COLOR_CHECK_LIMIT) {
+			LOG_FATAL(
+				"No coloured pixels detected in first %u frames",
+				COLOR_CHECK_LIMIT);
+			exit(EXIT_FAILURE);
+		}
+	}
 }
 
 // Returns the X11 display.
